@@ -16,12 +16,26 @@ interface Story {
   cover_image_url: string | null;
 }
 
+interface GeneratedQuestion {
+  question: string;
+  expectedAnswer: string;
+}
+
+interface GeneratedStory {
+  title: string;
+  content: string;
+  questions?: GeneratedQuestion[];
+  coverImageBase64?: string;
+}
+
 const AdminPage = () => {
   const navigate = useNavigate();
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [coverImage, setCoverImage] = useState<File | null>(null);
   const [coverPreview, setCoverPreview] = useState<string | null>(null);
+  const [generatedCoverBase64, setGeneratedCoverBase64] = useState<string | null>(null);
+  const [generatedQuestions, setGeneratedQuestions] = useState<GeneratedQuestion[]>([]);
   const [stories, setStories] = useState<Story[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -57,7 +71,7 @@ const AdminPage = () => {
     setIsLoading(true);
     let coverUrl: string | null = null;
 
-    // Upload image if selected
+    // Upload image if selected (manual upload takes priority)
     if (coverImage) {
       const fileExt = coverImage.name.split(".").pop();
       const fileName = `${Date.now()}.${fileExt}`;
@@ -77,6 +91,34 @@ const AdminPage = () => {
         .getPublicUrl(fileName);
       
       coverUrl = urlData.publicUrl;
+    } else if (generatedCoverBase64) {
+      // Upload the generated base64 image
+      try {
+        const base64Data = generatedCoverBase64.replace(/^data:image\/\w+;base64,/, "");
+        const binaryString = atob(base64Data);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+          bytes[i] = binaryString.charCodeAt(i);
+        }
+        const blob = new Blob([bytes], { type: "image/png" });
+        
+        const fileName = `${Date.now()}.png`;
+        const { error: uploadError } = await supabase.storage
+          .from("covers")
+          .upload(fileName, blob);
+        
+        if (uploadError) {
+          console.error("Cover upload error:", uploadError);
+          toast.warning("Cover-Bild konnte nicht hochgeladen werden");
+        } else {
+          const { data: urlData } = supabase.storage
+            .from("covers")
+            .getPublicUrl(fileName);
+          coverUrl = urlData.publicUrl;
+        }
+      } catch (err) {
+        console.error("Error processing generated cover:", err);
+      }
     }
 
     // Insert story
@@ -92,42 +134,64 @@ const AdminPage = () => {
       return;
     }
 
-    // Generate comprehension questions using LLM
-    toast.info("Generiere Verständnisfragen...");
-    try {
-      const { data: questionsData, error: questionsError } = await supabase.functions.invoke(
-        "generate-comprehension-questions",
-        {
-          body: { storyContent: content, storyTitle: title },
-        }
-      );
+    // Use pre-generated questions if available, otherwise generate new ones
+    if (generatedQuestions.length > 0) {
+      // Save pre-generated questions to DB
+      const questionsToInsert = generatedQuestions.map((q, index) => ({
+        story_id: insertedStory.id,
+        question: q.question,
+        expected_answer: q.expectedAnswer,
+        order_index: index,
+      }));
 
-      if (questionsError) {
-        console.error("Questions generation error:", questionsError);
-        toast.warning("Fragen konnten nicht generiert werden");
-      } else if (questionsData?.questions) {
-        // Save questions to DB
-        const questionsToInsert = questionsData.questions.map((q: { question: string; expectedAnswer: string }, index: number) => ({
-          story_id: insertedStory.id,
-          question: q.question,
-          expected_answer: q.expectedAnswer,
-          order_index: index,
-        }));
+      const { error: insertError } = await supabase
+        .from("comprehension_questions")
+        .insert(questionsToInsert);
 
-        const { error: insertError } = await supabase
-          .from("comprehension_questions")
-          .insert(questionsToInsert);
-
-        if (insertError) {
-          console.error("Failed to save questions:", insertError);
-          toast.warning("Fragen konnten nicht gespeichert werden");
-        } else {
-          toast.success("Geschichte und Fragen gespeichert! 🎉");
-        }
+      if (insertError) {
+        console.error("Failed to save questions:", insertError);
+        toast.warning("Fragen konnten nicht gespeichert werden");
+      } else {
+        toast.success("Geschichte und Fragen gespeichert! 🎉");
       }
-    } catch (err) {
-      console.error("Error generating questions:", err);
-      toast.warning("Fragen-Generierung fehlgeschlagen");
+    } else {
+      // Generate comprehension questions using LLM (fallback for manual stories)
+      toast.info("Generiere Verständnisfragen...");
+      try {
+        const { data: questionsData, error: questionsError } = await supabase.functions.invoke(
+          "generate-comprehension-questions",
+          {
+            body: { storyContent: content, storyTitle: title },
+          }
+        );
+
+        if (questionsError) {
+          console.error("Questions generation error:", questionsError);
+          toast.warning("Fragen konnten nicht generiert werden");
+        } else if (questionsData?.questions) {
+          // Save questions to DB
+          const questionsToInsert = questionsData.questions.map((q: { question: string; expectedAnswer: string }, index: number) => ({
+            story_id: insertedStory.id,
+            question: q.question,
+            expected_answer: q.expectedAnswer,
+            order_index: index,
+          }));
+
+          const { error: insertError } = await supabase
+            .from("comprehension_questions")
+            .insert(questionsToInsert);
+
+          if (insertError) {
+            console.error("Failed to save questions:", insertError);
+            toast.warning("Fragen konnten nicht gespeichert werden");
+          } else {
+            toast.success("Geschichte und Fragen gespeichert! 🎉");
+          }
+        }
+      } catch (err) {
+        console.error("Error generating questions:", err);
+        toast.warning("Fragen-Generierung fehlgeschlagen");
+      }
     }
 
     setIsLoading(false);
@@ -135,6 +199,8 @@ const AdminPage = () => {
     setContent("");
     setCoverImage(null);
     setCoverPreview(null);
+    setGeneratedCoverBase64(null);
+    setGeneratedQuestions([]);
     loadStories();
   };
 
@@ -173,6 +239,13 @@ const AdminPage = () => {
             onStoryGenerated={(story) => {
               setTitle(story.title);
               setContent(story.content);
+              if (story.questions && story.questions.length > 0) {
+                setGeneratedQuestions(story.questions);
+              }
+              if (story.coverImageBase64) {
+                setGeneratedCoverBase64(story.coverImageBase64);
+                setCoverPreview(story.coverImageBase64);
+              }
               toast.info("Geschichte wurde in das Formular übernommen. Du kannst sie jetzt bearbeiten und speichern.");
             }}
           />

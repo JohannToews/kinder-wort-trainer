@@ -2,15 +2,23 @@ import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Wand2, Loader2, Sparkles } from "lucide-react";
 
+interface GeneratedQuestion {
+  question: string;
+  expectedAnswer: string;
+}
+
 interface GeneratedStory {
   title: string;
   content: string;
+  questions?: GeneratedQuestion[];
+  coverImageBase64?: string;
 }
 
 interface StoryGeneratorProps {
@@ -23,6 +31,7 @@ const StoryGenerator = ({ onStoryGenerated }: StoryGeneratorProps) => {
   const [description, setDescription] = useState("");
   const [childAge, setChildAge] = useState<number>(8);
   const [schoolLevel, setSchoolLevel] = useState<string>("3e primaire (CE2)");
+  const [customSystemPrompt, setCustomSystemPrompt] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
 
   const handleGenerate = async () => {
@@ -32,7 +41,7 @@ const StoryGenerator = ({ onStoryGenerated }: StoryGeneratorProps) => {
     }
 
     setIsGenerating(true);
-    toast.info("Geschichte wird generiert... 🪄");
+    toast.info("Geschichte wird generiert... 🪄 (inkl. Cover-Bild)");
 
     try {
       const { data, error } = await supabase.functions.invoke("generate-story", {
@@ -42,6 +51,7 @@ const StoryGenerator = ({ onStoryGenerated }: StoryGeneratorProps) => {
           description,
           childAge,
           schoolLevel,
+          customSystemPrompt,
         },
       });
 
@@ -70,6 +80,15 @@ const StoryGenerator = ({ onStoryGenerated }: StoryGeneratorProps) => {
     }
   };
 
+  const getLengthLabel = (val: string) => {
+    switch (val) {
+      case "short": return "Kurz (220-250 Wörter, 3 Fragen)";
+      case "medium": return "Mittel (250-350 Wörter, 5 Fragen)";
+      case "long": return "Lang (350-550 Wörter, 7 Fragen)";
+      default: return val;
+    }
+  };
+
   return (
     <Card className="border-2 border-primary/30 bg-gradient-to-br from-primary/5 to-transparent">
       <CardHeader>
@@ -88,9 +107,9 @@ const StoryGenerator = ({ onStoryGenerated }: StoryGeneratorProps) => {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="short">Kurz (100-150 Wörter)</SelectItem>
-                <SelectItem value="medium">Mittel (200-300 Wörter)</SelectItem>
-                <SelectItem value="long">Lang (400-500 Wörter)</SelectItem>
+                <SelectItem value="short">{getLengthLabel("short")}</SelectItem>
+                <SelectItem value="medium">{getLengthLabel("medium")}</SelectItem>
+                <SelectItem value="long">{getLengthLabel("long")}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -156,6 +175,23 @@ const StoryGenerator = ({ onStoryGenerated }: StoryGeneratorProps) => {
           />
         </div>
 
+        {/* Custom System Prompt */}
+        <div className="space-y-2">
+          <Label htmlFor="systemPrompt">
+            Zusätzlicher System-Prompt (optional)
+          </Label>
+          <Textarea
+            id="systemPrompt"
+            placeholder="z.B. Verwende viele Adjektive. Die Geschichte soll lehrreich über Freundschaft sein. Füge humorvolle Elemente hinzu..."
+            value={customSystemPrompt}
+            onChange={(e) => setCustomSystemPrompt(e.target.value)}
+            className="min-h-[100px] text-base"
+          />
+          <p className="text-xs text-muted-foreground">
+            Hier kannst du zusätzliche Anweisungen für die KI eingeben, die bei der Generierung berücksichtigt werden.
+          </p>
+        </div>
+
         <Button
           onClick={handleGenerate}
           disabled={isGenerating || !description.trim()}
@@ -164,7 +200,7 @@ const StoryGenerator = ({ onStoryGenerated }: StoryGeneratorProps) => {
           {isGenerating ? (
             <>
               <Loader2 className="h-5 w-5 mr-2 animate-spin" />
-              Generiere Geschichte...
+              Generiere Geschichte & Cover...
             </>
           ) : (
             <>
