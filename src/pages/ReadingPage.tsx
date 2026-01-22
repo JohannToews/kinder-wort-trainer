@@ -449,22 +449,25 @@ const ReadingPage = () => {
                 <span>Tippe auf ein Wort oder markiere einen Satzteil</span>
               </div>
               
-              {/* Floating button for phrase selection */}
+              {/* Floating button for phrase selection - optimized for touch */}
               {currentSelection && selectionPosition && (
                 <div 
                   className="fixed z-50 animate-in fade-in zoom-in-95"
                   style={{
-                    left: `${selectionPosition.x}px`,
-                    top: `${selectionPosition.y}px`,
+                    left: `${Math.min(Math.max(selectionPosition.x, 80), window.innerWidth - 80)}px`,
+                    top: `${Math.max(selectionPosition.y, 60)}px`,
                     transform: 'translate(-50%, -100%)'
                   }}
                 >
                   <Button
                     onClick={handleExplainSelection}
-                    className="btn-primary-kid shadow-lg flex items-center gap-2 text-sm py-2 px-3"
-                    size="sm"
+                    onTouchEnd={(e) => {
+                      e.preventDefault();
+                      handleExplainSelection();
+                    }}
+                    className="btn-primary-kid shadow-lg flex items-center gap-2 text-base py-3 px-5 min-h-[48px] min-w-[120px] touch-manipulation"
                   >
-                    <MessageCircleQuestion className="h-4 w-4" />
+                    <MessageCircleQuestion className="h-5 w-5" />
                     Erklären
                   </Button>
                 </div>
