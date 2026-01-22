@@ -13,6 +13,7 @@ interface QuizWord {
 }
 
 interface QuizQuestion {
+  wordId: string;
   word: string;
   correctAnswer: string;
   options: string[];
@@ -36,10 +37,12 @@ const VocabularyQuizPage = () => {
   }, []);
 
   const loadWords = async () => {
+    // Only load words that are NOT marked as "easy"
     const { data, error } = await supabase
       .from("marked_words")
       .select("*")
       .not("explanation", "is", null)
+      .or("difficulty.is.null,difficulty.neq.easy")
       .order("created_at", { ascending: false });
 
     if (data && data.length > 0) {
@@ -68,6 +71,7 @@ const VocabularyQuizPage = () => {
         const shuffled = allOptions.sort(() => Math.random() - 0.5);
         
         setCurrentQuestion({
+          wordId: word.id,
           word: word.word,
           correctAnswer: word.explanation,
           options: shuffled,
@@ -82,6 +86,7 @@ const VocabularyQuizPage = () => {
         ].sort(() => Math.random() - 0.5);
         
         setCurrentQuestion({
+          wordId: word.id,
           word: word.word,
           correctAnswer: word.explanation,
           options: fallbackOptions,
@@ -89,7 +94,7 @@ const VocabularyQuizPage = () => {
       }
     } catch (err) {
       console.error("Error generating quiz:", err);
-      toast.error("Fehler beim Generieren der Frage");
+      toast.error("Erreur lors de la génération de la question");
     }
 
     setIsGeneratingQuiz(false);
@@ -110,7 +115,19 @@ const VocabularyQuizPage = () => {
     generateQuizQuestion(shuffled[0]);
   };
 
-  const handleAnswerSelect = (answer: string) => {
+  const markWordAsEasy = async (wordId: string) => {
+    // Mark word as "easy" in the database so it won't appear in future quizzes
+    const { error } = await supabase
+      .from("marked_words")
+      .update({ difficulty: "easy" } as any)
+      .eq("id", wordId);
+
+    if (error) {
+      console.error("Error marking word as easy:", error);
+    }
+  };
+
+  const handleAnswerSelect = async (answer: string) => {
     if (selectedAnswer !== null) return; // Already answered
     
     setSelectedAnswer(answer);
@@ -119,6 +136,12 @@ const VocabularyQuizPage = () => {
     
     if (correct) {
       setScore(prev => prev + 1);
+      // Mark word as "easy" when answered correctly the first time
+      if (currentQuestion?.wordId) {
+        await markWordAsEasy(currentQuestion.wordId);
+        // Remove from local words array so it won't appear again in this session
+        setWords(prev => prev.filter(w => w.id !== currentQuestion.wordId));
+      }
     }
   };
 
@@ -160,7 +183,7 @@ const VocabularyQuizPage = () => {
               <ArrowLeft className="h-6 w-6" />
             </Button>
             <h1 className="text-2xl md:text-3xl font-baloo text-foreground">
-              Vokabel-Quiz
+              Quiz des Mots
             </h1>
           </div>
         </div>
@@ -168,15 +191,15 @@ const VocabularyQuizPage = () => {
         <div className="container max-w-2xl p-8 text-center">
           <div className="bg-card rounded-2xl p-12 shadow-card">
             <Sparkles className="h-16 w-16 text-primary/40 mx-auto mb-6" />
-            <h2 className="text-2xl font-baloo mb-4">Noch keine Vokabeln!</h2>
+            <h2 className="text-2xl font-baloo mb-4">Pas encore de mots!</h2>
             <p className="text-muted-foreground mb-8">
-              Lies zuerst eine Geschichte und tippe auf Wörter, um sie zu lernen.
+              Lis d'abord une histoire et touche les mots pour les apprendre.
             </p>
             <Button
               onClick={() => navigate("/stories")}
               className="btn-primary-kid"
             >
-              Zu den Geschichten
+              Vers les histoires
             </Button>
           </div>
         </div>
@@ -199,17 +222,17 @@ const VocabularyQuizPage = () => {
               <ArrowLeft className="h-6 w-6" />
             </Button>
             <h1 className="text-2xl md:text-3xl font-baloo text-foreground">
-              Vokabel-Quiz
+              Quiz des Mots
             </h1>
           </div>
           
           {currentQuestion && !quizComplete && (
             <div className="flex items-center gap-4">
               <span className="text-sm text-muted-foreground">
-                Frage {questionIndex + 1} / {totalQuestions}
+                Question {questionIndex + 1} / {totalQuestions}
               </span>
               <div className="bg-primary/20 rounded-full px-4 py-1">
-                <span className="font-baloo font-bold text-primary">{score} Punkte</span>
+                <span className="font-baloo font-bold text-primary">{score} Points</span>
               </div>
             </div>
           )}
@@ -221,18 +244,18 @@ const VocabularyQuizPage = () => {
         {!currentQuestion && !quizComplete && (
           <div className="bg-card rounded-2xl p-8 md:p-12 shadow-card text-center">
             <Sparkles className="h-16 w-16 text-primary mx-auto mb-6 animate-sparkle" />
-            <h2 className="text-3xl font-baloo mb-4">Bereit zum Üben?</h2>
+            <h2 className="text-3xl font-baloo mb-4">Prêt à jouer?</h2>
             <p className="text-lg text-muted-foreground mb-2">
-              Du hast <strong>{words.length}</strong> Wörter gelernt!
+              Tu as appris <strong>{words.length}</strong> mots!
             </p>
             <p className="text-muted-foreground mb-8">
-              Das Quiz testet {totalQuestions} zufällige Wörter.
+              Le quiz teste {totalQuestions} mots au hasard.
             </p>
             <Button
               onClick={startQuiz}
               className="btn-primary-kid text-xl px-8 py-4"
             >
-              Quiz starten! 🚀
+              Commencer le quiz! 🚀
             </Button>
           </div>
         )}
@@ -243,12 +266,12 @@ const VocabularyQuizPage = () => {
             {isGeneratingQuiz ? (
               <div className="flex flex-col items-center justify-center py-12">
                 <Loader2 className="h-12 w-12 text-primary animate-spin mb-4" />
-                <p className="text-muted-foreground">Nächste Frage wird vorbereitet...</p>
+                <p className="text-muted-foreground">Prochaine question en préparation...</p>
               </div>
             ) : (
               <>
                 <div className="text-center mb-8">
-                  <p className="text-sm text-muted-foreground mb-2">Was bedeutet...</p>
+                  <p className="text-sm text-muted-foreground mb-2">Que signifie...</p>
                   <h2 className="text-4xl md:text-5xl font-baloo font-bold text-primary">
                     {currentQuestion.word}
                   </h2>
@@ -302,10 +325,10 @@ const VocabularyQuizPage = () => {
                   <div className="mt-8 text-center">
                     <div className={`mb-4 p-4 rounded-xl ${isCorrect ? "bg-mint" : "bg-cotton-candy"}`}>
                       {isCorrect ? (
-                        <p className="text-lg font-bold text-green-800">🎉 Super! Das ist richtig!</p>
+                        <p className="text-lg font-bold text-green-800">🎉 Super! C'est correct!</p>
                       ) : (
                         <p className="text-lg font-bold text-red-800">
-                          Nicht ganz! Die richtige Antwort war oben markiert.
+                          Pas tout à fait! La bonne réponse est marquée au-dessus.
                         </p>
                       )}
                     </div>
@@ -313,7 +336,7 @@ const VocabularyQuizPage = () => {
                       onClick={nextQuestion}
                       className="btn-primary-kid"
                     >
-                      {questionIndex + 1 >= totalQuestions ? "Ergebnis anzeigen" : "Nächste Frage →"}
+                      {questionIndex + 1 >= totalQuestions ? "Voir le résultat" : "Question suivante →"}
                     </Button>
                   </div>
                 )}
@@ -326,7 +349,7 @@ const VocabularyQuizPage = () => {
         {quizComplete && (
           <div className="bg-card rounded-2xl p-8 md:p-12 shadow-card text-center">
             <Trophy className="h-20 w-20 text-primary mx-auto mb-6" />
-            <h2 className="text-4xl font-baloo mb-4">Quiz beendet!</h2>
+            <h2 className="text-4xl font-baloo mb-4">Quiz terminé!</h2>
             
             <div className="bg-primary/20 rounded-2xl p-6 mb-8">
               <p className="text-6xl font-baloo font-bold text-primary mb-2">
@@ -334,10 +357,10 @@ const VocabularyQuizPage = () => {
               </p>
               <p className="text-muted-foreground">
                 {score === totalQuestions 
-                  ? "Perfekt! Du bist ein Vokabel-Champion! 🏆" 
+                  ? "Parfait! Tu es un champion du vocabulaire! 🏆" 
                   : score >= totalQuestions / 2 
-                    ? "Gut gemacht! Weiter üben! 💪"
-                    : "Übung macht den Meister! 📚"}
+                    ? "Bien joué! Continue à t'entraîner! 💪"
+                    : "C'est en forgeant qu'on devient forgeron! 📚"}
               </p>
             </div>
 
@@ -347,14 +370,14 @@ const VocabularyQuizPage = () => {
                 className="btn-primary-kid flex items-center gap-2"
               >
                 <RotateCcw className="h-5 w-5" />
-                Nochmal spielen
+                Rejouer
               </Button>
               <Button
                 onClick={() => navigate("/stories")}
                 variant="outline"
                 className="btn-kid"
               >
-                Zurück zu den Geschichten
+                Retour aux histoires
               </Button>
             </div>
           </div>

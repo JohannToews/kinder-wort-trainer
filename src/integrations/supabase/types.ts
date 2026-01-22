@@ -76,6 +76,7 @@ export type Database = {
       marked_words: {
         Row: {
           created_at: string
+          difficulty: string | null
           explanation: string | null
           id: string
           story_id: string
@@ -83,6 +84,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          difficulty?: string | null
           explanation?: string | null
           id?: string
           story_id: string
@@ -90,6 +92,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          difficulty?: string | null
           explanation?: string | null
           id?: string
           story_id?: string
