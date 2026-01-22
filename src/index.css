@@ -142,7 +142,13 @@
   }
 
   .word-highlight {
-    @apply cursor-pointer px-1 py-0.5 rounded-md transition-all duration-200 hover:bg-sunshine/40 active:bg-sunshine/60;
+    @apply cursor-pointer px-1 py-1 rounded-md transition-all duration-200 
+           hover:bg-sunshine/40 active:bg-sunshine/60 
+           touch-manipulation select-none;
+    -webkit-tap-highlight-color: transparent;
+    min-height: 32px;
+    display: inline-flex;
+    align-items: center;
   }
 
   .word-marked {
@@ -159,6 +165,8 @@
 
   .reading-text {
     @apply text-xl md:text-2xl leading-loose font-nunito tracking-wide;
+    -webkit-user-select: text;
+    user-select: text;
   }
 
   .reading-text p {
