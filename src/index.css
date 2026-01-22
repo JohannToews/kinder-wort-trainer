@@ -149,6 +149,10 @@
     @apply bg-sunshine/50 border-b-2 border-primary;
   }
 
+  .phrase-marked {
+    @apply underline decoration-primary decoration-2 underline-offset-4;
+  }
+
   .special-expression {
     @apply bg-lavender/40 border-b-2 border-dashed border-purple-400;
   }

@@ -52,8 +52,10 @@ const ReadingPage = () => {
   const [isExplaining, setIsExplaining] = useState(false);
   
   // Session-only marked positions (visual highlighting only for current session)
-  // Format: "pIndex-sIndex-wIndex" for single words, or "pIndex-sIndex-wStart:wEnd" for phrases
-  const [sessionMarkedPositions, setSessionMarkedPositions] = useState<Set<string>>(new Set());
+  // Single word positions: "pIndex-sIndex-wIndex"
+  const [singleWordPositions, setSingleWordPositions] = useState<Set<string>>(new Set());
+  // Phrase positions: "pIndex-sIndex-wIndex" (all words in the phrase get added)
+  const [phrasePositions, setPhrasePositions] = useState<Set<string>>(new Set());
   // Map from position key to the word/phrase text for display
   const [markedTexts, setMarkedTexts] = useState<Map<string, string>>(new Map());
   // DB cached explanations (for avoiding re-fetching from LLM)
@@ -185,8 +187,8 @@ const ReadingPage = () => {
     setExplanation(null);
     setIsExplaining(true);
     
-    // Mark all selected positions in current session
-    setSessionMarkedPositions(prev => {
+    // Mark all selected positions as phrase in current session
+    setPhrasePositions(prev => {
       const newSet = new Set(prev);
       selectedPositions.forEach(pos => newSet.add(pos));
       return newSet;
@@ -263,8 +265,8 @@ const ReadingPage = () => {
     setExplanation(null);
     setIsExplaining(true);
     
-    // Mark position in current session
-    setSessionMarkedPositions(prev => new Set([...prev, positionKey]));
+    // Mark position as single word in current session
+    setSingleWordPositions(prev => new Set([...prev, positionKey]));
     setMarkedTexts(prev => new Map(prev.set(positionKey, cleanWord)));
 
     // Check if already cached
@@ -343,14 +345,29 @@ const ReadingPage = () => {
                 {words.map((word, wIndex) => {
                   const cleanWord = word.replace(/[.,!?;:'"«»]/g, "").toLowerCase();
                   const positionKey = `${pIndex}-${sIndex}-${wIndex}`;
-                  // Check if this specific position is marked
-                  const isMarkedInSession = sessionMarkedPositions.has(positionKey);
+                  // Check if this specific position is marked as single word or phrase
+                  const isSingleWordMarked = singleWordPositions.has(positionKey);
+                  const isPhraseMarked = phrasePositions.has(positionKey);
                   const isSpace = /^\s+$/.test(word);
                   const canBeMarked = !isStopWord(word);
 
+                  // For spaces: check if adjacent words are part of same phrase
                   if (isSpace) {
-                    return <span key={wIndex}>{word}</span>;
+                    const prevKey = `${pIndex}-${sIndex}-${wIndex - 1}`;
+                    const nextKey = `${pIndex}-${sIndex}-${wIndex + 1}`;
+                    const isInPhrase = phrasePositions.has(prevKey) && phrasePositions.has(nextKey);
+                    return (
+                      <span 
+                        key={wIndex} 
+                        className={isInPhrase ? "phrase-marked" : ""}
+                      >
+                        {word}
+                      </span>
+                    );
                   }
+
+                  // Determine the marking class
+                  const markingClass = isSingleWordMarked ? "word-marked" : (isPhraseMarked ? "phrase-marked" : "");
 
                   // Stop words: no click interaction, but still show as marked if part of a phrase
                   if (!canBeMarked) {
@@ -358,7 +375,7 @@ const ReadingPage = () => {
                       <span 
                         key={wIndex}
                         data-position={positionKey}
-                        className={isMarkedInSession ? "word-marked" : ""}
+                        className={markingClass}
                       >
                         {word}
                       </span>
@@ -370,7 +387,7 @@ const ReadingPage = () => {
                       key={wIndex}
                       data-position={positionKey}
                       onClick={(e) => handleWordClick(word, e)}
-                      className={`word-highlight ${isMarkedInSession ? "word-marked" : ""}`}
+                      className={`word-highlight ${markingClass}`}
                     >
                       {word}
                     </span>
@@ -505,9 +522,9 @@ const ReadingPage = () => {
                 <p className="text-3xl font-baloo font-bold text-accent-foreground">
                   {totalMarkedCount}
                 </p>
-                {sessionMarkedPositions.size > 0 && (
+                {markedTexts.size > 0 && (
                   <p className="text-sm text-muted-foreground mt-1">
-                    Heute: <span className="font-bold text-accent-foreground">{sessionMarkedPositions.size}</span>
+                    Heute: <span className="font-bold text-accent-foreground">{markedTexts.size}</span>
                   </p>
                 )}
               </div>
