@@ -6,7 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { ArrowLeft, Save, Image, Key, BookOpen, Trash2, Upload } from "lucide-react";
+import { ArrowLeft, Save, Image, BookOpen, Trash2, Upload } from "lucide-react";
+import StoryGenerator from "@/components/StoryGenerator";
 
 interface Story {
   id: string;
@@ -17,54 +18,25 @@ interface Story {
 
 const AdminPage = () => {
   const navigate = useNavigate();
-  const [apiKey, setApiKey] = useState("");
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [coverImage, setCoverImage] = useState<File | null>(null);
   const [coverPreview, setCoverPreview] = useState<string | null>(null);
   const [stories, setStories] = useState<Story[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [isSavingKey, setIsSavingKey] = useState(false);
 
   useEffect(() => {
-    loadApiKey();
     loadStories();
   }, []);
 
-  const loadApiKey = async () => {
-    const { data } = await supabase
-      .from("app_settings")
-      .select("value")
-      .eq("key", "gemini_api_key")
-      .single();
-    
-    if (data) {
-      setApiKey(data.value);
-    }
-  };
-
   const loadStories = async () => {
-    const { data, error } = await supabase
+    const { data } = await supabase
       .from("stories")
       .select("*")
       .order("created_at", { ascending: false });
     
     if (data) {
       setStories(data);
-    }
-  };
-
-  const saveApiKey = async () => {
-    setIsSavingKey(true);
-    const { error } = await supabase
-      .from("app_settings")
-      .upsert({ key: "gemini_api_key", value: apiKey }, { onConflict: "key" });
-    
-    setIsSavingKey(false);
-    if (error) {
-      toast.error("Fehler beim Speichern des API-Keys");
-    } else {
-      toast.success("API-Key gespeichert!");
     }
   };
 
@@ -195,32 +167,16 @@ const AdminPage = () => {
           </h1>
         </div>
 
-        {/* API Key Section */}
-        <Card className="mb-8 border-2 border-lavender/50">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-xl">
-              <Key className="h-5 w-5 text-primary" />
-              Gemini API-Key
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="flex gap-4">
-            <Input
-              type="password"
-              placeholder="API-Key eingeben..."
-              value={apiKey}
-              onChange={(e) => setApiKey(e.target.value)}
-              className="flex-1"
-            />
-            <Button 
-              onClick={saveApiKey} 
-              disabled={isSavingKey}
-              className="btn-primary-kid"
-            >
-              <Save className="h-4 w-4 mr-2" />
-              Speichern
-            </Button>
-          </CardContent>
-        </Card>
+        {/* Story Generator Section */}
+        <div className="mb-8">
+          <StoryGenerator
+            onStoryGenerated={(story) => {
+              setTitle(story.title);
+              setContent(story.content);
+              toast.info("Geschichte wurde in das Formular übernommen. Du kannst sie jetzt bearbeiten und speichern.");
+            }}
+          />
+        </div>
 
         {/* New Story Section */}
         <Card className="mb-8 border-2 border-sunshine/50">
