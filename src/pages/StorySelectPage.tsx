@@ -55,7 +55,7 @@ const StorySelectPage = () => {
           <Sparkles className="h-8 w-8 text-primary animate-sparkle" />
         </h1>
         <p className="text-lg text-muted-foreground">
-          Wähle eine Geschichte zum Lesen
+          Clique sur une histoire pour la lire
         </p>
       </div>
 
@@ -75,13 +75,13 @@ const StorySelectPage = () => {
               className="w-64 h-40 object-cover rounded-2xl mx-auto mb-6 shadow-card"
             />
             <p className="text-xl text-muted-foreground mb-4">
-              Noch keine Geschichten vorhanden
+              Pas encore d'histoires
             </p>
             <Button
               onClick={() => navigate("/admin")}
               className="btn-primary-kid"
             >
-              Geschichte hinzufügen
+              Ajouter une histoire
             </Button>
           </div>
         ) : (

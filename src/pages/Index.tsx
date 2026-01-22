@@ -85,7 +85,7 @@ const Index = () => {
                   <Settings className="h-8 w-8 text-muted-foreground" />
                 </div>
                 <h3 className="font-baloo font-bold text-lg mb-1">Admin (Papa)</h3>
-                <p className="text-sm text-muted-foreground">Histoires verwalten</p>
+                <p className="text-sm text-muted-foreground">Geschichten verwalten</p>
               </CardContent>
             </Card>
           </div>
@@ -94,7 +94,7 @@ const Index = () => {
         {/* Footer */}
         <div className="mt-auto pt-8 pb-4 text-center">
           <p className="text-sm text-muted-foreground/60">
-            Made with ❤️ für kleine Leseratten
+            Fait avec ❤️ pour les petits lecteurs
           </p>
         </div>
       </div>

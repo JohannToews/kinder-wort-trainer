@@ -179,7 +179,7 @@ const ReadingPage = () => {
     if (data) {
       setStory(data);
     } else {
-      toast.error("Geschichte nicht gefunden");
+      toast.error("Histoire non trouvée");
       navigate("/stories");
     }
     setIsLoading(false);
@@ -406,7 +406,7 @@ const ReadingPage = () => {
     });
 
     if (error) {
-      toast.error("Fehler beim Speichern");
+      toast.error("Erreur lors de la sauvegarde");
       return;
     }
 
@@ -415,7 +415,7 @@ const ReadingPage = () => {
     setIsSaved(true);
     // Clear unsaved tracking since this is now saved
     setUnsavedPositions(new Set());
-    toast.success("Erklärung gespeichert! ⚽");
+    toast.success("Explication sauvegardée! ⚽");
   };
 
   const closeExplanation = () => {
@@ -563,7 +563,7 @@ const ReadingPage = () => {
             <div className="bg-card rounded-2xl p-6 md:p-10 shadow-card relative">
               <div className="flex items-center gap-2 text-sm text-muted-foreground mb-6">
                 <Sparkles className="h-4 w-4" />
-                <span>Tippe auf ein Wort oder markiere mehrere Wörter</span>
+                <span>Touche un mot ou sélectionne plusieurs mots</span>
               </div>
               
               {/* Floating button for phrase selection - optimized for touch */}
@@ -587,7 +587,7 @@ const ReadingPage = () => {
                     className="btn-primary-kid shadow-lg flex items-center gap-2 text-base py-3 px-5 min-h-[52px] min-w-[140px] touch-manipulation"
                   >
                     <MessageCircleQuestion className="h-5 w-5" />
-                    Erklären
+                    Expliquer
                   </Button>
                 </div>
               )}
@@ -606,7 +606,7 @@ const ReadingPage = () => {
                     if (hasQuestions) {
                       setShowQuiz(true);
                     } else {
-                      toast.success("Super! Du hast den Text fertig gelesen! 🏆");
+                      toast.success("Super! Tu as fini de lire! 🏆");
                       navigate("/stories");
                     }
                   }}
@@ -615,14 +615,14 @@ const ReadingPage = () => {
                     if (hasQuestions) {
                       setShowQuiz(true);
                     } else {
-                      toast.success("Super! Du hast den Text fertig gelesen! 🏆");
+                      toast.success("Super! Tu as fini de lire! 🏆");
                       navigate("/stories");
                     }
                   }}
                   className="btn-accent-kid flex items-center gap-3 text-lg py-4 px-8 min-h-[56px] touch-manipulation"
                 >
                   <CheckCircle2 className="h-6 w-6" />
-                  Text fertig gelesen
+                  J'ai fini de lire
                 </Button>
               </div>
 
@@ -636,7 +636,7 @@ const ReadingPage = () => {
                   <ComprehensionQuiz 
                     storyId={id!} 
                     onComplete={() => {
-                      toast.success("Bravo! Tu as terminé le quiz! 🏆");
+                      toast.success("Bravo! Tu as fini le quiz! 🏆");
                       navigate("/stories");
                     }}
                   />
@@ -691,14 +691,14 @@ const ReadingPage = () => {
                           className="w-full btn-secondary-kid flex items-center gap-2"
                         >
                           <Save className="h-5 w-5" />
-                          Speichern
+                          Sauvegarder
                         </Button>
                       )}
                       
                       {isSaved && (
                         <div className="flex items-center gap-2 text-secondary font-medium">
                           <CheckCircle2 className="h-5 w-5" />
-                          Gespeichert!
+                          Sauvegardé!
                         </div>
                       )}
                     </div>
@@ -708,20 +708,20 @@ const ReadingPage = () => {
                 <div className="explanation-panel text-center py-12">
                   <Sparkles className="h-12 w-12 text-primary/40 mx-auto mb-4" />
                   <p className="text-muted-foreground">
-                    Tippe auf ein Wort, um seine Bedeutung zu erfahren
+                    Touche un mot pour découvrir sa signification
                   </p>
                 </div>
               )}
 
               {/* Marked words count */}
               <div className="mt-6 p-4 bg-card rounded-xl text-center">
-                <p className="text-sm text-muted-foreground">Erklärungen (gesamt)</p>
+                <p className="text-sm text-muted-foreground">Explications (total)</p>
                 <p className="text-3xl font-baloo font-bold text-accent-foreground">
                   {totalMarkedCount}
                 </p>
                 {markedTexts.size > 0 && (
                   <p className="text-sm text-muted-foreground mt-1">
-                    Heute: <span className="font-bold text-accent-foreground">{markedTexts.size}</span>
+                    Aujourd'hui: <span className="font-bold text-accent-foreground">{markedTexts.size}</span>
                   </p>
                 )}
               </div>
