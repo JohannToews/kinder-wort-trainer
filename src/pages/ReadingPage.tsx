@@ -102,15 +102,30 @@ const ReadingPage = () => {
   };
 
   const handleTextSelection = useCallback(async () => {
+    // Small delay to ensure selection is complete
+    await new Promise(resolve => setTimeout(resolve, 10));
+    
     const selection = window.getSelection();
     if (!selection || selection.isCollapsed) return;
     
     const selectedText = selection.toString().trim();
-    if (!selectedText || selectedText.length < 2) return;
-
-    const cleanText = selectedText.replace(/[.,!?;:'"«»\n\r]/g, " ").replace(/\s+/g, " ").trim().toLowerCase();
     
-    if (!cleanText) return;
+    // Only handle multi-word selections (contains space) or selections > 1 word
+    // Single words are handled by handleWordClick
+    if (!selectedText || !selectedText.includes(' ')) {
+      return;
+    }
+
+    const cleanText = selectedText
+      .replace(/[.,!?;:'"«»\n\r]/g, " ")
+      .replace(/\s+/g, " ")
+      .trim()
+      .toLowerCase();
+    
+    if (!cleanText || cleanText.length < 3) return;
+
+    // Prevent click event from also firing
+    selection.removeAllRanges();
 
     setSelectedWord(cleanText);
     setExplanation(null);
@@ -125,7 +140,6 @@ const ReadingPage = () => {
     if (existingExplanation) {
       setExplanation(existingExplanation);
       setIsExplaining(false);
-      selection.removeAllRanges();
       return;
     }
 
@@ -164,10 +178,15 @@ const ReadingPage = () => {
     }
 
     setIsExplaining(false);
-    selection.removeAllRanges();
   }, [id, cachedExplanations]);
 
-  const handleWordClick = async (word: string) => {
+  const handleWordClick = async (word: string, event: React.MouseEvent) => {
+    // Check if there's a text selection - if so, don't handle the click
+    const selection = window.getSelection();
+    if (selection && !selection.isCollapsed && selection.toString().trim().length > 0) {
+      return;
+    }
+    
     const cleanWord = word.replace(/[.,!?;:'"«»]/g, "").toLowerCase();
     
     if (!cleanWord) return;
@@ -270,7 +289,7 @@ const ReadingPage = () => {
                   return (
                     <span
                       key={wIndex}
-                      onClick={() => handleWordClick(word)}
+                      onClick={(e) => handleWordClick(word, e)}
                       className={`word-highlight ${isMarkedInSession ? "word-marked" : ""}`}
                     >
                       {word}
