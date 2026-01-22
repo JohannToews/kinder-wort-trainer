@@ -11,7 +11,7 @@ serve(async (req) => {
   }
 
   try {
-    const { length, difficulty, description, childAge, schoolLevel } = await req.json();
+    const { length, difficulty, description, childAge, schoolLevel, customSystemPrompt } = await req.json();
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
@@ -20,9 +20,16 @@ serve(async (req) => {
 
     // Map length to approximate word count
     const lengthMap: Record<string, string> = {
-      short: "100-150 Wörter",
-      medium: "200-300 Wörter",
-      long: "400-500 Wörter",
+      short: "220-250 Wörter",
+      medium: "250-350 Wörter",
+      long: "350-550 Wörter",
+    };
+
+    // Map length to question count
+    const questionCountMap: Record<string, number> = {
+      short: 3,
+      medium: 5,
+      long: 7,
     };
 
     // Map difficulty to vocabulary complexity
@@ -32,7 +39,10 @@ serve(async (req) => {
       difficult: "reichhaltigerer Wortschatz, komplexere Satzstrukturen, literarische Elemente",
     };
 
-    const systemPrompt = `Du bist ein erfahrener Kinderbuchautor, der französische Geschichten für Kinder schreibt.
+    const questionCount = questionCountMap[length] || 5;
+
+    // Base system prompt
+    let systemPrompt = `Du bist ein erfahrener Kinderbuchautor, der französische Geschichten für Kinder schreibt.
 Du erstellst kindgerechte, pädagogisch wertvolle Geschichten auf Französisch.
 Die Geschichten sollen das Leseverständnis fördern und altersgerecht sein.
 
@@ -41,21 +51,38 @@ WICHTIG:
 - Die Geschichte soll für ein ${childAge}-jähriges Kind sein (Schulniveau: ${schoolLevel})
 - Verwende ${difficultyMap[difficulty] || difficultyMap.medium}
 - Die Geschichte soll ${lengthMap[length] || lengthMap.medium} lang sein
-- Erstelle auch einen passenden französischen Titel`;
+- Erstelle auch einen passenden französischen Titel
+- Erstelle ${questionCount} Verständnisfragen mit erwarteten Antworten`;
+
+    // Append custom system prompt if provided
+    if (customSystemPrompt && customSystemPrompt.trim()) {
+      systemPrompt += `\n\nZUSÄTZLICHE ANWEISUNGEN:\n${customSystemPrompt.trim()}`;
+    }
 
     const userPrompt = `Erstelle eine französische Geschichte basierend auf dieser Beschreibung: "${description}"
 
 Antworte im folgenden JSON-Format:
 {
   "title": "Der französische Titel der Geschichte",
-  "content": "Der vollständige Text der Geschichte auf Französisch"
+  "content": "Der vollständige Text der Geschichte auf Französisch",
+  "questions": [
+    {
+      "question": "Frage auf Französisch",
+      "expectedAnswer": "Erwartete kurze Antwort auf Französisch"
+    }
+  ]
 }
 
 Achte darauf, dass die Geschichte:
 1. Einen klaren Anfang, Mittelteil und Ende hat
 2. Interessant und spannend für Kinder ist
 3. Positive Werte vermittelt
-4. Dem gewünschten Schwierigkeitsgrad entspricht`;
+4. Dem gewünschten Schwierigkeitsgrad entspricht
+
+Die ${questionCount} Verständnisfragen sollen:
+1. Das Textverständnis prüfen
+2. Auf Französisch formuliert sein
+3. Kurze, prägnante Antworten haben`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -106,7 +133,46 @@ Achte darauf, dass die Geschichte:
 
     const story = JSON.parse(jsonMatch[0]);
 
-    return new Response(JSON.stringify(story), {
+    // Generate cover image based on description
+    console.log("Generating cover image for:", description);
+    
+    const imagePrompt = `A colorful, child-friendly book cover illustration for a French children's story. Theme: ${description}. Style: Whimsical, warm, inviting, suitable for children ages ${childAge}. Cartoon style, bright colors, no text.`;
+    
+    const imageResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "google/gemini-2.5-flash-image-preview",
+        messages: [
+          {
+            role: "user",
+            content: imagePrompt,
+          },
+        ],
+        modalities: ["image", "text"],
+      }),
+    });
+
+    let coverImageBase64: string | null = null;
+
+    if (imageResponse.ok) {
+      const imageData = await imageResponse.json();
+      const imageUrl = imageData.choices?.[0]?.message?.images?.[0]?.image_url?.url;
+      if (imageUrl) {
+        coverImageBase64 = imageUrl;
+        console.log("Cover image generated successfully");
+      }
+    } else {
+      console.error("Failed to generate cover image:", await imageResponse.text());
+    }
+
+    return new Response(JSON.stringify({
+      ...story,
+      coverImageBase64,
+    }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error) {
