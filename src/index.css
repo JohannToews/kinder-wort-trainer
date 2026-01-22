@@ -155,16 +155,18 @@
   }
 
   .word-marked {
-    @apply bg-sky-cyan-light/50 border-b-2 border-primary text-foreground;
+    @apply bg-sky-cyan-light border-b-2 border-primary;
+    color: hsl(var(--navy-dark)) !important;
   }
 
   .phrase-marked {
-    @apply bg-ocean-blue-light/40 rounded px-0.5 text-foreground;
-    text-decoration: none;
+    @apply bg-ocean-blue-light rounded px-0.5;
+    color: hsl(var(--navy-dark)) !important;
   }
 
   .special-expression {
-    @apply bg-teal-energy-light/50 border-b-2 border-dashed border-teal-energy text-foreground;
+    @apply bg-teal-energy-light border-b-2 border-dashed border-teal-energy;
+    color: hsl(var(--navy-dark)) !important;
   }
 
   .reading-text {
