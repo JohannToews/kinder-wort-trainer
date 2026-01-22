@@ -158,7 +158,7 @@
   .word-highlight {
     @apply cursor-pointer px-1 py-1 rounded-md transition-all duration-200 
            hover:bg-ocean-blue-light active:bg-primary/30 
-           touch-manipulation select-none;
+           touch-manipulation select-text;
     -webkit-tap-highlight-color: transparent;
     min-height: 32px;
     display: inline-flex;
