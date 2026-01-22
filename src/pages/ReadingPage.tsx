@@ -58,6 +58,9 @@ const ReadingPage = () => {
   const [singleWordPositions, setSingleWordPositions] = useState<Set<string>>(new Set());
   const [phrasePositions, setPhrasePositions] = useState<Set<string>>(new Set());
   const [markedTexts, setMarkedTexts] = useState<Map<string, string>>(new Map());
+  // Saved positions (permanently marked after saving)
+  const [savedSingleWordPositions, setSavedSingleWordPositions] = useState<Set<string>>(new Set());
+  const [savedPhrasePositions, setSavedPhrasePositions] = useState<Set<string>>(new Set());
   // DB cached explanations (for avoiding re-fetching from LLM)
   const [cachedExplanations, setCachedExplanations] = useState<Map<string, string>>(new Map());
   // Total marked words count from DB (for display)
@@ -72,6 +75,8 @@ const ReadingPage = () => {
   const [hasQuestions, setHasQuestions] = useState(false);
   // Current word position for saving
   const [currentPositionKey, setCurrentPositionKey] = useState<string | null>(null);
+  // Current unsaved positions (to clear when selecting new word)
+  const [unsavedPositions, setUnsavedPositions] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (id) {
@@ -233,6 +238,21 @@ const ReadingPage = () => {
 
     if (!cleanText || cleanText.length < 3) return;
 
+    // Clear previous unsaved markings
+    if (unsavedPositions.size > 0) {
+      setSingleWordPositions(prev => {
+        const newSet = new Set(prev);
+        unsavedPositions.forEach(pos => newSet.delete(pos));
+        return newSet;
+      });
+      setPhrasePositions(prev => {
+        const newSet = new Set(prev);
+        unsavedPositions.forEach(pos => newSet.delete(pos));
+        return newSet;
+      });
+      setUnsavedPositions(new Set());
+    }
+
     // Find all word elements within the selection and get their positions
     const selectedPositions: string[] = [];
     if (textContainerRef.current) {
@@ -265,6 +285,9 @@ const ReadingPage = () => {
       selectedPositions.forEach(pos => newSet.add(pos));
       return newSet;
     });
+    // Track as unsaved
+    setUnsavedPositions(new Set(selectedPositions));
+    
     // Store the phrase text for the first position
     if (selectedPositions.length > 0) {
       setMarkedTexts(prev => new Map(prev.set(selectedPositions[0], cleanText)));
@@ -303,6 +326,21 @@ const ReadingPage = () => {
     
     if (!cleanWord) return;
 
+    // Clear previous unsaved markings
+    if (unsavedPositions.size > 0) {
+      setSingleWordPositions(prev => {
+        const newSet = new Set(prev);
+        unsavedPositions.forEach(pos => newSet.delete(pos));
+        return newSet;
+      });
+      setPhrasePositions(prev => {
+        const newSet = new Set(prev);
+        unsavedPositions.forEach(pos => newSet.delete(pos));
+        return newSet;
+      });
+      setUnsavedPositions(new Set());
+    }
+
     // Create unique position key using event target data attributes
     const target = event.currentTarget;
     const positionKey = target.getAttribute('data-position') || `click-${Date.now()}`;
@@ -317,6 +355,8 @@ const ReadingPage = () => {
     // Mark position as single word in current session
     setSingleWordPositions(prev => new Set([...prev, positionKey]));
     setMarkedTexts(prev => new Map(prev.set(positionKey, cleanWord)));
+    // Track as unsaved
+    setUnsavedPositions(new Set([positionKey]));
 
     // Check if already cached
     const existingExplanation = cachedExplanations.get(cleanWord);
@@ -373,6 +413,8 @@ const ReadingPage = () => {
     setTotalMarkedCount(prev => prev + 1);
     setCachedExplanations(prev => new Map(prev.set(selectedWord.toLowerCase(), explanation)));
     setIsSaved(true);
+    // Clear unsaved tracking since this is now saved
+    setUnsavedPositions(new Set());
     toast.success("Erklärung gespeichert! ⚽");
   };
 
