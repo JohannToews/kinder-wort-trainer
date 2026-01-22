@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { toast } from "sonner";
-import { Wand2, Loader2, Sparkles, Settings } from "lucide-react";
+import { Wand2, Loader2, Sparkles, Settings, Save } from "lucide-react";
 
 interface GeneratedQuestion {
   question: string;
@@ -255,12 +255,23 @@ const StoryGenerator = ({ onStoryGenerated }: StoryGeneratorProps) => {
                       placeholder="Anweisungen für die KI..."
                       value={customSystemPrompt}
                       onChange={handlePromptChange}
-                      onBlur={handlePromptBlur}
                       className="min-h-[150px] text-sm font-mono"
                     />
-                    <p className="text-xs text-muted-foreground">
-                      Dieser Prompt wird bei der Generierung an die KI übergeben. Änderungen werden automatisch gespeichert.
-                    </p>
+                    <div className="flex items-center justify-between gap-4">
+                      <p className="text-xs text-muted-foreground">
+                        Dieser Prompt wird bei der Generierung an die KI übergeben.
+                      </p>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={handlePromptBlur}
+                        className="flex items-center gap-1"
+                      >
+                        <Save className="h-3 w-3" />
+                        Speichern
+                      </Button>
+                    </div>
                   </>
                 )}
               </div>
