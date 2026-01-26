@@ -5,6 +5,44 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Helper function to make AI request with retry
+async function makeAIRequest(apiKey: string, prompt: string, retries = 3): Promise<Response> {
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        model: "google/gemini-3-flash-preview",
+        messages: [
+          { role: "system", content: "Tu es un assistant qui génère des quiz de vocabulaire pour enfants. Réponds toujours en JSON valide sans markdown." },
+          { role: "user", content: prompt }
+        ],
+        temperature: 0.7,
+        max_tokens: 200,
+      }),
+    });
+
+    if (response.ok) {
+      return response;
+    }
+
+    // If rate limited and we have retries left, wait and retry
+    if (response.status === 429 && attempt < retries) {
+      console.log(`Rate limited, waiting ${attempt * 2} seconds before retry ${attempt + 1}/${retries}`);
+      await new Promise(resolve => setTimeout(resolve, attempt * 2000));
+      continue;
+    }
+
+    // Return the failed response if we can't retry
+    return response;
+  }
+
+  throw new Error("Max retries exceeded");
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -41,31 +79,26 @@ Réponds UNIQUEMENT avec un JSON valide (pas de markdown):
   "wrongOptions": ["fausse réponse 1", "fausse réponse 2", "fausse réponse 3"]
 }`;
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: 'POST',
-      headers: { 
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${LOVABLE_API_KEY}`
-      },
-      body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
-        messages: [
-          { role: "system", content: "Tu es un assistant qui génère des quiz de vocabulaire pour enfants. Réponds toujours en JSON valide sans markdown." },
-          { role: "user", content: prompt }
-        ],
-        temperature: 0.7,
-        max_tokens: 200,
-      }),
-    });
+    const response = await makeAIRequest(LOVABLE_API_KEY, prompt);
 
     if (!response.ok) {
       const errorText = await response.text();
       console.error('Lovable AI Gateway error:', response.status, errorText);
       
       if (response.status === 429) {
+        // Return fallback data instead of error so quiz can continue
+        console.log('Rate limit exceeded, using fallback options');
         return new Response(
-          JSON.stringify({ error: 'Rate limit exceeded, please try again later' }),
-          { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          JSON.stringify({ 
+            infinitive: word,
+            wrongOptions: [
+              "Une couleur vive",
+              "Un animal de la forêt", 
+              "Quelque chose de rond"
+            ],
+            fallback: true
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
       if (response.status === 402) {

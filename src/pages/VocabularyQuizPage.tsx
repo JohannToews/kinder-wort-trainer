@@ -87,7 +87,7 @@ const VocabularyQuizPage = () => {
     setIsLoading(false);
   };
 
-  const generateQuizQuestion = async (word: QuizWord) => {
+  const generateQuizQuestion = async (word: QuizWord, retryCount = 0) => {
     setIsGeneratingQuiz(true);
 
     try {
@@ -98,7 +98,40 @@ const VocabularyQuizPage = () => {
         },
       });
 
+      if (error) {
+        console.error("Quiz generation error:", error);
+        
+        // If rate limited, wait and retry up to 2 times
+        if (error.message?.includes("429") && retryCount < 2) {
+          toast.info("Chargement... un moment s'il te plaît");
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          return generateQuizQuestion(word, retryCount + 1);
+        }
+        
+        // Use fallback options
+        const fallbackOptions = [
+          word.explanation,
+          "Un animal mignon",
+          "Une couleur belle",
+          "Quelque chose de grand"
+        ].sort(() => Math.random() - 0.5);
+        
+        setCurrentQuestion({
+          wordId: word.id,
+          word: word.word,
+          correctAnswer: word.explanation,
+          options: fallbackOptions,
+        });
+        setIsGeneratingQuiz(false);
+        return;
+      }
+
       if (data?.wrongOptions) {
+        // Check if using fallback
+        if (data.fallback) {
+          toast.info("Mode simplifié activé");
+        }
+        
         // Use infinitive form if returned by the API, otherwise use original word
         const displayWord = data.infinitive || word.word;
         
@@ -130,7 +163,20 @@ const VocabularyQuizPage = () => {
       }
     } catch (err) {
       console.error("Error generating quiz:", err);
-      toast.error("Erreur lors de la génération de la question");
+      // Use fallback on any error
+      const fallbackOptions = [
+        word.explanation,
+        "Un animal mignon",
+        "Une couleur belle",
+        "Quelque chose de grand"
+      ].sort(() => Math.random() - 0.5);
+      
+      setCurrentQuestion({
+        wordId: word.id,
+        word: word.word,
+        correctAnswer: word.explanation,
+        options: fallbackOptions,
+      });
     }
 
     setIsGeneratingQuiz(false);
