@@ -17,6 +17,14 @@ const Index = () => {
       </div>
 
       <div className="relative container max-w-4xl mx-auto px-4 py-8 md:py-12 flex flex-col items-center min-h-screen">
+        {/* Admin Icon - Top Right */}
+        <button
+          onClick={() => navigate("/admin")}
+          className="absolute top-4 right-4 p-2 rounded-full bg-card/80 backdrop-blur-sm border border-border hover:bg-muted transition-colors"
+          title="Admin (Papa)"
+        >
+          <Settings className="h-5 w-5 text-muted-foreground" />
+        </button>
 
         {/* Hero Section */}
         <div className="flex-1 flex flex-col items-center justify-center text-center">
@@ -86,20 +94,6 @@ const Index = () => {
                 </div>
                 <h3 className="font-baloo font-bold text-lg mb-1">Meine Resultate</h3>
                 <p className="text-sm text-muted-foreground">Mes points et progrès</p>
-              </CardContent>
-            </Card>
-
-            {/* Admin (Papa) */}
-            <Card 
-              onClick={() => navigate("/admin")}
-              className="cursor-pointer border-2 border-lavender/50 hover:border-lavender hover:shadow-card transition-all duration-300 group touch-manipulation"
-            >
-              <CardContent className="flex flex-col items-center p-6 text-center">
-                <div className="h-16 w-16 rounded-full bg-lavender/30 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                  <Settings className="h-8 w-8 text-muted-foreground" />
-                </div>
-                <h3 className="font-baloo font-bold text-lg mb-1">Admin (Papa)</h3>
-                <p className="text-sm text-muted-foreground">Geschichten verwalten</p>
               </CardContent>
             </Card>
           </div>
