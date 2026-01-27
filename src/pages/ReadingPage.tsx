@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { ArrowLeft, Sparkles, X, Loader2, BookOpen, MessageCircleQuestion, CheckCircle2, HelpCircle, Save, RotateCcw } from "lucide-react";
 import ComprehensionQuiz from "@/components/ComprehensionQuiz";
 import { useColorPalette } from "@/hooks/useColorPalette";
+import { useAuth } from "@/hooks/useAuth";
 
 interface Story {
   id: string;
@@ -46,6 +47,7 @@ const isStopWord = (word: string): boolean => {
 };
 
 const ReadingPage = () => {
+  const { user } = useAuth();
   const { colors: paletteColors } = useColorPalette();
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
@@ -624,6 +626,7 @@ const ReadingPage = () => {
                         reference_id: id,
                         difficulty: story?.difficulty || "medium",
                         points_earned: storyPoints,
+                        user_id: user?.id,
                       });
                       
                       toast.success(`Super! Tu as fini de lire! 🏆 (+${storyPoints} points)`);
@@ -650,6 +653,7 @@ const ReadingPage = () => {
                         reference_id: id,
                         difficulty: story?.difficulty || "medium",
                         points_earned: storyPoints,
+                        user_id: user?.id,
                       });
                       
                       toast.success(`Super! Tu as fini de lire! 🏆 (+${storyPoints} points)`);
@@ -694,6 +698,7 @@ const ReadingPage = () => {
                           points_earned: earnedPoints,
                           correct_answers: correctCount,
                           total_questions: totalCount,
+                          user_id: user?.id,
                         });
                         
                         toast.success(`Bravo! Tu as fini le quiz! 🏆 (+${earnedPoints} points)`);

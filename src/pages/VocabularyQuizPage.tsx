@@ -313,6 +313,7 @@ const VocabularyQuizPage = () => {
           points_earned: earnedPoints,
           correct_answers: score,
           total_questions: totalQuestions,
+          user_id: user?.id,
         });
       }
       return;

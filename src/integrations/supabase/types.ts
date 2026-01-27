@@ -302,6 +302,7 @@ export type Database = {
           points_earned: number
           reference_id: string | null
           total_questions: number | null
+          user_id: string | null
         }
         Insert: {
           activity_type: string
@@ -312,6 +313,7 @@ export type Database = {
           points_earned?: number
           reference_id?: string | null
           total_questions?: number | null
+          user_id?: string | null
         }
         Update: {
           activity_type?: string
@@ -322,8 +324,17 @@ export type Database = {
           points_earned?: number
           reference_id?: string | null
           total_questions?: number | null
+          user_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "user_results_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
