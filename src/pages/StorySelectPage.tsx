@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, BookOpen, Sparkles } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { useColorPalette } from "@/hooks/useColorPalette";
 import heroImage from "@/assets/hero-reading.jpg";
 
 interface Story {
@@ -14,17 +16,24 @@ interface Story {
 
 const StorySelectPage = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const { colors: paletteColors } = useColorPalette();
   const [stories, setStories] = useState<Story[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    loadStories();
-  }, []);
+    if (user) {
+      loadStories();
+    }
+  }, [user]);
 
   const loadStories = async () => {
+    if (!user) return;
+    
     const { data } = await supabase
       .from("stories")
       .select("*")
+      .eq("user_id", user.id)
       .order("created_at", { ascending: false });
     
     if (data) {
@@ -34,7 +43,7 @@ const StorySelectPage = () => {
   };
 
   return (
-    <div className="min-h-screen gradient-hero">
+    <div className={`min-h-screen bg-gradient-to-br ${paletteColors.bg}`}>
       {/* Header */}
       <div className="p-4 md:p-6">
         <Button

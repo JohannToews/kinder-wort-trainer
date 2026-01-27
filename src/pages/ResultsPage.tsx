@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, Trophy, BookOpen, Brain, MessageCircleQuestion, Star, Sparkles } from "lucide-react";
-
+import { useColorPalette } from "@/hooks/useColorPalette";
 interface UserResult {
   id: string;
   activity_type: string;
@@ -24,6 +24,7 @@ interface LevelSetting {
 
 const ResultsPage = () => {
   const navigate = useNavigate();
+  const { colors: paletteColors } = useColorPalette();
   const [isLoading, setIsLoading] = useState(true);
   const [totalPoints, setTotalPoints] = useState(0);
   const [storyPoints, setStoryPoints] = useState(0);
@@ -132,7 +133,7 @@ const ResultsPage = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen gradient-hero flex items-center justify-center">
+      <div className={`min-h-screen bg-gradient-to-br ${paletteColors.bg} flex items-center justify-center`}>
         <div className="animate-bounce-soft">
           <Trophy className="h-16 w-16 text-primary" />
         </div>
@@ -141,7 +142,7 @@ const ResultsPage = () => {
   }
 
   return (
-    <div className="min-h-screen gradient-hero">
+    <div className={`min-h-screen bg-gradient-to-br ${paletteColors.bg}`}>
       {/* Header */}
       <div className="sticky top-0 z-10 bg-background/80 backdrop-blur-sm border-b border-border p-4">
         <div className="max-w-4xl mx-auto flex items-center gap-4">

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { ArrowLeft, Sparkles, CheckCircle2, XCircle, Loader2, Trophy, RotateCcw } from "lucide-react";
 import confetti from "canvas-confetti";
+import { useColorPalette } from "@/hooks/useColorPalette";
 import {
   Select,
   SelectContent,
@@ -30,6 +31,7 @@ interface QuizQuestion {
 }
 
 const VocabularyQuizPage = () => {
+  const { colors: paletteColors } = useColorPalette();
   const navigate = useNavigate();
   const [words, setWords] = useState<QuizWord[]>([]);
   const [quizWords, setQuizWords] = useState<QuizWord[]>([]);
@@ -329,7 +331,7 @@ const VocabularyQuizPage = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen gradient-hero flex items-center justify-center">
+      <div className={`min-h-screen bg-gradient-to-br ${paletteColors.bg} flex items-center justify-center`}>
         <div className="animate-bounce-soft">
           <Sparkles className="h-16 w-16 text-primary" />
         </div>
@@ -339,7 +341,7 @@ const VocabularyQuizPage = () => {
 
   if (words.length === 0) {
     return (
-      <div className="min-h-screen gradient-hero">
+      <div className={`min-h-screen bg-gradient-to-br ${paletteColors.bg}`}>
         <div className="sticky top-0 z-10 bg-background/80 backdrop-blur-sm border-b border-border p-4">
           <div className="max-w-4xl mx-auto flex items-center gap-4">
             <Button
@@ -376,7 +378,7 @@ const VocabularyQuizPage = () => {
   }
 
   return (
-    <div className="min-h-screen gradient-hero">
+    <div className={`min-h-screen bg-gradient-to-br ${paletteColors.bg}`}>
       {/* Header */}
       <div className="sticky top-0 z-10 bg-background/80 backdrop-blur-sm border-b border-border p-4">
         <div className="max-w-4xl mx-auto flex items-center justify-between">

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { ArrowLeft, Sparkles, X, Loader2, BookOpen, MessageCircleQuestion, CheckCircle2, HelpCircle, Save, RotateCcw } from "lucide-react";
 import ComprehensionQuiz from "@/components/ComprehensionQuiz";
+import { useColorPalette } from "@/hooks/useColorPalette";
 
 interface Story {
   id: string;
@@ -45,6 +46,7 @@ const isStopWord = (word: string): boolean => {
 };
 
 const ReadingPage = () => {
+  const { colors: paletteColors } = useColorPalette();
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const [story, setStory] = useState<Story | null>(null);
@@ -510,7 +512,7 @@ const ReadingPage = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen gradient-hero flex items-center justify-center">
+      <div className={`min-h-screen bg-gradient-to-br ${paletteColors.bg} flex items-center justify-center`}>
         <div className="animate-bounce-soft">
           <Sparkles className="h-16 w-16 text-primary" />
         </div>
@@ -519,7 +521,7 @@ const ReadingPage = () => {
   }
 
   return (
-    <div className="min-h-screen gradient-hero">
+    <div className={`min-h-screen bg-gradient-to-br ${paletteColors.bg}`}>
       {/* Header */}
       <div className="sticky top-0 z-10 bg-background/80 backdrop-blur-sm border-b border-border p-4">
         <div className="max-w-5xl mx-auto flex items-center justify-between gap-4">
