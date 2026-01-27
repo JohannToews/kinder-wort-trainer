@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, Trophy, BookOpen, Brain, MessageCircleQuestion, Star, Sparkles } from "lucide-react";
 import { useColorPalette } from "@/hooks/useColorPalette";
+import { useAuth } from "@/hooks/useAuth";
+
 interface UserResult {
   id: string;
   activity_type: string;
@@ -24,6 +26,7 @@ interface LevelSetting {
 
 const ResultsPage = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { colors: paletteColors } = useColorPalette();
   const [isLoading, setIsLoading] = useState(true);
   const [totalPoints, setTotalPoints] = useState(0);
@@ -37,10 +40,17 @@ const ResultsPage = () => {
   const [levels, setLevels] = useState<LevelSetting[]>([]);
 
   useEffect(() => {
-    loadResults();
-  }, []);
+    if (user) {
+      loadResults();
+    }
+  }, [user]);
 
   const loadResults = async () => {
+    if (!user) {
+      setIsLoading(false);
+      return;
+    }
+    
     try {
       // Load level settings
       const { data: levelData } = await supabase
@@ -52,10 +62,11 @@ const ResultsPage = () => {
         setLevels(levelData);
       }
 
-      // Load all user results
+      // Load user results filtered by user_id
       const { data: results } = await supabase
         .from("user_results")
         .select("*")
+        .eq("user_id", user.id)
         .order("created_at", { ascending: false });
 
       if (results) {
@@ -89,13 +100,14 @@ const ResultsPage = () => {
         setTotalPoints(storyPts + questionPts + quizPts);
       }
 
-      // Load learned words count
-      const { count: learnedCount } = await supabase
+      // Load learned words count - only from user's stories
+      const { data: learnedData } = await supabase
         .from("marked_words")
-        .select("*", { count: "exact", head: true })
+        .select("*, stories!inner(user_id)")
         .eq("is_learned", true);
-
-      setWordsLearned(learnedCount || 0);
+      
+      const userLearnedCount = learnedData?.filter((w: any) => w.stories?.user_id === user.id).length || 0;
+      setWordsLearned(userLearnedCount);
 
     } catch (err) {
       console.error("Error loading results:", err);
