@@ -29,9 +29,9 @@ serve(async (req) => {
 
     // Map length to approximate word count
     const lengthMap: Record<string, string> = {
-      short: "220-250 Wörter",
-      medium: "250-350 Wörter",
-      long: "350-550 Wörter",
+      short: "150-200 Wörter",
+      medium: "200-300 Wörter",
+      long: "300-400 Wörter",
     };
 
     // Map length to question count
@@ -41,90 +41,86 @@ serve(async (req) => {
       long: 7,
     };
 
-    // Map difficulty to vocabulary complexity
-    const difficultyMap: Record<string, string> = {
-      easy: "sehr einfache Wörter, kurze Sätze, grundlegende Grammatik",
-      medium: "moderate Komplexität, einige längere Sätze, alltägliche Vokabeln",
-      difficult: "reichhaltigerer Wortschatz, komplexere Satzstrukturen, literarische Elemente",
+    // Map difficulty labels
+    const difficultyLabels: Record<string, string> = {
+      easy: "LEICHT",
+      medium: "MITTEL",
+      difficult: "SCHWER",
     };
 
     // Text type mapping
     const textTypeLabels: Record<string, string> = {
-      fiction: "eine fiktive Geschichte (Erzählung, Märchen, Abenteuer)",
-      "non-fiction": "eine Sachgeschichte (informativ, lehrreich, basierend auf Fakten)",
+      fiction: "FIKTION/GESCHICHTE (Textes narratifs)",
+      "non-fiction": "SACHTEXT (Texte documentaires)",
     };
 
     const textTypeDescription = textTypeLabels[textType] || textTypeLabels.fiction;
+    const difficultyLabel = difficultyLabels[difficulty] || "MITTEL";
     const questionCount = questionCountMap[length] || 5;
+    const wordCount = lengthMap[length] || lengthMap.medium;
 
-    // Use custom system prompt if provided, otherwise use default
-    let systemPrompt: string;
-    
-    if (customSystemPrompt && customSystemPrompt.trim()) {
-      // Use the custom system prompt as base, with dynamic variables injected
-      systemPrompt = customSystemPrompt
-        .replace(/\{targetLanguage\}/g, targetLanguage)
-        .replace(/\{childAge\}/g, String(childAge))
-        .replace(/\{schoolLevel\}/g, schoolLevel)
-        .replace(/\{difficulty\}/g, difficultyMap[difficulty] || difficultyMap.medium)
-        .replace(/\{length\}/g, lengthMap[length] || lengthMap.medium)
-        .replace(/\{questionCount\}/g, String(questionCount))
-        .replace(/\{textType\}/g, textTypeDescription);
-      
-      // Append critical instructions that must always be included
-      systemPrompt += `
+    // Build the complete system prompt with dynamic parameters
+    const dynamicContext = `
+---
+## AKTUELLE AUFGABE - PARAMETER
 
-WICHTIGE PARAMETER FÜR DIESE GESCHICHTE:
-- Zielsprache des Textes: ${targetLanguage}
-- Alter des Kindes: ${childAge} Jahre
-- Schulniveau: ${schoolLevel}
-- Schwierigkeit: ${difficultyMap[difficulty] || difficultyMap.medium}
-- Länge: ${lengthMap[length] || lengthMap.medium}
-- Art: ${textTypeDescription}
-- Anzahl Verständnisfragen: ${questionCount}`;
-    } else {
-      // Default system prompt
-      systemPrompt = `Du bist ein erfahrener Kinderbuchautor.
-Du erstellst kindgerechte, pädagogisch wertvolle Texte.
-Die Texte sollen das Leseverständnis fördern und altersgerecht sein.
+**Zielsprache des Textes:** ${targetLanguage}
+**Alter des Kindes:** ${childAge} Jahre
+**Schulniveau:** ${schoolLevel}
+**Schwierigkeitsgrad:** ${difficultyLabel}
+**Textlänge:** ${wordCount}
+**Texttyp:** ${textTypeDescription}
+**Anzahl Verständnisfragen:** ${questionCount}
 
-WICHTIG: 
-- Schreibe den Text auf ${targetLanguage}
-- Die Geschichte soll für ein ${childAge}-jähriges Kind sein (Schulniveau: ${schoolLevel})
-- Verwende ${difficultyMap[difficulty] || difficultyMap.medium}
-- Die Geschichte soll ${lengthMap[length] || lengthMap.medium} lang sein
-- Art des Textes: ${textTypeDescription}
-- Erstelle auch einen passenden Titel in ${targetLanguage}
-- Erstelle ${questionCount} Verständnisfragen mit erwarteten Antworten (in ${targetLanguage})`;
-    }
+---
+## WICHTIGE ANWEISUNGEN
 
-    const userPrompt = `Erstelle ${textTypeDescription} basierend auf dieser Beschreibung: "${description}"
+1. Schreibe den GESAMTEN Text (Titel, Inhalt, Fragen, Antworten) auf **${targetLanguage}**
+2. Halte dich STRIKT an die oben genannten Parameter
+3. Erstelle genau **${questionCount}** Verständnisfragen mit der in deinem System-Prompt beschriebenen Taxonomie-Mischung
+4. Jede Frage muss eine kurze, prägnante erwartete Antwort haben
+`;
 
-Der Text muss auf ${targetLanguage} geschrieben sein.
+    // Combine the custom system prompt with dynamic context
+    const fullSystemPrompt = customSystemPrompt 
+      ? `${customSystemPrompt}\n${dynamicContext}`
+      : dynamicContext;
 
-Antworte im folgenden JSON-Format:
+    const userPrompt = `Erstelle ${textType === "non-fiction" ? "einen Sachtext" : "eine Geschichte"} basierend auf dieser Beschreibung: "${description}"
+
+**WICHTIG:** Der gesamte Text muss auf ${targetLanguage} sein!
+
+Antworte NUR mit einem validen JSON-Objekt in diesem exakten Format:
 {
-  "title": "Der Titel der Geschichte auf ${targetLanguage}",
-  "content": "Der vollständige Text auf ${targetLanguage}",
+  "title": "Titel auf ${targetLanguage}",
+  "content": "Der vollständige Text auf ${targetLanguage}. Verwende \\n für Absätze.",
   "questions": [
     {
-      "question": "Frage auf ${targetLanguage}",
-      "expectedAnswer": "Erwartete kurze Antwort auf ${targetLanguage}"
+      "question": "Frage 1 auf ${targetLanguage}",
+      "expectedAnswer": "Erwartete Antwort auf ${targetLanguage}"
+    },
+    {
+      "question": "Frage 2 auf ${targetLanguage}",
+      "expectedAnswer": "Erwartete Antwort auf ${targetLanguage}"
     }
   ]
 }
 
-Achte darauf, dass der Text:
-1. Einen klaren Anfang, Mittelteil und Ende hat
-2. Interessant und spannend für Kinder ist
-3. Positive Werte vermittelt
-4. Dem gewünschten Schwierigkeitsgrad entspricht
-${textType === "non-fiction" ? "5. Faktenbasiert und lehrreich ist" : ""}
+Erstelle genau ${questionCount} Fragen mit der richtigen Mischung:
+- ~30% explizite Informationsfragen
+- ~40% Inferenzfragen (die wichtigste Kategorie!)
+- ~15% Vokabular im Kontext
+- ~15% Textstruktur & Zusammenhänge`;
 
-Die ${questionCount} Verständnisfragen sollen:
-1. Das Textverständnis prüfen
-2. Auf ${targetLanguage} formuliert sein
-3. Kurze, prägnante Antworten haben`;
+    console.log("Generating story with params:", {
+      targetLanguage,
+      childAge,
+      schoolLevel,
+      difficulty: difficultyLabel,
+      length: wordCount,
+      textType,
+      questionCount
+    });
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -135,7 +131,7 @@ Die ${questionCount} Verständnisfragen sollen:
       body: JSON.stringify({
         model: "google/gemini-3-flash-preview",
         messages: [
-          { role: "system", content: systemPrompt },
+          { role: "system", content: fullSystemPrompt },
           { role: "user", content: userPrompt },
         ],
         temperature: 0.8,
@@ -170,6 +166,7 @@ Die ${questionCount} Verständnisfragen sollen:
     // Parse the JSON from the response
     const jsonMatch = content.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
+      console.error("Could not parse story JSON from:", content);
       throw new Error("Could not parse story JSON");
     }
 
@@ -190,7 +187,8 @@ Die ${questionCount} Verständnisfragen sollen:
       artStyle = "Semi-realistic illustration style, detailed environments, characters with realistic proportions, dynamic compositions, similar to graphic novel or manga-inspired art. Sophisticated color palette.";
     }
     
-    const imagePrompt = `A captivating book cover illustration for a French children's story. Theme: ${description}. 
+    const imagePrompt = `A captivating book cover illustration for a ${textType === "non-fiction" ? "non-fiction educational book" : "children's story"}. 
+Theme: ${description}. 
 Art Style: ${artStyle}
 Target audience: ${childAge} year old child.
 Requirements: No text on the image, high quality illustration, engaging composition that tells a story.`;
@@ -202,7 +200,7 @@ Requirements: No text on the image, high quality illustration, engaging composit
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash-image-preview",
+        model: "google/gemini-2.5-flash-image",
         messages: [
           {
             role: "user",
