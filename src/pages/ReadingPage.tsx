@@ -3,7 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { ArrowLeft, Sparkles, BookOpen, HelpCircle } from "lucide-react";
+import { ArrowLeft, Sparkles, BookOpen, HelpCircle, BookText } from "lucide-react";
 import ComprehensionQuiz from "@/components/ComprehensionQuiz";
 import FlipbookReader from "@/components/FlipbookReader";
 import { useColorPalette } from "@/hooks/useColorPalette";
@@ -27,6 +27,7 @@ const ReadingPage = () => {
   const [showQuiz, setShowQuiz] = useState(false);
   const [hasQuestions, setHasQuestions] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [viewMode, setViewMode] = useState<'reading' | 'quiz'>('reading');
 
   useEffect(() => {
     if (id) {
@@ -129,11 +130,20 @@ const ReadingPage = () => {
     );
   }
 
+  // Toggle between reading and quiz mode
+  const toggleViewMode = () => {
+    if (viewMode === 'reading' && hasQuestions) {
+      setViewMode('quiz');
+    } else {
+      setViewMode('reading');
+    }
+  };
+
   // Fullscreen Flipbook Mode
   if (isFullscreen && story && !showQuiz) {
     return (
       <div className={`fixed inset-0 bg-gradient-to-br ${paletteColors.bg} flex flex-col`}>
-        {/* Minimal header */}
+        {/* Minimal header with view toggle */}
         <div className="flex items-center justify-between p-4 bg-background/90 backdrop-blur-sm border-b border-border">
           <Button
             variant="outline"
@@ -143,27 +153,56 @@ const ReadingPage = () => {
           >
             <ArrowLeft className="h-6 w-6" />
           </Button>
-          <h1 className="text-xl md:text-2xl font-baloo text-foreground truncate max-w-[55%] text-center">
+          
+          <h1 className="text-xl md:text-2xl font-baloo text-foreground truncate max-w-[40%] text-center">
             {story.title}
           </h1>
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={() => navigate("/quiz")}
-            className="h-12 w-12 rounded-full border-2 hover:bg-accent/10"
-          >
-            <BookOpen className="h-6 w-6" />
-          </Button>
+          
+          {/* View mode toggle buttons */}
+          <div className="flex gap-2">
+            <Button
+              variant={viewMode === 'reading' ? 'default' : 'outline'}
+              size="icon"
+              onClick={() => setViewMode('reading')}
+              className="h-12 w-12 rounded-full"
+              title="Lire"
+            >
+              <BookText className="h-6 w-6" />
+            </Button>
+            {hasQuestions && (
+              <Button
+                variant={viewMode === 'quiz' ? 'default' : 'outline'}
+                size="icon"
+                onClick={() => setViewMode('quiz')}
+                className="h-12 w-12 rounded-full"
+                title="Questions"
+              >
+                <HelpCircle className="h-6 w-6" />
+              </Button>
+            )}
+          </div>
         </div>
 
-        {/* Flipbook reader - no separate cover image display, it's now page 0 */}
+        {/* Content area based on view mode */}
         <div className="flex-1 overflow-hidden bg-card">
-          <FlipbookReader 
-            content={story.content}
-            storyId={story.id}
-            coverImageUrl={story.cover_image_url}
-            onFinishReading={handleFinishReading}
-          />
+          {viewMode === 'reading' ? (
+            <FlipbookReader 
+              content={story.content}
+              storyId={story.id}
+              coverImageUrl={story.cover_image_url}
+              onFinishReading={handleFinishReading}
+            />
+          ) : (
+            <div className="h-full overflow-y-auto p-4 md:p-8">
+              <div className="max-w-4xl mx-auto">
+                <ComprehensionQuiz 
+                  storyId={id!}
+                  storyDifficulty={story.difficulty || "medium"}
+                  onComplete={handleQuizComplete}
+                />
+              </div>
+            </div>
+          )}
         </div>
       </div>
     );

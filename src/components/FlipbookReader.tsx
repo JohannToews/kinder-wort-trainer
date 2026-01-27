@@ -75,26 +75,28 @@ const FlipbookReader = ({ content, storyId, coverImageUrl, onFinishReading }: Fl
   const [currentPositionKey, setCurrentPositionKey] = useState<string | null>(null);
   const [unsavedPositions, setUnsavedPositions] = useState<Set<string>>(new Set());
 
-  // Check if we have a cover image to show as page 0
-  const hasCoverPage = !!coverImageUrl;
-
   // Split content into pages based on paragraphs
   useEffect(() => {
     const paragraphs = content.split(/\n\n+/).filter(p => p.trim());
     const pagesArray: string[][] = [];
     
-    // Group paragraphs into pages (fewer words per page for larger text)
+    // First page has less words because cover takes half the space
+    const WORDS_FIRST_PAGE = 40;
+    const WORDS_PER_PAGE = 80;
+    
     let currentPageParagraphs: string[] = [];
     let currentWordCount = 0;
-    const WORDS_PER_PAGE = 80; // Reduced for larger text display
+    let isFirstPage = true;
     
     paragraphs.forEach((para) => {
       const wordCount = para.split(/\s+/).length;
+      const limit = isFirstPage ? WORDS_FIRST_PAGE : WORDS_PER_PAGE;
       
-      if (currentWordCount + wordCount > WORDS_PER_PAGE && currentPageParagraphs.length > 0) {
+      if (currentWordCount + wordCount > limit && currentPageParagraphs.length > 0) {
         pagesArray.push([...currentPageParagraphs]);
         currentPageParagraphs = [para];
         currentWordCount = wordCount;
+        isFirstPage = false;
       } else {
         currentPageParagraphs.push(para);
         currentWordCount += wordCount;
@@ -108,12 +110,8 @@ const FlipbookReader = ({ content, storyId, coverImageUrl, onFinishReading }: Fl
     setPages(pagesArray);
   }, [content]);
 
-  // Total pages including cover
-  const totalPages = pages.length + (hasCoverPage ? 1 : 0);
-  
-  // Actual content page index (adjusted for cover)
-  const contentPageIndex = hasCoverPage ? currentPage - 1 : currentPage;
-  const isOnCoverPage = hasCoverPage && currentPage === 0;
+  const totalPages = pages.length;
+  const isFirstPage = currentPage === 0;
 
   // Load cached explanations
   useEffect(() => {
@@ -466,7 +464,6 @@ const FlipbookReader = ({ content, storyId, coverImageUrl, onFinishReading }: Fl
     });
   };
 
-  // Cover page is page 0 when we have an image, so last content page is totalPages - 1
   const isLastPage = currentPage === totalPages - 1;
 
   return (
@@ -480,7 +477,7 @@ const FlipbookReader = ({ content, storyId, coverImageUrl, onFinishReading }: Fl
         onTouchEnd={onTouchEnd}
       >
         {/* Floating button for phrase selection */}
-        {currentSelection && selectionPosition && !isOnCoverPage && (
+        {currentSelection && selectionPosition && (
           <div 
             data-selection-button
             className="fixed z-50 animate-in fade-in zoom-in-95"
@@ -505,24 +502,44 @@ const FlipbookReader = ({ content, storyId, coverImageUrl, onFinishReading }: Fl
           </div>
         )}
 
-        {/* Cover image page */}
-        {isOnCoverPage && coverImageUrl && (
-          <div className="h-full flex items-center justify-center p-4 bg-gradient-to-b from-background to-muted/30">
-            <img 
-              src={coverImageUrl} 
-              alt="Story cover"
-              className="max-h-full max-w-full object-contain rounded-xl shadow-card"
-            />
+        {/* First page: Split layout with cover image on top, text on bottom */}
+        {isFirstPage && coverImageUrl && (
+          <div className="h-full flex flex-col">
+            {/* Cover image - top half */}
+            <div className="h-1/2 p-4 flex items-center justify-center bg-gradient-to-b from-muted/20 to-background">
+              <img 
+                src={coverImageUrl} 
+                alt="Story cover"
+                className="max-h-full max-w-full object-contain rounded-xl shadow-card"
+              />
+            </div>
+            {/* Text - bottom half */}
+            <div 
+              ref={textContainerRef}
+              className={`h-1/2 overflow-y-auto px-6 md:px-10 py-4 select-text ${showPanel ? 'pb-48' : 'pb-28'}`}
+            >
+              {pages[0] && renderPage(pages[0], 0)}
+            </div>
           </div>
         )}
 
-        {/* Page text */}
-        {!isOnCoverPage && (
+        {/* First page without cover: just text */}
+        {isFirstPage && !coverImageUrl && (
           <div 
             ref={textContainerRef}
-            className={`h-full overflow-y-auto px-6 md:px-10 py-8 select-text transition-opacity duration-200 ${showPanel ? 'pb-52' : 'pb-32'}`}
+            className={`h-full overflow-y-auto px-6 md:px-10 py-8 select-text ${showPanel ? 'pb-52' : 'pb-32'}`}
           >
-            {pages[contentPageIndex] && renderPage(pages[contentPageIndex], contentPageIndex)}
+            {pages[0] && renderPage(pages[0], 0)}
+          </div>
+        )}
+
+        {/* Other pages: full text */}
+        {!isFirstPage && (
+          <div 
+            ref={textContainerRef}
+            className={`h-full overflow-y-auto px-6 md:px-10 py-8 select-text ${showPanel ? 'pb-52' : 'pb-32'}`}
+          >
+            {pages[currentPage] && renderPage(pages[currentPage], currentPage)}
           </div>
         )}
       </div>
@@ -568,7 +585,7 @@ const FlipbookReader = ({ content, storyId, coverImageUrl, onFinishReading }: Fl
 
         {/* Page number */}
         <p className="text-center text-lg font-medium text-muted-foreground mb-4">
-          {isOnCoverPage ? 'Couverture' : `Page ${contentPageIndex + 1} / ${pages.length}`}
+          Page {currentPage + 1} / {pages.length}
         </p>
 
         {/* Finish button on last page */}
