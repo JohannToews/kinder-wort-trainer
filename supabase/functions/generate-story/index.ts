@@ -5,22 +5,23 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// Gemini API endpoint
-const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
+// Gemini API endpoints
+const GEMINI_TEXT_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
+const GEMINI_IMAGE_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp-image-generation:generateContent";
 
 // Helper function to count words in a text
 function countWords(text: string): number {
   return text.trim().split(/\s+/).filter(word => word.length > 0).length;
 }
 
-// Helper function to call Gemini API directly
-async function callGeminiAPI(
+// Helper function to call Gemini API for text generation
+async function callGeminiTextAPI(
   apiKey: string,
   systemPrompt: string,
   userPrompt: string,
   temperature: number = 0.8
 ): Promise<string> {
-  const response = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
+  const response = await fetch(`${GEMINI_TEXT_URL}?key=${apiKey}`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -41,7 +42,7 @@ async function callGeminiAPI(
 
   if (!response.ok) {
     const errorText = await response.text();
-    console.error("Gemini API error:", response.status, errorText);
+    console.error("Gemini Text API error:", response.status, errorText);
     throw new Error(`Gemini API error: ${response.status}`);
   }
 
@@ -53,6 +54,124 @@ async function callGeminiAPI(
   }
   
   return content;
+}
+
+// Helper function to call Gemini API for image generation
+async function callGeminiImageAPI(
+  apiKey: string,
+  prompt: string
+): Promise<string | null> {
+  try {
+    const response = await fetch(`${GEMINI_IMAGE_URL}?key=${apiKey}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        contents: [
+          {
+            role: "user",
+            parts: [{ text: prompt }]
+          }
+        ],
+        generationConfig: {
+          responseModalities: ["image", "text"],
+        },
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("Gemini Image API error:", response.status, errorText);
+      return null;
+    }
+
+    const data = await response.json();
+    
+    // Look for inline_data with image in the response
+    const parts = data.candidates?.[0]?.content?.parts || [];
+    for (const part of parts) {
+      if (part.inlineData?.mimeType?.startsWith("image/")) {
+        const base64Data = part.inlineData.data;
+        const mimeType = part.inlineData.mimeType;
+        return `data:${mimeType};base64,${base64Data}`;
+      }
+    }
+    
+    console.error("No image found in Gemini response");
+    return null;
+  } catch (error) {
+    console.error("Error calling Gemini Image API:", error);
+    return null;
+  }
+}
+
+// Helper function to call Gemini API for image editing (with reference image)
+async function callGeminiImageEditAPI(
+  apiKey: string,
+  prompt: string,
+  referenceImageBase64: string
+): Promise<string | null> {
+  try {
+    // Extract base64 data and mime type from data URL
+    const matches = referenceImageBase64.match(/^data:(.+);base64,(.+)$/);
+    if (!matches) {
+      console.error("Invalid base64 image format");
+      return null;
+    }
+    const mimeType = matches[1];
+    const base64Data = matches[2];
+
+    const response = await fetch(`${GEMINI_IMAGE_URL}?key=${apiKey}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        contents: [
+          {
+            role: "user",
+            parts: [
+              { text: prompt },
+              { 
+                inlineData: {
+                  mimeType: mimeType,
+                  data: base64Data
+                }
+              }
+            ]
+          }
+        ],
+        generationConfig: {
+          responseModalities: ["image", "text"],
+        },
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("Gemini Image Edit API error:", response.status, errorText);
+      return null;
+    }
+
+    const data = await response.json();
+    
+    // Look for inline_data with image in the response
+    const parts = data.candidates?.[0]?.content?.parts || [];
+    for (const part of parts) {
+      if (part.inlineData?.mimeType?.startsWith("image/")) {
+        const imgBase64Data = part.inlineData.data;
+        const imgMimeType = part.inlineData.mimeType;
+        return `data:${imgMimeType};base64,${imgBase64Data}`;
+      }
+    }
+    
+    console.error("No image found in Gemini edit response");
+    return null;
+  } catch (error) {
+    console.error("Error calling Gemini Image Edit API:", error);
+    return null;
+  }
 }
 
 serve(async (req) => {
@@ -71,14 +190,11 @@ serve(async (req) => {
     };
     const totalImageCount = imageCountMap[length] || 1;
 
-    // Get API keys
+    // Get Gemini API key
     const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
     if (!GEMINI_API_KEY) {
       throw new Error("GEMINI_API_KEY is not configured");
     }
-
-    // Lovable API key still needed for image generation
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 
     // Language mappings
     const languageNames: Record<string, string> = {
@@ -222,7 +338,7 @@ Erstelle genau ${questionCount} Fragen mit der richtigen Mischung:
         ? userPrompt 
         : `${userPrompt}\n\n**ACHTUNG:** Der vorherige Versuch hatte zu wenige Wörter. Schreibe einen LÄNGEREN Text mit mindestens ${minWordCount} Wörtern!`;
 
-      const content = await callGeminiAPI(GEMINI_API_KEY, fullSystemPrompt, promptToUse, 0.8);
+      const content = await callGeminiTextAPI(GEMINI_API_KEY, fullSystemPrompt, promptToUse, 0.8);
 
       // Parse the JSON from the response
       const jsonMatch = content.match(/\{[\s\S]*\}/);
@@ -264,7 +380,7 @@ ${story.content}
 Antworte NUR mit dem erweiterten Text (ohne Titel, ohne JSON-Format).`;
 
         try {
-          const expandedContent = await callGeminiAPI(GEMINI_API_KEY, expansionSystemPrompt, expansionUserPrompt, 0.8);
+          const expandedContent = await callGeminiTextAPI(GEMINI_API_KEY, expansionSystemPrompt, expansionUserPrompt, 0.8);
           const newWordCount = countWords(expandedContent);
           console.log(`Expanded story word count: ${newWordCount}`);
           
@@ -282,9 +398,8 @@ Antworte NUR mit dem erweiterten Text (ohne Titel, ohne JSON-Format).`;
     }
 
     // Generate cover image based on description and school level
-    // Default to CE2 (mid primary) if schoolLevel is not provided
     const effectiveSchoolLevel = schoolLevel || "CE2";
-    console.log("Generating cover image for:", description, "school level:", effectiveSchoolLevel);
+    console.log("Generating cover image with Gemini Imagen for:", description, "school level:", effectiveSchoolLevel);
     
     // Map school level to art style - different styles for fiction vs non-fiction
     const schoolLevelLower = effectiveSchoolLevel.toLowerCase();
@@ -331,7 +446,7 @@ Antworte NUR mit dem erweiterten Text (ohne Titel, ohne JSON-Format).`;
       
       const characterContext = `Geschichte: "${story.title}"\n${story.content.substring(0, 500)}...`;
       
-      characterDescription = await callGeminiAPI(GEMINI_API_KEY, characterDescriptionPrompt, characterContext, 0.3);
+      characterDescription = await callGeminiTextAPI(GEMINI_API_KEY, characterDescriptionPrompt, characterContext, 0.3);
       console.log("Character description generated:", characterDescription.substring(0, 100));
     } catch (err) {
       console.error("Error generating character description:", err);
@@ -346,48 +461,20 @@ Target audience: ${targetAudience}.
 Requirements: No text on the image, high quality ${textType === "non-fiction" ? "educational and informative" : "imaginative and engaging"} illustration.
 IMPORTANT: Create distinctive, memorable character designs that can be recognized in follow-up illustrations.`;
     
-    let coverImageBase64: string | null = null;
-
-    // Only generate images if Lovable API key is available
-    if (LOVABLE_API_KEY) {
-      const imageResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${LOVABLE_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "google/gemini-2.5-flash-image",
-          messages: [
-            {
-              role: "user",
-              content: imagePrompt,
-            },
-          ],
-          modalities: ["image", "text"],
-        }),
-      });
-
-      if (imageResponse.ok) {
-        const imageData = await imageResponse.json();
-        const imageUrl = imageData.choices?.[0]?.message?.images?.[0]?.image_url?.url;
-        if (imageUrl) {
-          coverImageBase64 = imageUrl;
-          console.log("Cover image generated successfully");
-        }
-      } else {
-        const errorText = await imageResponse.text();
-        console.error("Failed to generate cover image:", errorText);
-        // Don't fail the whole request if image generation fails
-      }
+    // Generate cover image using Gemini's image generation
+    console.log("Calling Gemini Image API for cover...");
+    const coverImageBase64 = await callGeminiImageAPI(GEMINI_API_KEY, imagePrompt);
+    
+    if (coverImageBase64) {
+      console.log("Cover image generated successfully via Gemini");
     } else {
-      console.log("Skipping image generation - LOVABLE_API_KEY not available");
+      console.log("Cover image generation failed or returned null");
     }
 
     // Generate additional progress images for medium/long stories
     const storyImages: string[] = [];
     
-    if (totalImageCount > 1 && coverImageBase64 && LOVABLE_API_KEY) {
+    if (totalImageCount > 1 && coverImageBase64) {
       console.log(`Generating ${totalImageCount - 1} additional progress image(s) with character consistency...`);
       
       // Create progress image prompts based on story content
@@ -438,37 +525,12 @@ CRITICAL: The characters MUST be the exact same as in the cover image - identica
       // Generate all progress images in parallel, using cover as reference
       const progressImagePromises = progressImagePrompts.map(async (prompt, index) => {
         try {
+          console.log(`Generating progress image ${index + 1} with Gemini...`);
           // Use image editing with cover as reference for consistency
-          const progressResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${LOVABLE_API_KEY}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              model: "google/gemini-2.5-flash-image",
-              messages: [
-                {
-                  role: "user",
-                  content: [
-                    { type: "text", text: prompt },
-                    { type: "image_url", image_url: { url: coverImageBase64 } }
-                  ]
-                }
-              ],
-              modalities: ["image", "text"],
-            }),
-          });
-
-          if (progressResponse.ok) {
-            const progressData = await progressResponse.json();
-            const progressUrl = progressData.choices?.[0]?.message?.images?.[0]?.image_url?.url;
-            if (progressUrl) {
-              console.log(`Progress image ${index + 1} generated successfully with character consistency`);
-              return progressUrl;
-            }
-          } else {
-            console.error(`Failed to generate progress image ${index + 1}:`, await progressResponse.text());
+          const progressImage = await callGeminiImageEditAPI(GEMINI_API_KEY, prompt, coverImageBase64);
+          if (progressImage) {
+            console.log(`Progress image ${index + 1} generated successfully with character consistency`);
+            return progressImage;
           }
         } catch (imgError) {
           console.error(`Error generating progress image ${index + 1}:`, imgError);
