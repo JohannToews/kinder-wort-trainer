@@ -17,7 +17,7 @@ serve(async (req) => {
     
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     
-    const { action, userId } = await req.json();
+    const { action, userId, promptKey, promptValue } = await req.json();
 
     if (action === "list") {
       // Get all users
@@ -29,6 +29,20 @@ serve(async (req) => {
       if (error) throw error;
 
       return new Response(JSON.stringify({ users }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (action === "updateSystemPrompt" && promptKey && promptValue !== undefined) {
+      // Update global system prompt in app_settings
+      const { error } = await supabase
+        .from("app_settings")
+        .update({ value: promptValue, updated_at: new Date().toISOString() })
+        .eq("key", promptKey);
+
+      if (error) throw error;
+
+      return new Response(JSON.stringify({ success: true }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }

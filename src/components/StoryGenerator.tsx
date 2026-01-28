@@ -2,13 +2,11 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { toast } from "sonner";
-import { Wand2, Loader2, Sparkles, Settings, Save } from "lucide-react";
+import { Wand2, Loader2, Sparkles } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useTranslations, Language } from "@/lib/translations";
 
@@ -81,12 +79,7 @@ const StoryGenerator = ({ onStoryGenerated }: StoryGeneratorProps) => {
     }
   }, [user?.textLanguage]);
 
-  // System prompt is global (read-only here) - editing not allowed from UI
-
-  const handlePromptChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    // Read-only - global prompts are managed in database
-    // setCustomSystemPrompt(e.target.value);
-  };
+  // System prompt is loaded from database (read-only in generator)
 
   const handleGenerate = async () => {
     if (!description.trim()) {
@@ -232,46 +225,22 @@ const StoryGenerator = ({ onStoryGenerated }: StoryGeneratorProps) => {
           />
         </div>
 
-        {/* Custom System Prompt in Accordion */}
-        <Accordion type="single" collapsible className="w-full">
-          <AccordionItem value="system-prompt" className="border rounded-lg px-4">
-            <AccordionTrigger className="hover:no-underline">
-              <div className="flex items-center gap-2 text-sm font-medium">
-                <Settings className="h-4 w-4" />
-                {t.systemPrompt}
-              </div>
-            </AccordionTrigger>
-            <AccordionContent>
-              <div className="space-y-2 pt-2">
-                {isLoadingPrompt ? (
-                  <div className="flex items-center gap-2 text-muted-foreground py-4">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    <span>{t.loading}</span>
-                  </div>
-                ) : (
-                  <>
-                    <Textarea
-                      id="systemPrompt"
-                      placeholder={adminLang === 'de' ? "Anweisungen für die KI..." : 
-                                   adminLang === 'fr' ? "Instructions pour l'IA..." :
-                                   "Instructions for the AI..."}
-                      value={customSystemPrompt}
-                      onChange={handlePromptChange}
-                      className="min-h-[150px] text-sm font-mono"
-                    />
-                    <div className="flex items-center justify-between gap-4">
-                    <p className="text-xs text-muted-foreground italic">
-                      {adminLang === 'de' ? 'Globaler System-Prompt (nur lesen). Wird bei der Generierung an die KI übergeben.' :
-                       adminLang === 'fr' ? 'Prompt système global (lecture seule). Sera transmis à l\'IA lors de la génération.' :
-                       'Global system prompt (read-only). Will be passed to the AI during generation.'}
-                    </p>
-                    </div>
-                  </>
-                )}
-              </div>
-            </AccordionContent>
-          </AccordionItem>
-        </Accordion>
+        {/* Info about system prompt */}
+        {!isLoadingPrompt && customSystemPrompt && (
+          <div className="p-3 bg-muted/50 rounded-lg border border-border/50">
+            <p className="text-xs text-muted-foreground">
+              ✓ {adminLang === 'de' ? 'Globaler System-Prompt geladen' : 
+                 adminLang === 'fr' ? 'Prompt système global chargé' :
+                 'Global system prompt loaded'}
+              {' '}
+              <span className="text-muted-foreground/70">
+                ({adminLang === 'de' ? 'Bearbeitung im System-Tab' : 
+                  adminLang === 'fr' ? 'Modification dans l\'onglet Système' :
+                  'Edit in System tab'})
+              </span>
+            </p>
+          </div>
+        )}
 
         <Button
           onClick={handleGenerate}

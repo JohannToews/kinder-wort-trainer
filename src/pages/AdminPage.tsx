@@ -13,6 +13,7 @@ import PointsConfigSection from "@/components/PointsConfigSection";
 import LevelConfigSection from "@/components/LevelConfigSection";
 import KidProfileSection from "@/components/KidProfileSection";
 import UserManagementSection from "@/components/UserManagementSection";
+import SystemPromptSection from "@/components/SystemPromptSection";
 import { useAuth } from "@/hooks/useAuth";
 import { useTranslations, Language } from "@/lib/translations";
 
@@ -706,7 +707,13 @@ const AdminPage = () => {
 
           {/* System Tab */}
           <TabsContent value="system" className="h-full overflow-y-auto m-0 pr-2">
-            <div className="max-w-4xl mx-auto">
+            <div className="max-w-4xl mx-auto space-y-6">
+              {/* System Prompt Editor */}
+              {user && (
+                <SystemPromptSection language={adminLang} />
+              )}
+              
+              {/* User Management */}
               {user && (
                 <UserManagementSection 
                   language={adminLang}
