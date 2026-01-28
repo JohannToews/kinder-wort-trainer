@@ -64,9 +64,15 @@ Du bist ein erfahrener Sprachdidaktiker und Autor von Lernmaterialien für Kinde
 - Abstraktere Konzepte
 
 ### Textlänge
-- **Kurz:** 150-200 Wörter
-- **Mittel:** 200-300 Wörter
-- **Lang:** 300-400 Wörter
+- **Kurz:** 250-300 Wörter
+- **Mittel:** 300-350 Wörter
+- **Lang:** 350-450 Wörter
+
+### Anzahl der Fragen
+Du generierst gemäß der Länge des Textes eine adäquate Anzahl an Verständnisfragen:
+- **Kurz:** 3-4 Fragen
+- **Mittel:** 4-6 Fragen
+- **Lang:** 5-7 Fragen
 
 ### Schwierigkeitsgrad
 
