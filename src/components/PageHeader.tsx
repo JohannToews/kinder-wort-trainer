@@ -19,9 +19,9 @@ const PageHeader = ({ title, backTo = "/", rightContent }: PageHeaderProps) => {
             variant="ghost"
             size="icon"
             onClick={() => navigate(backTo)}
-            className="rounded-full hover:bg-primary/20 h-12 w-12"
+            className="rounded-full hover:bg-primary/20 h-14 w-14"
           >
-            <ArrowLeft className="h-8 w-8" />
+            <ArrowLeft className="h-10 w-10 stroke-[2.5]" />
           </Button>
           <h1 className="text-2xl md:text-3xl font-baloo text-foreground">
             {title}
