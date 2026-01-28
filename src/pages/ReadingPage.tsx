@@ -14,6 +14,7 @@ interface Story {
   content: string;
   cover_image_url: string | null;
   difficulty?: string;
+  story_images?: string[] | null;
 }
 
 // French stop words that should not be marked/highlighted
@@ -436,12 +437,35 @@ const ReadingPage = () => {
 
     // Split into paragraphs
     const paragraphs = story.content.split(/\n\n+/);
+    const storyImages = story.story_images || [];
+    const totalParagraphs = paragraphs.length;
     
-    return paragraphs.map((paragraph, pIndex) => {
+    // Calculate where to insert images (evenly distributed through the text)
+    const getImageInsertionPoints = () => {
+      if (storyImages.length === 0) return [];
+      
+      const insertPoints: number[] = [];
+      if (storyImages.length === 1) {
+        // Insert after roughly 50% of the text
+        insertPoints.push(Math.floor(totalParagraphs / 2));
+      } else if (storyImages.length === 2) {
+        // Insert at 33% and 66%
+        insertPoints.push(Math.floor(totalParagraphs / 3));
+        insertPoints.push(Math.floor((totalParagraphs * 2) / 3));
+      }
+      return insertPoints;
+    };
+    
+    const imageInsertionPoints = getImageInsertionPoints();
+    let imageIndex = 0;
+    
+    const elements: React.ReactNode[] = [];
+    
+    paragraphs.forEach((paragraph, pIndex) => {
       const sentences = paragraph.split(/(?<=[.!?])\s+/);
       
-      return (
-        <p key={pIndex} className="mb-6 leading-loose">
+      elements.push(
+        <p key={`p-${pIndex}`} className="mb-6 leading-loose">
           {sentences.map((sentence, sIndex) => {
             const shouldBold = sIndex === 0 && pIndex === 0;
             const shouldItalic = sentence.includes("«") || sentence.includes("»");
@@ -509,7 +533,24 @@ const ReadingPage = () => {
           })}
         </p>
       );
+      
+      // Check if we should insert an image after this paragraph
+      if (imageInsertionPoints.includes(pIndex) && imageIndex < storyImages.length) {
+        elements.push(
+          <div key={`img-${imageIndex}`} className="my-8 flex justify-center">
+            <img 
+              src={storyImages[imageIndex]} 
+              alt={`Illustration ${imageIndex + 1}`}
+              className="max-w-[70%] h-auto rounded-xl shadow-sm opacity-80 grayscale-[20%]"
+              style={{ filter: 'saturate(0.7) contrast(0.95)' }}
+            />
+          </div>
+        );
+        imageIndex++;
+      }
     });
+    
+    return elements;
   };
 
   if (isLoading) {

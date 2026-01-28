@@ -13,6 +13,14 @@ serve(async (req) => {
   try {
     const { length, difficulty, description, schoolLevel, textType, textLanguage, globalLanguage, customSystemPrompt } = await req.json();
 
+    // Determine how many images to generate based on length
+    const imageCountMap: Record<string, number> = {
+      short: 1,   // Cover only
+      medium: 2,  // Cover + 1 progress image
+      long: 3,    // Cover + 2 progress images
+    };
+    const totalImageCount = imageCountMap[length] || 1;
+
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
       throw new Error("LOVABLE_API_KEY is not configured");
@@ -249,9 +257,75 @@ Requirements: No text on the image, high quality ${textType === "non-fiction" ? 
       console.error("Failed to generate cover image:", await imageResponse.text());
     }
 
+    // Generate additional progress images for medium/long stories
+    const storyImages: string[] = [];
+    
+    if (totalImageCount > 1) {
+      console.log(`Generating ${totalImageCount - 1} additional progress image(s)...`);
+      
+      // Create progress image prompts based on story content
+      const progressImagePrompts: string[] = [];
+      
+      // Split story into parts to create relevant image prompts
+      const storyParts = story.content.split('\n\n').filter((p: string) => p.trim().length > 0);
+      const partCount = storyParts.length;
+      
+      if (totalImageCount >= 2 && partCount > 1) {
+        // First progress image - middle of the story
+        const middleIndex = Math.floor(partCount / 2);
+        const middleContext = storyParts[middleIndex]?.substring(0, 200) || description;
+        progressImagePrompts.push(`A subtle, muted-color illustration showing a scene from this moment in the story: "${middleContext}". 
+Art Style: ${textType === "non-fiction" ? "Simplified documentary sketch style" : "Gentle watercolor-style illustration"} with desaturated, pastel tones. 
+The image should have reduced visual intensity - think soft grays, muted earth tones, and gentle washes of color.
+Target audience: ${targetAudience}. No text. Understated and calm illustration that doesn't distract from reading.`);
+      }
+      
+      if (totalImageCount >= 3 && partCount > 2) {
+        // Second progress image - near the end
+        const nearEndIndex = Math.floor(partCount * 0.75);
+        const nearEndContext = storyParts[nearEndIndex]?.substring(0, 200) || description;
+        progressImagePrompts.push(`A subtle, muted-color illustration for this story moment: "${nearEndContext}". 
+Art Style: ${textType === "non-fiction" ? "Simple line-art sketch with minimal color" : "Soft pencil sketch with light color washes"} using desaturated, calm tones.
+Very understated visual style - muted grays, soft beiges, gentle blues. Intentionally reduced color saturation.
+Target audience: ${targetAudience}. No text. Illustration should complement reading without drawing too much attention.`);
+      }
+      
+      // Generate each progress image
+      for (const prompt of progressImagePrompts) {
+        try {
+          const progressResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${LOVABLE_API_KEY}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              model: "google/gemini-2.5-flash-image",
+              messages: [{ role: "user", content: prompt }],
+              modalities: ["image", "text"],
+            }),
+          });
+
+          if (progressResponse.ok) {
+            const progressData = await progressResponse.json();
+            const progressUrl = progressData.choices?.[0]?.message?.images?.[0]?.image_url?.url;
+            if (progressUrl) {
+              storyImages.push(progressUrl);
+              console.log(`Progress image ${storyImages.length} generated successfully`);
+            }
+          } else {
+            console.error("Failed to generate progress image:", await progressResponse.text());
+          }
+        } catch (imgError) {
+          console.error("Error generating progress image:", imgError);
+        }
+      }
+    }
+
     return new Response(JSON.stringify({
       ...story,
       coverImageBase64,
+      storyImages,
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

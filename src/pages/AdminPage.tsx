@@ -35,6 +35,7 @@ interface GeneratedStory {
   content: string;
   questions?: GeneratedQuestion[];
   coverImageBase64?: string;
+  storyImages?: string[]; // Additional progress images (base64)
 }
 
 const AdminPage = () => {
@@ -48,6 +49,7 @@ const AdminPage = () => {
   const [coverImage, setCoverImage] = useState<File | null>(null);
   const [coverPreview, setCoverPreview] = useState<string | null>(null);
   const [generatedCoverBase64, setGeneratedCoverBase64] = useState<string | null>(null);
+  const [generatedStoryImages, setGeneratedStoryImages] = useState<string[]>([]);
   const [generatedQuestions, setGeneratedQuestions] = useState<GeneratedQuestion[]>([]);
   const [stories, setStories] = useState<Story[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -143,12 +145,43 @@ const AdminPage = () => {
       }
     }
 
-    // Insert story with user_id
+    // Upload additional story images (progress images)
+    const storyImageUrls: string[] = [];
+    if (generatedStoryImages.length > 0) {
+      for (let i = 0; i < generatedStoryImages.length; i++) {
+        try {
+          const base64Data = generatedStoryImages[i].replace(/^data:image\/\w+;base64,/, "");
+          const binaryString = atob(base64Data);
+          const bytes = new Uint8Array(binaryString.length);
+          for (let j = 0; j < binaryString.length; j++) {
+            bytes[j] = binaryString.charCodeAt(j);
+          }
+          const blob = new Blob([bytes], { type: "image/png" });
+          
+          const fileName = `story_${Date.now()}_${i}.png`;
+          const { error: uploadError } = await supabase.storage
+            .from("covers")
+            .upload(fileName, blob);
+          
+          if (!uploadError) {
+            const { data: urlData } = supabase.storage
+              .from("covers")
+              .getPublicUrl(fileName);
+            storyImageUrls.push(urlData.publicUrl);
+          }
+        } catch (err) {
+          console.error(`Error uploading story image ${i}:`, err);
+        }
+      }
+    }
+
+    // Insert story with user_id and story_images
     const { data: insertedStory, error } = await supabase.from("stories").insert({
       title,
       content,
       cover_image_url: coverUrl,
       user_id: user?.id,
+      story_images: storyImageUrls.length > 0 ? storyImageUrls : null,
     }).select().single();
 
     if (error || !insertedStory) {
@@ -369,6 +402,9 @@ const AdminPage = () => {
                       if (story.coverImageBase64) {
                         setGeneratedCoverBase64(story.coverImageBase64);
                         setCoverPreview(story.coverImageBase64);
+                      }
+                      if (story.storyImages && story.storyImages.length > 0) {
+                        setGeneratedStoryImages(story.storyImages);
                       }
                       setStorySubTab("editor");
                       toast.info(t.storyTransferred);

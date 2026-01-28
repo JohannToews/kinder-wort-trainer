@@ -20,6 +20,7 @@ interface GeneratedStory {
   content: string;
   questions?: GeneratedQuestion[];
   coverImageBase64?: string;
+  storyImages?: string[]; // Additional progress images (base64)
 }
 
 interface StoryGeneratorProps {
