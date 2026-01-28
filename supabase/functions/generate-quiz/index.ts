@@ -5,39 +5,57 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Helper function to make AI request with retry
-async function makeAIRequest(apiKey: string, prompt: string, retries = 3): Promise<Response> {
+// Gemini API endpoint
+const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
+
+// Helper function to make Gemini API request with retry
+async function makeGeminiRequest(apiKey: string, systemPrompt: string, userPrompt: string, retries = 3): Promise<string> {
   for (let attempt = 1; attempt <= retries; attempt++) {
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: 'POST',
-      headers: { 
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`
-      },
-      body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
-        messages: [
-          { role: "system", content: "Tu es un assistant qui génère des quiz de vocabulaire pour enfants. Réponds toujours en JSON valide sans markdown." },
-          { role: "user", content: prompt }
-        ],
-        temperature: 0.7,
-        max_tokens: 200,
-      }),
-    });
+    try {
+      const response = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          contents: [
+            {
+              role: "user",
+              parts: [{ text: `${systemPrompt}\n\n${userPrompt}` }]
+            }
+          ],
+          generationConfig: {
+            temperature: 0.7,
+            maxOutputTokens: 500,
+          },
+        }),
+      });
 
-    if (response.ok) {
-      return response;
+      if (response.ok) {
+        const data = await response.json();
+        const content = data.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (content) {
+          return content;
+        }
+        throw new Error("No content in response");
+      }
+
+      // If rate limited and we have retries left, wait and retry
+      if (response.status === 429 && attempt < retries) {
+        console.log(`Rate limited, waiting ${attempt * 2} seconds before retry ${attempt + 1}/${retries}`);
+        await new Promise(resolve => setTimeout(resolve, attempt * 2000));
+        continue;
+      }
+
+      const errorText = await response.text();
+      throw new Error(`API error ${response.status}: ${errorText}`);
+    } catch (error) {
+      if (attempt === retries) {
+        throw error;
+      }
+      console.log(`Attempt ${attempt} failed, retrying...`);
+      await new Promise(resolve => setTimeout(resolve, attempt * 1000));
     }
-
-    // If rate limited and we have retries left, wait and retry
-    if (response.status === 429 && attempt < retries) {
-      console.log(`Rate limited, waiting ${attempt * 2} seconds before retry ${attempt + 1}/${retries}`);
-      await new Promise(resolve => setTimeout(resolve, attempt * 2000));
-      continue;
-    }
-
-    // Return the failed response if we can't retry
-    return response;
   }
 
   throw new Error("Max retries exceeded");
@@ -51,17 +69,19 @@ serve(async (req) => {
   try {
     const { word, correctExplanation } = await req.json();
     
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+    const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY');
     
-    if (!LOVABLE_API_KEY) {
-      console.error('LOVABLE_API_KEY not configured');
+    if (!GEMINI_API_KEY) {
+      console.error('GEMINI_API_KEY not configured');
       return new Response(
         JSON.stringify({ error: 'API key not configured' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    const prompt = `Crée un quiz pour le mot français "${word}".
+    const systemPrompt = "Tu es un assistant qui génère des quiz de vocabulaire pour enfants. Réponds toujours en JSON valide sans markdown.";
+
+    const userPrompt = `Crée un quiz pour le mot français "${word}".
 La bonne réponse est: "${correctExplanation}"
 
 IMPORTANT: Si le mot "${word}" est un verbe conjugué, convertis-le d'abord en infinitif.
@@ -79,58 +99,40 @@ Réponds UNIQUEMENT avec un JSON valide (pas de markdown):
   "wrongOptions": ["fausse réponse 1", "fausse réponse 2", "fausse réponse 3"]
 }`;
 
-    const response = await makeAIRequest(LOVABLE_API_KEY, prompt);
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Lovable AI Gateway error:', response.status, errorText);
-      
-      if (response.status === 429) {
-        // Return fallback data instead of error so quiz can continue
-        console.log('Rate limit exceeded, using fallback options');
-        return new Response(
-          JSON.stringify({ 
-            infinitive: word,
-            wrongOptions: [
-              "Une couleur vive",
-              "Un animal de la forêt", 
-              "Quelque chose de rond"
-            ],
-            fallback: true
-          }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-      if (response.status === 402) {
-        return new Response(
-          JSON.stringify({ error: 'Payment required, please add credits' }),
-          { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-      
-      return new Response(
-        JSON.stringify({ error: 'AI service error' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    const data = await response.json();
-    const rawText = data.choices?.[0]?.message?.content || '';
-    
     let result;
     try {
-      const cleanJson = rawText.replace(/```json\n?|\n?```/g, '').trim();
-      result = JSON.parse(cleanJson);
-    } catch {
-      console.error('Failed to parse JSON:', rawText);
-      result = { 
-        infinitive: word,
-        wrongOptions: [
-          "Une couleur vive",
-          "Un animal de la forêt", 
-          "Quelque chose de rond"
-        ] 
-      };
+      const rawText = await makeGeminiRequest(GEMINI_API_KEY, systemPrompt, userPrompt);
+      
+      try {
+        const cleanJson = rawText.replace(/```json\n?|\n?```/g, '').trim();
+        result = JSON.parse(cleanJson);
+      } catch {
+        console.error('Failed to parse JSON:', rawText);
+        result = { 
+          infinitive: word,
+          wrongOptions: [
+            "Une couleur vive",
+            "Un animal de la forêt", 
+            "Quelque chose de rond"
+          ] 
+        };
+      }
+    } catch (error) {
+      console.error('Gemini API error:', error);
+      // Return fallback data so quiz can continue
+      console.log('API error, using fallback options');
+      return new Response(
+        JSON.stringify({ 
+          infinitive: word,
+          wrongOptions: [
+            "Une couleur vive",
+            "Un animal de la forêt", 
+            "Quelque chose de rond"
+          ],
+          fallback: true
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     return new Response(
