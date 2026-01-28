@@ -38,10 +38,8 @@ const StoryGenerator = ({ onStoryGenerated }: StoryGeneratorProps) => {
   const [length, setLength] = useState<string>("medium");
   const [difficulty, setDifficulty] = useState<string>("medium");
   const [description, setDescription] = useState("");
-  const [schoolLevel, setSchoolLevel] = useState<string>("3e primaire (CE2)");
   const [textType, setTextType] = useState<string>("fiction");
   const [textLanguage, setTextLanguage] = useState<string>(user?.textLanguage?.toUpperCase() || "FR");
-  const [globalLanguage, setGlobalLanguage] = useState<string>(adminLang.toUpperCase());
   const [customSystemPrompt, setCustomSystemPrompt] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [isLoadingPrompt, setIsLoadingPrompt] = useState(true);
@@ -107,10 +105,8 @@ const StoryGenerator = ({ onStoryGenerated }: StoryGeneratorProps) => {
           length,
           difficulty,
           description,
-          schoolLevel,
           textType,
           textLanguage,
-          globalLanguage,
           customSystemPrompt,
         },
       });
@@ -141,10 +137,12 @@ const StoryGenerator = ({ onStoryGenerated }: StoryGeneratorProps) => {
   };
 
   const getLengthLabel = (val: string) => {
-    const labels = {
+    const labels: Record<string, Record<string, string>> = {
       de: { short: "Kurz (250-300 Wörter)", medium: "Mittel (300-350 Wörter)", long: "Lang (350-450 Wörter)" },
       en: { short: "Short (250-300 words)", medium: "Medium (300-350 words)", long: "Long (350-450 words)" },
       fr: { short: "Court (250-300 mots)", medium: "Moyen (300-350 mots)", long: "Long (350-450 mots)" },
+      es: { short: "Corto (250-300 palabras)", medium: "Medio (300-350 palabras)", long: "Largo (350-450 palabras)" },
+      nl: { short: "Kort (250-300 woorden)", medium: "Gemiddeld (300-350 woorden)", long: "Lang (350-450 woorden)" },
     };
     return labels[adminLang]?.[val as keyof typeof labels.de] || val;
   };
@@ -158,21 +156,6 @@ const StoryGenerator = ({ onStoryGenerated }: StoryGeneratorProps) => {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Global Language Selection */}
-        <div className="space-y-2 p-3 bg-muted/50 rounded-lg border">
-          <Label htmlFor="globalLanguage" className="font-semibold">🌍 {t.globalLanguage}</Label>
-          <Select value={globalLanguage} onValueChange={setGlobalLanguage}>
-            <SelectTrigger id="globalLanguage">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="DE">🇩🇪 Deutsch</SelectItem>
-              <SelectItem value="FR">🇫🇷 Français</SelectItem>
-              <SelectItem value="EN">🇬🇧 English</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Text Type */}
           <div className="space-y-2">
@@ -228,23 +211,6 @@ const StoryGenerator = ({ onStoryGenerated }: StoryGeneratorProps) => {
                 <SelectItem value="easy">{t.easy}</SelectItem>
                 <SelectItem value="medium">{t.medium}</SelectItem>
                 <SelectItem value="difficult">{t.hard}</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          {/* School Level */}
-          <div className="space-y-2">
-            <Label htmlFor="school">{t.schoolLevel}</Label>
-            <Select value={schoolLevel} onValueChange={setSchoolLevel}>
-              <SelectTrigger id="school">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="1e primaire (CP)">1e primaire (CP)</SelectItem>
-                <SelectItem value="2e primaire (CE1)">2e primaire (CE1)</SelectItem>
-                <SelectItem value="3e primaire (CE2)">3e primaire (CE2)</SelectItem>
-                <SelectItem value="4e primaire (CM1)">4e primaire (CM1)</SelectItem>
-                <SelectItem value="5e primaire (CM2)">5e primaire (CM2)</SelectItem>
-                <SelectItem value="6e primaire">6e primaire</SelectItem>
               </SelectContent>
             </Select>
           </div>
