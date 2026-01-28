@@ -1,10 +1,59 @@
-import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
+
+// Gemini Image Generation API endpoint
+const GEMINI_IMAGE_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp-image-generation:generateContent";
+
+// Helper function to call Gemini API for image generation
+async function callGeminiImageAPI(apiKey: string, prompt: string): Promise<string | null> {
+  try {
+    const response = await fetch(`${GEMINI_IMAGE_URL}?key=${apiKey}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        contents: [
+          {
+            role: "user",
+            parts: [{ text: prompt }]
+          }
+        ],
+        generationConfig: {
+          responseModalities: ["image", "text"],
+        },
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("Gemini Image API error:", response.status, errorText);
+      return null;
+    }
+
+    const data = await response.json();
+    
+    // Look for inline_data with image in the response
+    const parts = data.candidates?.[0]?.content?.parts || [];
+    for (const part of parts) {
+      if (part.inlineData?.mimeType?.startsWith("image/")) {
+        const base64Data = part.inlineData.data;
+        const mimeType = part.inlineData.mimeType;
+        return `data:${mimeType};base64,${base64Data}`;
+      }
+    }
+    
+    console.error("No image found in Gemini response");
+    return null;
+  } catch (error) {
+    console.error("Error calling Gemini Image API:", error);
+    return null;
+  }
+}
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -18,9 +67,9 @@ serve(async (req) => {
       throw new Error("Name is required");
     }
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY is not configured");
+    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
+    if (!GEMINI_API_KEY) {
+      throw new Error("GEMINI_API_KEY is not configured");
     }
 
     // Map color palette to pure color descriptions (5 distinct palettes)
@@ -65,40 +114,11 @@ CRITICAL FORMAT REQUIREMENTS:
 - Simple clean background, child as focal point in center
 - High quality, polished finish suitable for app header image`;
 
-    console.log("Generating cover image for age", childAge);
+    console.log("Generating cover image with Gemini for age", childAge);
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash-image",
-        messages: [
-          {
-            role: "user",
-            content: prompt,
-          },
-        ],
-        modalities: ["image", "text"],
-      }),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("Image generation API error:", errorText);
-      throw new Error(`Image generation failed: ${response.status}`);
-    }
-
-    const data = await response.json();
-    console.log("Image generation response received");
-
-    // Extract the base64 image from the response
-    const imageData = data.choices?.[0]?.message?.images?.[0]?.image_url?.url;
+    const imageData = await callGeminiImageAPI(GEMINI_API_KEY, prompt);
 
     if (!imageData) {
-      console.error("No image in response:", JSON.stringify(data));
       throw new Error("No image generated");
     }
 
