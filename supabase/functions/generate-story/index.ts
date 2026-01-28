@@ -5,6 +5,21 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Helper function to count words in a text
+function countWords(text: string): number {
+  return text.trim().split(/\s+/).filter(word => word.length > 0).length;
+}
+
+// Helper function to get minimum word count for a length setting
+function getMinWordCount(length: string): number {
+  const minWordCounts: Record<string, number> = {
+    short: 250,
+    medium: 300,
+    long: 350,
+  };
+  return minWordCounts[length] || 300;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -35,11 +50,11 @@ serve(async (req) => {
 
     const targetLanguage = languageNames[textLanguage] || "Französisch";
 
-    // Map length to approximate word count
-    const lengthMap: Record<string, string> = {
-      short: "250-300 Wörter",
-      medium: "300-350 Wörter",
-      long: "350-450 Wörter",
+    // Map length to approximate word count with explicit minimum
+    const lengthMap: Record<string, { range: string; min: number; max: number }> = {
+      short: { range: "250-300 Wörter", min: 250, max: 300 },
+      medium: { range: "300-350 Wörter", min: 300, max: 350 },
+      long: { range: "350-450 Wörter", min: 350, max: 450 },
     };
 
     // Map length to question count
@@ -65,7 +80,9 @@ serve(async (req) => {
     const textTypeDescription = textTypeLabels[textType] || textTypeLabels.fiction;
     const difficultyLabel = difficultyLabels[difficulty] || "MITTEL";
     const questionCount = questionCountMap[length] || 5;
-    const wordCount = lengthMap[length] || lengthMap.medium;
+    const lengthConfig = lengthMap[length] || lengthMap.medium;
+    const wordCount = lengthConfig.range;
+    const minWordCount = lengthConfig.min;
 
     // Build the complete system prompt with dynamic parameters
     const dynamicContext = `
@@ -76,8 +93,25 @@ serve(async (req) => {
 **Schulniveau:** ${schoolLevel}
 **Schwierigkeitsgrad:** ${difficultyLabel}
 **Textlänge:** ${wordCount}
+**MINDESTANZAHL WÖRTER:** ${minWordCount} (STRIKT EINHALTEN!)
 **Texttyp:** ${textTypeDescription}
 **Anzahl Verständnisfragen:** ${questionCount}
+
+---
+## KRITISCHE QUALITÄTSKONTROLLE - TEXTLÄNGE
+
+**ABSOLUT KRITISCH:** Der Text MUSS mindestens **${minWordCount} Wörter** haben!
+
+Bevor du antwortest:
+1. Zähle die Wörter im generierten Text
+2. Falls weniger als ${minWordCount} Wörter: Erweitere den Text mit mehr Details, Dialogen oder Beschreibungen
+3. Der Text sollte ${lengthConfig.min}-${lengthConfig.max} Wörter haben
+
+Typische Techniken zur Texterweiterung:
+- Mehr beschreibende Details zu Orten und Personen
+- Zusätzliche kurze Dialoge zwischen Charakteren
+- Erweiterte Handlungssequenzen
+- Gefühle und Gedanken der Charaktere beschreiben
 
 ---
 ## WICHTIGE ANWEISUNGEN
@@ -86,6 +120,7 @@ serve(async (req) => {
 2. Halte dich STRIKT an die oben genannten Parameter
 3. Erstelle genau **${questionCount}** Verständnisfragen mit der in deinem System-Prompt beschriebenen Taxonomie-Mischung
 4. Jede Frage muss eine kurze, prägnante erwartete Antwort haben
+5. **Der Text MUSS mindestens ${minWordCount} Wörter lang sein!**
 `;
 
     // Combine the custom system prompt with dynamic context
@@ -95,12 +130,14 @@ serve(async (req) => {
 
     const userPrompt = `Erstelle ${textType === "non-fiction" ? "einen Sachtext" : "eine Geschichte"} basierend auf dieser Beschreibung: "${description}"
 
-**WICHTIG:** Der gesamte Text muss auf ${targetLanguage} sein!
+**WICHTIG:** 
+- Der gesamte Text muss auf ${targetLanguage} sein!
+- Der Text MUSS mindestens **${minWordCount} Wörter** haben! Zähle deine Wörter und erweitere wenn nötig!
 
 Antworte NUR mit einem validen JSON-Objekt in diesem exakten Format:
 {
   "title": "Titel auf ${targetLanguage}",
-  "content": "Der vollständige Text auf ${targetLanguage}. Verwende \\n für Absätze.",
+  "content": "Der vollständige Text auf ${targetLanguage}. Verwende \\n für Absätze. MINDESTENS ${minWordCount} WÖRTER!",
   "questions": [
     {
       "question": "Frage 1 auf ${targetLanguage}",
@@ -124,59 +161,135 @@ Erstelle genau ${questionCount} Fragen mit der richtigen Mischung:
       schoolLevel,
       difficulty: difficultyLabel,
       length: wordCount,
+      minWordCount,
       textType,
       questionCount
     });
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
-        messages: [
-          { role: "system", content: fullSystemPrompt },
-          { role: "user", content: userPrompt },
-        ],
-        temperature: 0.8,
-      }),
-    });
+    // Generate the story
+    let story: { title: string; content: string; questions: any[] } = {
+      title: "",
+      content: "",
+      questions: []
+    };
+    let attempts = 0;
+    const maxAttempts = 2;
 
-    if (!response.ok) {
-      if (response.status === 429) {
-        return new Response(
-          JSON.stringify({ error: "Rate limit erreicht. Bitte versuche es später erneut." }),
-          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+    while (attempts < maxAttempts) {
+      attempts++;
+      console.log(`Story generation attempt ${attempts}/${maxAttempts}`);
+
+      const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${LOVABLE_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "google/gemini-3-flash-preview",
+          messages: [
+            { role: "system", content: fullSystemPrompt },
+            { role: "user", content: attempts === 1 ? userPrompt : `${userPrompt}\n\n**ACHTUNG:** Der vorherige Versuch hatte zu wenige Wörter. Schreibe einen LÄNGEREN Text mit mindestens ${minWordCount} Wörtern!` },
+          ],
+          temperature: 0.8,
+        }),
+      });
+
+      if (!response.ok) {
+        if (response.status === 429) {
+          return new Response(
+            JSON.stringify({ error: "Rate limit erreicht. Bitte versuche es später erneut." }),
+            { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+        if (response.status === 402) {
+          return new Response(
+            JSON.stringify({ error: "Zahlungsproblem. Bitte kontaktiere den Administrator." }),
+            { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+        const errorText = await response.text();
+        console.error("AI gateway error:", response.status, errorText);
+        throw new Error("AI gateway error");
       }
-      if (response.status === 402) {
-        return new Response(
-          JSON.stringify({ error: "Zahlungsproblem. Bitte kontaktiere den Administrator." }),
-          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+
+      const data = await response.json();
+      const content = data.choices?.[0]?.message?.content;
+
+      if (!content) {
+        throw new Error("No content in response");
       }
-      const errorText = await response.text();
-      console.error("AI gateway error:", response.status, errorText);
-      throw new Error("AI gateway error");
+
+      // Parse the JSON from the response
+      const jsonMatch = content.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) {
+        console.error("Could not parse story JSON from:", content);
+        throw new Error("Could not parse story JSON");
+      }
+
+      story = JSON.parse(jsonMatch[0]);
+
+      // Quality check: Count words in the story content
+      const wordCountActual = countWords(story.content);
+      console.log(`Story word count: ${wordCountActual}, minimum required: ${minWordCount}`);
+
+      if (wordCountActual >= minWordCount) {
+        console.log("Word count check PASSED");
+        break;
+      } else if (attempts < maxAttempts) {
+        console.log(`Word count check FAILED (${wordCountActual} < ${minWordCount}), requesting expansion...`);
+        
+        // Request expansion of the story
+        const expansionResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${LOVABLE_API_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            model: "google/gemini-3-flash-preview",
+            messages: [
+              { role: "system", content: `Du bist ein Textexpander. Deine Aufgabe ist es, den folgenden Text zu erweitern, bis er mindestens ${minWordCount} Wörter hat. Der aktuelle Text hat nur ${wordCountActual} Wörter.
+
+Erweitere den Text durch:
+- Mehr beschreibende Details zu Orten, Personen und Gefühlen
+- Zusätzliche kurze Dialoge
+- Erweiterte Handlungssequenzen
+- Gedanken und Emotionen der Charaktere
+
+WICHTIG: Behalte die Sprache (${targetLanguage}) und den Stil bei!` },
+              { role: "user", content: `Erweitere diesen Text auf mindestens ${minWordCount} Wörter. Aktuell: ${wordCountActual} Wörter.
+
+Titel: ${story.title}
+
+Text:
+${story.content}
+
+Antworte NUR mit dem erweiterten Text (ohne Titel, ohne JSON-Format).` },
+            ],
+            temperature: 0.8,
+          }),
+        });
+
+        if (expansionResponse.ok) {
+          const expansionData = await expansionResponse.json();
+          const expandedContent = expansionData.choices?.[0]?.message?.content;
+          
+          if (expandedContent) {
+            const newWordCount = countWords(expandedContent);
+            console.log(`Expanded story word count: ${newWordCount}`);
+            
+            if (newWordCount >= minWordCount) {
+              story.content = expandedContent;
+              console.log("Story successfully expanded");
+              break;
+            }
+          }
+        }
+      } else {
+        console.log(`Final word count: ${wordCountActual} (min: ${minWordCount}) - proceeding with available content`);
+      }
     }
-
-    const data = await response.json();
-    const content = data.choices?.[0]?.message?.content;
-
-    if (!content) {
-      throw new Error("No content in response");
-    }
-
-    // Parse the JSON from the response
-    const jsonMatch = content.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      console.error("Could not parse story JSON from:", content);
-      throw new Error("Could not parse story JSON");
-    }
-
-    const story = JSON.parse(jsonMatch[0]);
 
     // Generate cover image based on description and school level
     // Default to CE2 (mid primary) if schoolLevel is not provided
@@ -220,11 +333,47 @@ Erstelle genau ${questionCount} Fragen mit der richtigen Mischung:
       }
     }
     
+    // Generate detailed character descriptions from the story for consistency
+    const characterDescriptionPrompt = `Analysiere diese Geschichte und erstelle eine kurze, präzise visuelle Beschreibung der Hauptcharaktere (Aussehen, Kleidung, besondere Merkmale). Maximal 100 Wörter.
+
+Geschichte: "${story.title}"
+${story.content.substring(0, 500)}...
+
+Antwort auf Englisch für den Bildgenerator.`;
+
+    let characterDescription = "";
+    
+    try {
+      const charResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${LOVABLE_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "google/gemini-3-flash-preview",
+          messages: [{ role: "user", content: characterDescriptionPrompt }],
+          temperature: 0.3,
+        }),
+      });
+
+      if (charResponse.ok) {
+        const charData = await charResponse.json();
+        characterDescription = charData.choices?.[0]?.message?.content || "";
+        console.log("Character description generated:", characterDescription.substring(0, 100));
+      }
+    } catch (err) {
+      console.error("Error generating character description:", err);
+    }
+
     const imagePrompt = `A captivating book cover illustration for a ${textType === "non-fiction" ? "non-fiction educational book" : "children's story"}. 
 Theme: ${description}. 
+Story title: "${story.title}"
+${characterDescription ? `Main characters: ${characterDescription}` : ""}
 Art Style: ${artStyle}
 Target audience: ${targetAudience}.
-Requirements: No text on the image, high quality ${textType === "non-fiction" ? "educational and informative" : "imaginative and engaging"} illustration.`;
+Requirements: No text on the image, high quality ${textType === "non-fiction" ? "educational and informative" : "imaginative and engaging"} illustration.
+IMPORTANT: Create distinctive, memorable character designs that can be recognized in follow-up illustrations.`;
     
     const imageResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -260,8 +409,8 @@ Requirements: No text on the image, high quality ${textType === "non-fiction" ? 
     // Generate additional progress images for medium/long stories
     const storyImages: string[] = [];
     
-    if (totalImageCount > 1) {
-      console.log(`Generating ${totalImageCount - 1} additional progress image(s)...`);
+    if (totalImageCount > 1 && coverImageBase64) {
+      console.log(`Generating ${totalImageCount - 1} additional progress image(s) with character consistency...`);
       
       // Create progress image prompts based on story content
       const progressImagePrompts: string[] = [];
@@ -270,29 +419,48 @@ Requirements: No text on the image, high quality ${textType === "non-fiction" ? 
       const storyParts = story.content.split('\n\n').filter((p: string) => p.trim().length > 0);
       const partCount = storyParts.length;
       
+      // Base style reference for consistency
+      const styleReference = `
+CRITICAL - VISUAL CONSISTENCY REQUIREMENTS:
+- Use EXACTLY the same art style as the cover image: ${artStyle}
+- Keep the SAME character designs, faces, clothing, and distinctive features as the cover
+- Maintain consistent color palette and lighting style
+- Characters must be immediately recognizable from the cover image
+${characterDescription ? `- Character reference: ${characterDescription}` : ""}
+`;
+      
       if (totalImageCount >= 2 && partCount > 1) {
         // First progress image - middle of the story
         const middleIndex = Math.floor(partCount / 2);
         const middleContext = storyParts[middleIndex]?.substring(0, 200) || description;
-        progressImagePrompts.push(`A subtle, muted-color illustration showing a scene from this moment in the story: "${middleContext}". 
-Art Style: ${textType === "non-fiction" ? "Simplified documentary sketch style" : "Gentle watercolor-style illustration"} with desaturated, pastel tones. 
-The image should have reduced visual intensity - think soft grays, muted earth tones, and gentle washes of color.
-Target audience: ${targetAudience}. No text. Understated and calm illustration that doesn't distract from reading.`);
+        progressImagePrompts.push(`Continue the visual story from the cover image. Scene from the middle of the story: "${middleContext}".
+
+${styleReference}
+
+Art Style: ${textType === "non-fiction" ? "Simplified documentary sketch style" : "Gentle, slightly muted version of the cover style"} with softer, pastel tones.
+The image should maintain the same characters but with reduced visual intensity - think soft colors and gentle washes.
+Target audience: ${targetAudience}. No text. 
+The characters MUST look exactly like they do on the cover - same faces, hair, clothing, proportions.`);
       }
       
       if (totalImageCount >= 3 && partCount > 2) {
         // Second progress image - near the end
         const nearEndIndex = Math.floor(partCount * 0.75);
         const nearEndContext = storyParts[nearEndIndex]?.substring(0, 200) || description;
-        progressImagePrompts.push(`A subtle, muted-color illustration for this story moment: "${nearEndContext}". 
-Art Style: ${textType === "non-fiction" ? "Simple line-art sketch with minimal color" : "Soft pencil sketch with light color washes"} using desaturated, calm tones.
-Very understated visual style - muted grays, soft beiges, gentle blues. Intentionally reduced color saturation.
-Target audience: ${targetAudience}. No text. Illustration should complement reading without drawing too much attention.`);
+        progressImagePrompts.push(`Continue the visual story. Scene near the end: "${nearEndContext}".
+
+${styleReference}
+
+Art Style: ${textType === "non-fiction" ? "Simple line-art sketch with minimal color" : "Soft pencil sketch style matching the cover"} using desaturated, calm tones.
+Very understated visual style - muted colors, intentionally reduced saturation.
+Target audience: ${targetAudience}. No text. 
+CRITICAL: The characters MUST be the exact same as in the cover image - identical faces, features, and clothing.`);
       }
       
-      // Generate all progress images in parallel for faster response
+      // Generate all progress images in parallel, using cover as reference
       const progressImagePromises = progressImagePrompts.map(async (prompt, index) => {
         try {
+          // Use image editing with cover as reference for consistency
           const progressResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
             method: "POST",
             headers: {
@@ -301,7 +469,15 @@ Target audience: ${targetAudience}. No text. Illustration should complement read
             },
             body: JSON.stringify({
               model: "google/gemini-2.5-flash-image",
-              messages: [{ role: "user", content: prompt }],
+              messages: [
+                {
+                  role: "user",
+                  content: [
+                    { type: "text", text: prompt },
+                    { type: "image_url", image_url: { url: coverImageBase64 } }
+                  ]
+                }
+              ],
               modalities: ["image", "text"],
             }),
           });
@@ -310,7 +486,7 @@ Target audience: ${targetAudience}. No text. Illustration should complement read
             const progressData = await progressResponse.json();
             const progressUrl = progressData.choices?.[0]?.message?.images?.[0]?.image_url?.url;
             if (progressUrl) {
-              console.log(`Progress image ${index + 1} generated successfully`);
+              console.log(`Progress image ${index + 1} generated successfully with character consistency`);
               return progressUrl;
             }
           } else {
@@ -325,6 +501,10 @@ Target audience: ${targetAudience}. No text. Illustration should complement read
       const results = await Promise.all(progressImagePromises);
       storyImages.push(...results.filter((url): url is string => url !== null));
     }
+
+    // Final word count log
+    const finalWordCount = countWords(story.content);
+    console.log(`Final story delivered with ${finalWordCount} words (min: ${minWordCount})`);
 
     return new Response(JSON.stringify({
       ...story,
