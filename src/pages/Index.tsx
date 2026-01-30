@@ -28,14 +28,16 @@ const Index = () => {
   const loadKidProfile = async () => {
     if (!user) return;
     
+    // Get first kid profile (or one with cover image if multiple exist)
     const { data } = await supabase
       .from("kid_profiles")
       .select("name, cover_image_url")
       .eq("user_id", user.id)
-      .maybeSingle();
+      .order("created_at", { ascending: true })
+      .limit(1);
 
-    if (data) {
-      setKidProfile(data);
+    if (data && data.length > 0) {
+      setKidProfile(data[0]);
     }
   };
 
