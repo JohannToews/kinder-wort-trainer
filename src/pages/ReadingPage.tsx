@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { Sparkles, X, Loader2, BookOpen, MessageCircleQuestion, CheckCircle2, HelpCircle, Save, RotateCcw } from "lucide-react";
 import ComprehensionQuiz from "@/components/ComprehensionQuiz";
 import QuizCompletionResult from "@/components/QuizCompletionResult";
+import StoryAudioPlayer from "@/components/StoryAudioPlayer";
 import { useColorPalette } from "@/hooks/useColorPalette";
 import { useAuth } from "@/hooks/useAuth";
 import PageHeader from "@/components/PageHeader";
@@ -90,6 +91,8 @@ const ReadingPage = () => {
   const [mobilePopupY, setMobilePopupY] = useState<number | null>(null);
   // Current unsaved positions (to clear when selecting new word)
   const [unsavedPositions, setUnsavedPositions] = useState<Set<string>>(new Set());
+  // Audio listening mode
+  const [isListeningMode, setIsListeningMode] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -610,10 +613,23 @@ const ReadingPage = () => {
               </div>
             )}
             
-            <div className="bg-card rounded-2xl p-6 md:p-10 shadow-card relative">
+            {/* Audio Player */}
+            {story && (
+              <div className="mb-6">
+                <StoryAudioPlayer
+                  storyContent={story.content}
+                  storyTitle={story.title}
+                  isListeningMode={isListeningMode}
+                  onModeChange={setIsListeningMode}
+                />
+              </div>
+            )}
+
+            {/* Reading Card - only show when not in listening mode or always show */}
+            <div className={`bg-card rounded-2xl p-6 md:p-10 shadow-card relative ${isListeningMode ? 'opacity-50' : ''}`}>
               <div className="flex items-center gap-2 text-sm text-muted-foreground mb-6">
                 <Sparkles className="h-4 w-4" />
-                <span>Touche un mot ou sélectionne plusieurs mots</span>
+                <span>{isListeningMode ? "Écoute l'histoire..." : "Touche un mot ou sélectionne plusieurs mots"}</span>
               </div>
               
               {/* Floating button for phrase selection - optimized for touch */}
