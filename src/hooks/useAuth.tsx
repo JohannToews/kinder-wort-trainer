@@ -6,9 +6,9 @@ export interface UserSettings {
   id: string;
   username: string;
   displayName: string;
-  adminLanguage: 'de' | 'fr' | 'en' | 'es' | 'nl';
-  appLanguage: 'de' | 'fr' | 'en' | 'es' | 'nl';
-  textLanguage: 'de' | 'fr' | 'en' | 'es' | 'nl';
+  adminLanguage: 'de' | 'fr' | 'en' | 'es' | 'nl' | 'it';
+  appLanguage: 'de' | 'fr' | 'en' | 'es' | 'nl' | 'it';
+  textLanguage: 'de' | 'fr' | 'en' | 'es' | 'nl' | 'it';
   systemPrompt: string | null;
   role: UserRole;
 }

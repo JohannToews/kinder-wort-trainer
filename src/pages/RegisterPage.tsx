@@ -10,7 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { Sparkles, UserPlus, Loader2 } from "lucide-react";
 
-type AdminLanguage = 'de' | 'fr' | 'en' | 'es' | 'nl';
+type AdminLanguage = 'de' | 'fr' | 'en' | 'es' | 'nl' | 'it';
 
 const RegisterPage = () => {
   const [displayName, setDisplayName] = useState("");
@@ -129,6 +129,27 @@ const RegisterPage = () => {
         },
         welcome: "Welkom",
       },
+      it: {
+        title: "Crea nuovo account",
+        subtitle: "Crea un account per Le Petit Lecteur",
+        name: "Nome",
+        namePlaceholder: "Il tuo nome",
+        password: "Password",
+        passwordPlaceholder: "Scegli una password",
+        confirmPassword: "Conferma password",
+        confirmPlaceholder: "Ripeti password",
+        language: "Lingua app",
+        register: "Registrati",
+        haveAccount: "Hai già un account?",
+        login: "Accedi",
+        errors: {
+          fillAll: "Compila tutti i campi",
+          passwordMatch: "Le password non corrispondono",
+          passwordLength: "La password deve essere di almeno 4 caratteri",
+          failed: "Registrazione fallita",
+        },
+        welcome: "Benvenuto",
+      },
     };
     return labels[adminLanguage];
   };
@@ -246,6 +267,7 @@ const RegisterPage = () => {
                   <SelectItem value="en">🇬🇧 English</SelectItem>
                   <SelectItem value="es">🇪🇸 Español</SelectItem>
                   <SelectItem value="nl">🇳🇱 Nederlands</SelectItem>
+                  <SelectItem value="it">🇮🇹 Italiano</SelectItem>
                 </SelectContent>
               </Select>
             </div>
