@@ -51,6 +51,13 @@ const quizResultLabels: Record<string, {
     failedMessage: "Je moet minstens 50% van de vragen goed beantwoorden.",
     continue: "Doorgaan",
   },
+  it: {
+    passed: "Storia completata con successo! ✅",
+    failed: "Storia non superata",
+    passedMessage: "Ottimo! Hai padroneggiato questa storia!",
+    failedMessage: "Devi rispondere correttamente ad almeno il 50% delle domande.",
+    continue: "Continua",
+  },
 };
 
 const QuizCompletionResult = ({ 

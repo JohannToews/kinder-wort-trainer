@@ -16,6 +16,7 @@ interface UserProfile {
   username: string;
   display_name: string;
   admin_language: string;
+  app_language: string;
   created_at: string;
   role?: string;
 }
@@ -48,6 +49,7 @@ const UserManagementSection = ({ language, currentUserId }: UserManagementSectio
     { value: 'en', label: 'English', flag: '🇬🇧' },
     { value: 'es', label: 'Español', flag: '🇪🇸' },
     { value: 'nl', label: 'Nederlands', flag: '🇳🇱' },
+    { value: 'it', label: 'Italiano', flag: '🇮🇹' },
   ];
 
   const loadUsers = async () => {
@@ -127,14 +129,15 @@ const UserManagementSection = ({ language, currentUserId }: UserManagementSectio
     setIsCreating(false);
   };
 
-  const updateUserLanguage = async (userId: string, newLang: Language) => {
-    setUpdatingLangId(userId);
+  const updateUserLanguage = async (userId: string, langType: 'admin' | 'app', newLang: Language) => {
+    setUpdatingLangId(`${userId}-${langType}`);
     try {
       const { error } = await supabase.functions.invoke("manage-users", {
         body: { 
-          action: "updateLanguage", 
+          action: "updateLanguages", 
           userId,
-          adminLanguage: newLang,
+          adminLanguage: langType === 'admin' ? newLang : undefined,
+          appLanguage: langType === 'app' ? newLang : undefined,
         },
       });
 
@@ -142,12 +145,18 @@ const UserManagementSection = ({ language, currentUserId }: UserManagementSectio
 
       // Update local state
       setUsers(prev => prev.map(u => 
-        u.id === userId ? { ...u, admin_language: newLang } : u
+        u.id === userId ? { 
+          ...u, 
+          ...(langType === 'admin' ? { admin_language: newLang } : { app_language: newLang })
+        } : u
       ));
 
       // If this is the current user, update their session
       if (userId === currentUserId && currentUser) {
-        const updatedUser = { ...currentUser, adminLanguage: newLang };
+        const updatedUser = { 
+          ...currentUser, 
+          ...(langType === 'admin' ? { adminLanguage: newLang } : { appLanguage: newLang })
+        };
         const token = sessionStorage.getItem('liremagie_session') || '';
         login(token, updatedUser);
       }
@@ -157,6 +166,7 @@ const UserManagementSection = ({ language, currentUserId }: UserManagementSectio
         newLang === 'fr' ? 'Langue mise à jour' :
         newLang === 'en' ? 'Language updated' :
         newLang === 'es' ? 'Idioma actualizado' :
+        newLang === 'it' ? 'Lingua aggiornata' :
         'Taal bijgewerkt'
       );
     } catch (error) {
@@ -402,20 +412,16 @@ const UserManagementSection = ({ language, currentUserId }: UserManagementSectio
                      language === 'fr' ? 'Rôle' : 'Role'}
                   </TableHead>
                   <TableHead>
-                    {language === 'de' ? 'Sprache' : 
-                     language === 'es' ? 'Idioma' :
-                     language === 'nl' ? 'Taal' :
-                     language === 'fr' ? 'Langue' :
-                     'Language'}
+                    {language === 'de' ? 'Admin' : 
+                     language === 'it' ? 'Admin' :
+                     'Admin'}
                   </TableHead>
                   <TableHead>
-                    {language === 'de' ? 'Erstellt' : 
-                     language === 'es' ? 'Creado' :
-                     language === 'nl' ? 'Gemaakt' :
-                     language === 'fr' ? 'Créé' :
-                     'Created'}
+                    {language === 'de' ? 'App' : 
+                     language === 'it' ? 'App' :
+                     'App'}
                   </TableHead>
-                  <TableHead className="w-[80px]"></TableHead>
+                  <TableHead></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -443,11 +449,11 @@ const UserManagementSection = ({ language, currentUserId }: UserManagementSectio
                     <TableCell>
                       <Select 
                         value={user.admin_language} 
-                        onValueChange={(v) => updateUserLanguage(user.id, v as Language)}
-                        disabled={updatingLangId === user.id}
+                        onValueChange={(v) => updateUserLanguage(user.id, 'admin', v as Language)}
+                        disabled={updatingLangId === `${user.id}-admin`}
                       >
-                        <SelectTrigger className="w-[130px] h-8">
-                          {updatingLangId === user.id ? (
+                        <SelectTrigger className="w-[110px] h-8">
+                          {updatingLangId === `${user.id}-admin` ? (
                             <Loader2 className="h-4 w-4 animate-spin" />
                           ) : (
                             <SelectValue />
@@ -458,15 +464,37 @@ const UserManagementSection = ({ language, currentUserId }: UserManagementSectio
                             <SelectItem key={lang.value} value={lang.value}>
                               <div className="flex items-center gap-2">
                                 <span>{lang.flag}</span>
-                                <span>{lang.label}</span>
+                                <span className="text-xs">{lang.label}</span>
                               </div>
                             </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
                     </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {formatDate(user.created_at)}
+                    <TableCell>
+                      <Select 
+                        value={user.app_language || 'fr'} 
+                        onValueChange={(v) => updateUserLanguage(user.id, 'app', v as Language)}
+                        disabled={updatingLangId === `${user.id}-app`}
+                      >
+                        <SelectTrigger className="w-[110px] h-8">
+                          {updatingLangId === `${user.id}-app` ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <SelectValue />
+                          )}
+                        </SelectTrigger>
+                        <SelectContent>
+                          {languages.map((lang) => (
+                            <SelectItem key={lang.value} value={lang.value}>
+                              <div className="flex items-center gap-2">
+                                <span>{lang.flag}</span>
+                                <span className="text-xs">{lang.label}</span>
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </TableCell>
                     <TableCell>
                       <Button

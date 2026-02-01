@@ -14,7 +14,6 @@ import LevelConfigSection from "@/components/LevelConfigSection";
 import KidProfileSection from "@/components/KidProfileSection";
 import UserManagementSection from "@/components/UserManagementSection";
 import SystemPromptSection from "@/components/SystemPromptSection";
-import LanguageSettingsSection from "@/components/LanguageSettingsSection";
 import { useAuth } from "@/hooks/useAuth";
 import { useKidProfile } from "@/hooks/useKidProfile";
 import { useTranslations, Language } from "@/lib/translations";
@@ -852,9 +851,6 @@ const AdminPage = () => {
           {user?.role === 'admin' && (
             <TabsContent value="system" className="h-full overflow-y-auto m-0 pr-2">
               <div className="max-w-4xl mx-auto space-y-6">
-                {/* Language Settings */}
-                <LanguageSettingsSection language={adminLang} />
-                
                 {/* System Prompt Editor */}
                 <SystemPromptSection language={adminLang} />
                 
