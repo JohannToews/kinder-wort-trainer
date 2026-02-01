@@ -17,7 +17,7 @@ serve(async (req) => {
     
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     
-    const { action, userId, promptKey, promptValue, username, displayName, password, role, adminLanguage } = await req.json();
+    const { action, userId, promptKey, promptValue, username, displayName, password, role, adminLanguage, appLanguage } = await req.json();
 
     if (action === "list") {
       // Get all users with their roles
@@ -104,6 +104,24 @@ serve(async (req) => {
       const { error } = await supabase
         .from("user_profiles")
         .update({ admin_language: adminLanguage, updated_at: new Date().toISOString() })
+        .eq("id", userId);
+
+      if (error) throw error;
+
+      return new Response(JSON.stringify({ success: true }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (action === "updateLanguages" && userId) {
+      // Update user's language settings (admin + app)
+      const updateData: Record<string, string> = { updated_at: new Date().toISOString() };
+      if (adminLanguage) updateData.admin_language = adminLanguage;
+      if (appLanguage) updateData.app_language = appLanguage;
+      
+      const { error } = await supabase
+        .from("user_profiles")
+        .update(updateData)
         .eq("id", userId);
 
       if (error) throw error;
