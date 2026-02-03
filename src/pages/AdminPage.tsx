@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { ArrowLeft, Save, Image, BookOpen, Trash2, Upload, LogOut, User, Settings, Sparkles, Library, FileEdit, Star, TrendingUp, CreditCard, Mail, Lock, UserX, Receipt, Crown, Wrench, Users } from "lucide-react";
 import StoryGenerator from "@/components/StoryGenerator";
@@ -417,36 +418,68 @@ const AdminPage = () => {
           {/* Stories Tab */}
           <TabsContent value="stories" className="h-full overflow-hidden m-0">
             <div className="h-full flex flex-col max-w-4xl mx-auto">
-              {/* Kid Profile Selector */}
-              {hasMultipleProfiles && (
-                <div className="flex-none mb-4 flex items-center justify-center gap-2 bg-card/60 backdrop-blur-sm rounded-xl p-2">
+              {/* Kid Profile Selector - Always show if profiles exist */}
+              {kidProfiles.length > 0 && (
+                <div className="flex-none mb-4 flex items-center justify-center gap-2 bg-card/60 backdrop-blur-sm rounded-xl p-3">
                   <span className="text-sm text-muted-foreground mr-2">
-                    {adminLang === 'de' ? 'Für:' : adminLang === 'fr' ? 'Pour:' : 'For:'}
+                    {adminLang === 'de' ? 'Geschichte für:' : adminLang === 'fr' ? 'Histoire pour:' : 'Story for:'}
                   </span>
-                  {kidProfiles.map((profile) => (
-                    <button
-                      key={profile.id}
-                      onClick={() => setSelectedProfileId(profile.id)}
-                      className={`
-                        flex items-center gap-2 px-3 py-2 rounded-lg transition-all
-                        ${selectedProfileId === profile.id 
-                          ? 'bg-primary text-primary-foreground' 
-                          : 'hover:bg-muted'
-                        }
-                      `}
-                    >
+                  {kidProfiles.length === 1 ? (
+                    <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-primary text-primary-foreground">
                       <div className="w-7 h-7 rounded-full overflow-hidden border border-border">
-                        {profile.cover_image_url ? (
-                          <img src={profile.cover_image_url} alt={profile.name} className="w-full h-full object-cover" />
+                        {kidProfiles[0].cover_image_url ? (
+                          <img src={kidProfiles[0].cover_image_url} alt={kidProfiles[0].name} className="w-full h-full object-cover" />
                         ) : (
                           <div className="w-full h-full bg-muted flex items-center justify-center">
                             <Users className="w-3 h-3 text-muted-foreground" />
                           </div>
                         )}
                       </div>
-                      <span className="font-medium text-sm">{profile.name}</span>
-                    </button>
-                  ))}
+                      <span className="font-medium text-sm">{kidProfiles[0].name}</span>
+                    </div>
+                  ) : (
+                    <Select 
+                      value={selectedProfileId || ''} 
+                      onValueChange={(value) => setSelectedProfileId(value)}
+                    >
+                      <SelectTrigger className="w-[200px] bg-card">
+                        <SelectValue placeholder={adminLang === 'de' ? 'Kind auswählen...' : adminLang === 'fr' ? 'Choisir enfant...' : 'Select child...'}>
+                          {selectedProfile && (
+                            <div className="flex items-center gap-2">
+                              <div className="w-5 h-5 rounded-full overflow-hidden border border-border">
+                                {selectedProfile.cover_image_url ? (
+                                  <img src={selectedProfile.cover_image_url} alt={selectedProfile.name} className="w-full h-full object-cover" />
+                                ) : (
+                                  <div className="w-full h-full bg-muted flex items-center justify-center">
+                                    <Users className="w-3 h-3 text-muted-foreground" />
+                                  </div>
+                                )}
+                              </div>
+                              <span>{selectedProfile.name}</span>
+                            </div>
+                          )}
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectContent className="bg-card border border-border z-50">
+                        {kidProfiles.map((profile) => (
+                          <SelectItem key={profile.id} value={profile.id}>
+                            <div className="flex items-center gap-2">
+                              <div className="w-5 h-5 rounded-full overflow-hidden border border-border">
+                                {profile.cover_image_url ? (
+                                  <img src={profile.cover_image_url} alt={profile.name} className="w-full h-full object-cover" />
+                                ) : (
+                                  <div className="w-full h-full bg-muted flex items-center justify-center">
+                                    <Users className="w-3 h-3 text-muted-foreground" />
+                                  </div>
+                                )}
+                              </div>
+                              <span>{profile.name}</span>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
                 </div>
               )}
               
