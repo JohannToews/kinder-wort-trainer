@@ -275,6 +275,76 @@ export type Database = {
           },
         ]
       }
+      story_ratings: {
+        Row: {
+          created_at: string
+          id: string
+          kid_name: string | null
+          kid_profile_id: string | null
+          kid_school_class: string | null
+          kid_school_system: string | null
+          quality_rating: number
+          story_id: string | null
+          story_prompt: string | null
+          story_title: string
+          user_id: string | null
+          weakest_part: string | null
+          weakness_reason: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          kid_name?: string | null
+          kid_profile_id?: string | null
+          kid_school_class?: string | null
+          kid_school_system?: string | null
+          quality_rating: number
+          story_id?: string | null
+          story_prompt?: string | null
+          story_title: string
+          user_id?: string | null
+          weakest_part?: string | null
+          weakness_reason?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          kid_name?: string | null
+          kid_profile_id?: string | null
+          kid_school_class?: string | null
+          kid_school_system?: string | null
+          quality_rating?: number
+          story_id?: string | null
+          story_prompt?: string | null
+          story_title?: string
+          user_id?: string | null
+          weakest_part?: string | null
+          weakness_reason?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "story_ratings_kid_profile_id_fkey"
+            columns: ["kid_profile_id"]
+            isOneToOne: false
+            referencedRelation: "kid_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "story_ratings_story_id_fkey"
+            columns: ["story_id"]
+            isOneToOne: false
+            referencedRelation: "stories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "story_ratings_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_profiles: {
         Row: {
           admin_language: string

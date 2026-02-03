@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { BookOpen, Settings, Sparkles, Star, Brain, Trophy, Hand, Users } from "lucide-react";
+import { BookOpen, Settings, Sparkles, Star, Brain, Trophy, Hand, Users, BarChart3 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useColorPalette } from "@/hooks/useColorPalette";
 import { useKidProfile } from "@/hooks/useKidProfile";
@@ -125,6 +125,15 @@ const Index = () => {
       <div className="relative container max-w-4xl mx-auto px-4 py-8 md:py-12 flex flex-col items-center min-h-screen">
         {/* Top Right Icons */}
         <div className="absolute top-4 right-4 flex items-center gap-2">
+          {user?.role === 'admin' && (
+            <button
+              onClick={() => navigate("/feedback-stats")}
+              className="p-2 rounded-full bg-card/80 backdrop-blur-sm border border-border hover:bg-muted transition-colors"
+              title={appLang === 'de' ? 'Story-Statistiken' : appLang === 'fr' ? 'Statistiques' : 'Statistics'}
+            >
+              <BarChart3 className="h-5 w-5 text-muted-foreground" />
+            </button>
+          )}
           <button
             onClick={() => navigate("/words")}
             className="p-2 rounded-full bg-card/80 backdrop-blur-sm border border-border hover:bg-muted transition-colors"

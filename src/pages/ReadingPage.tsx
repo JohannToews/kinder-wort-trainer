@@ -7,9 +7,12 @@ import { Sparkles, X, Loader2, BookOpen, MessageCircleQuestion, CheckCircle2, He
 import ComprehensionQuiz from "@/components/ComprehensionQuiz";
 import QuizCompletionResult from "@/components/QuizCompletionResult";
 import StoryAudioPlayer from "@/components/StoryAudioPlayer";
+import StoryFeedbackDialog from "@/components/StoryFeedbackDialog";
 import { useColorPalette } from "@/hooks/useColorPalette";
 import { useAuth } from "@/hooks/useAuth";
+import { useKidProfile } from "@/hooks/useKidProfile";
 import PageHeader from "@/components/PageHeader";
+import { Language } from "@/lib/translations";
 
 interface Story {
   id: string;
@@ -18,6 +21,7 @@ interface Story {
   cover_image_url: string | null;
   difficulty?: string;
   story_images?: string[] | null;
+  text_type?: string;
 }
 
 // French stop words that should not be marked/highlighted
@@ -53,6 +57,7 @@ const isStopWord = (word: string): boolean => {
 const ReadingPage = () => {
   const { user } = useAuth();
   const { colors: paletteColors } = useColorPalette();
+  const { selectedProfile } = useKidProfile();
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const [story, setStory] = useState<Story | null>(null);
@@ -93,6 +98,10 @@ const ReadingPage = () => {
   const [unsavedPositions, setUnsavedPositions] = useState<Set<string>>(new Set());
   // Audio listening mode
   const [isListeningMode, setIsListeningMode] = useState(false);
+  // Feedback dialog state
+  const [showFeedbackDialog, setShowFeedbackDialog] = useState(false);
+  // Story prompt (from generator if available)
+  const [storyPrompt, setStoryPrompt] = useState<string | undefined>(undefined);
 
   useEffect(() => {
     if (id) {
@@ -736,58 +745,10 @@ const ReadingPage = () => {
               {/* "Text fertig gelesen" button at the bottom */}
               <div className="mt-10 pt-6 border-t border-border flex justify-center">
                 <Button
-                  onClick={async () => {
-                    if (hasQuestions) {
-                      setShowQuiz(true);
-                    } else {
-                      // Save story completed (no questions to answer)
-                      const { data: pointData } = await supabase
-                        .from("point_settings")
-                        .select("points")
-                        .eq("category", "story")
-                        .eq("difficulty", story?.difficulty || "medium")
-                        .maybeSingle();
-                      
-                      const storyPoints = pointData?.points || 10;
-                      
-                      await supabase.from("user_results").insert({
-                        activity_type: "story_completed",
-                        reference_id: id,
-                        difficulty: story?.difficulty || "medium",
-                        points_earned: storyPoints,
-                        user_id: user?.id,
-                      });
-                      
-                      toast.success(`Super! Tu as fini de lire! 🏆 (+${storyPoints} points)`);
-                      navigate("/stories");
-                    }
-                  }}
-                  onTouchEnd={async (e) => {
+                  onClick={() => setShowFeedbackDialog(true)}
+                  onTouchEnd={(e) => {
                     e.preventDefault();
-                    if (hasQuestions) {
-                      setShowQuiz(true);
-                    } else {
-                      // Save story completed (no questions to answer)
-                      const { data: pointData } = await supabase
-                        .from("point_settings")
-                        .select("points")
-                        .eq("category", "story")
-                        .eq("difficulty", story?.difficulty || "medium")
-                        .maybeSingle();
-                      
-                      const storyPoints = pointData?.points || 10;
-                      
-                      await supabase.from("user_results").insert({
-                        activity_type: "story_completed",
-                        reference_id: id,
-                        difficulty: story?.difficulty || "medium",
-                        points_earned: storyPoints,
-                        user_id: user?.id,
-                      });
-                      
-                      toast.success(`Super! Tu as fini de lire! 🏆 (+${storyPoints} points)`);
-                      navigate("/stories");
-                    }
+                    setShowFeedbackDialog(true);
                   }}
                   className="btn-accent-kid flex items-center gap-3 text-lg py-4 px-8 min-h-[56px] touch-manipulation"
                 >
@@ -795,6 +756,50 @@ const ReadingPage = () => {
                   J'ai fini de lire
                 </Button>
               </div>
+
+              {/* Feedback Dialog */}
+              {story && user && (
+                <StoryFeedbackDialog
+                  open={showFeedbackDialog}
+                  onClose={() => setShowFeedbackDialog(false)}
+                  onSubmit={async () => {
+                    setShowFeedbackDialog(false);
+                    if (hasQuestions) {
+                      setShowQuiz(true);
+                    } else {
+                      // Save story completed (no questions to answer)
+                      const { data: pointData } = await supabase
+                        .from("point_settings")
+                        .select("points")
+                        .eq("category", "story")
+                        .eq("difficulty", story?.difficulty || "medium")
+                        .maybeSingle();
+                      
+                      const storyPoints = pointData?.points || 10;
+                      
+                      await supabase.from("user_results").insert({
+                        activity_type: "story_completed",
+                        reference_id: id,
+                        difficulty: story?.difficulty || "medium",
+                        points_earned: storyPoints,
+                        user_id: user?.id,
+                      });
+                      
+                      toast.success(`Super! Tu as fini de lire! 🏆 (+${storyPoints} points)`);
+                      navigate("/stories");
+                    }
+                  }}
+                  storyId={story.id}
+                  storyTitle={story.title}
+                  storyPrompt={storyPrompt}
+                  userId={user.id}
+                  kidProfileId={selectedProfile?.id}
+                  kidName={selectedProfile?.name}
+                  kidSchoolClass={selectedProfile?.school_class}
+                  kidSchoolSystem={selectedProfile?.school_system}
+                  language={(user.appLanguage || 'fr') as Language}
+                />
+              )}
 
               {/* Comprehension Quiz Section */}
               {showQuiz && !quizCompleted && (
