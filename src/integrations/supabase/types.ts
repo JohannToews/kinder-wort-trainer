@@ -416,6 +416,7 @@ export type Database = {
           created_at: string
           difficulty: string | null
           id: string
+          kid_profile_id: string | null
           points_earned: number
           reference_id: string | null
           total_questions: number | null
@@ -427,6 +428,7 @@ export type Database = {
           created_at?: string
           difficulty?: string | null
           id?: string
+          kid_profile_id?: string | null
           points_earned?: number
           reference_id?: string | null
           total_questions?: number | null
@@ -438,12 +440,20 @@ export type Database = {
           created_at?: string
           difficulty?: string | null
           id?: string
+          kid_profile_id?: string | null
           points_earned?: number
           reference_id?: string | null
           total_questions?: number | null
           user_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "user_results_kid_profile_id_fkey"
+            columns: ["kid_profile_id"]
+            isOneToOne: false
+            referencedRelation: "kid_profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "user_results_user_id_fkey"
             columns: ["user_id"]
