@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useColorPalette } from "@/hooks/useColorPalette";
 import PageHeader from "@/components/PageHeader";
+import ConsistencyCheckStats from "@/components/ConsistencyCheckStats";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -10,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Star, Loader2, TrendingDown, BookOpen, CheckCircle, XCircle, Trash2, Filter, MessageSquare, BookMarked, Eye } from "lucide-react";
+import { Star, Loader2, TrendingDown, BookOpen, CheckCircle, XCircle, Trash2, Filter, MessageSquare, BookMarked, Eye, ShieldCheck } from "lucide-react";
 import { format } from "date-fns";
 import { Language } from "@/lib/translations";
 import { Button } from "@/components/ui/button";
@@ -99,6 +100,7 @@ const translations: Record<Language, {
   answered: string;
   notAnswered: string;
   noQuestions: string;
+  consistencyTab: string;
 }> = {
   de: {
     title: "Story-Statistiken",
@@ -150,6 +152,7 @@ const translations: Record<Language, {
     answered: "Beantwortet",
     notAnswered: "Nicht beantwortet",
     noQuestions: "Keine Fragen",
+    consistencyTab: "Qualitätsprüfung",
   },
   fr: {
     title: "Statistiques des histoires",
@@ -201,6 +204,7 @@ const translations: Record<Language, {
     answered: "Répondu",
     notAnswered: "Non répondu",
     noQuestions: "Pas de questions",
+    consistencyTab: "Contrôle qualité",
   },
   en: {
     title: "Story Statistics",
@@ -252,6 +256,7 @@ const translations: Record<Language, {
     answered: "Answered",
     notAnswered: "Not answered",
     noQuestions: "No questions",
+    consistencyTab: "Quality Check",
   },
   es: {
     title: "Estadísticas de historias",
@@ -303,6 +308,7 @@ const translations: Record<Language, {
     answered: "Respondido",
     notAnswered: "Sin responder",
     noQuestions: "Sin preguntas",
+    consistencyTab: "Control de calidad",
   },
   nl: {
     title: "Verhaal Statistieken",
@@ -354,6 +360,7 @@ const translations: Record<Language, {
     answered: "Beantwoord",
     notAnswered: "Niet beantwoord",
     noQuestions: "Geen vragen",
+    consistencyTab: "Kwaliteitscontrole",
   },
   it: {
     title: "Statistiche delle storie",
@@ -405,6 +412,7 @@ const translations: Record<Language, {
     answered: "Risposto",
     notAnswered: "Non risposto",
     noQuestions: "Nessuna domanda",
+    consistencyTab: "Controllo qualità",
   },
   bs: {
     title: "Statistika priča",
@@ -456,6 +464,7 @@ const translations: Record<Language, {
     answered: "Odgovoreno",
     notAnswered: "Nije odgovoreno",
     noQuestions: "Nema pitanja",
+    consistencyTab: "Provjera kvalitete",
   },
 };
 
@@ -844,6 +853,10 @@ const FeedbackStatsPage = () => {
               <Star className="h-4 w-4" />
               {t.feedbackTab} ({filteredRatings.length})
             </TabsTrigger>
+            <TabsTrigger value="consistency" className="flex items-center gap-2">
+              <ShieldCheck className="h-4 w-4" />
+              {t.consistencyTab}
+            </TabsTrigger>
           </TabsList>
 
           {/* Stories Tab */}
@@ -1169,6 +1182,11 @@ const FeedbackStatsPage = () => {
                 </CardContent>
               </Card>
             )}
+          </TabsContent>
+
+          {/* Consistency Check Tab */}
+          <TabsContent value="consistency">
+            <ConsistencyCheckStats language={(user?.adminLanguage || 'de') as Language} />
           </TabsContent>
         </Tabs>
 
