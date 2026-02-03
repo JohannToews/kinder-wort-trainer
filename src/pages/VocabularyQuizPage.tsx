@@ -378,6 +378,7 @@ const VocabularyQuizPage = () => {
           correct_answers: score,
           total_questions: totalQuestions,
           user_id: user?.id,
+          kid_profile_id: selectedProfileId || null,
         });
       }
       return;

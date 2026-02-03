@@ -63,47 +63,34 @@ const ResultsPage = () => {
         setLevels(levelData);
       }
 
-      // First, get the stories for the selected kid profile
-      let storiesQuery = supabase
-        .from("stories")
-        .select("id")
-        .eq("user_id", user.id);
-      
-      if (selectedProfileId) {
-        storiesQuery = storiesQuery.or(`kid_profile_id.eq.${selectedProfileId},kid_profile_id.is.null`);
-      }
-      
-      const { data: storiesData } = await storiesQuery;
-      const storyIds = storiesData?.map(s => s.id) || [];
-
-      // Load user results filtered by user_id AND by stories belonging to selected kid profile
-      const { data: results } = await supabase
+      // Load user results filtered by kid_profile_id
+      let resultsQuery = supabase
         .from("user_results")
         .select("*")
         .eq("user_id", user.id)
         .order("created_at", { ascending: false });
+      
+      // Filter by kid profile if selected
+      if (selectedProfileId) {
+        resultsQuery = resultsQuery.eq("kid_profile_id", selectedProfileId);
+      }
+      
+      const { data: results } = await resultsQuery;
 
       if (results) {
-        // Calculate totals by category, filtering by kid profile's stories
+        // Calculate totals by category
         let storyPts = 0;
         let quizPts = 0;
         let storyCount = 0;
         let quizCount = 0;
 
         results.forEach((r: UserResult) => {
-          // For story activities, check if the reference_id is in our kid's stories
           if (r.activity_type === 'story_read' || r.activity_type === 'story_completed') {
-            if (!selectedProfileId || (r.reference_id && storyIds.includes(r.reference_id))) {
-              storyPts += r.points_earned;
-              storyCount++;
-            }
+            storyPts += r.points_earned;
+            storyCount++;
           } else if (r.activity_type === 'quiz_passed') {
-            // Quiz results are not directly linked to stories/kid profiles in the current schema
-            // For now, show all quiz results (could be enhanced with kid_profile_id on user_results)
-            if (!selectedProfileId || storyIds.length > 0) {
-              quizPts += r.points_earned;
-              quizCount++;
-            }
+            quizPts += r.points_earned;
+            quizCount++;
           }
         });
 
@@ -114,7 +101,19 @@ const ResultsPage = () => {
         setTotalPoints(storyPts + quizPts);
       }
 
-      // Load learned words count - only from kid's stories
+      // Load learned words count - filter by kid profile's stories
+      let storiesQuery = supabase
+        .from("stories")
+        .select("id")
+        .eq("user_id", user.id);
+      
+      if (selectedProfileId) {
+        storiesQuery = storiesQuery.eq("kid_profile_id", selectedProfileId);
+      }
+      
+      const { data: storiesData } = await storiesQuery;
+      const storyIds = storiesData?.map(s => s.id) || [];
+
       if (storyIds.length > 0) {
         const { data: learnedData } = await supabase
           .from("marked_words")
@@ -123,15 +122,6 @@ const ResultsPage = () => {
           .in("story_id", storyIds);
         
         setWordsLearned(learnedData?.length || 0);
-      } else if (!selectedProfileId) {
-        // If no profile selected, load all user's learned words
-        const { data: learnedData } = await supabase
-          .from("marked_words")
-          .select("*, stories!inner(user_id)")
-          .eq("is_learned", true);
-        
-        const userLearnedCount = learnedData?.filter((w: any) => w.stories?.user_id === user.id).length || 0;
-        setWordsLearned(userLearnedCount);
       } else {
         setWordsLearned(0);
       }
