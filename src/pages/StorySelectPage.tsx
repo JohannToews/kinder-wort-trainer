@@ -68,16 +68,17 @@ const StorySelectPage = () => {
   const loadStories = async () => {
     if (!user) return;
     
-    // Build query - filter by kid_profile_id if selected, but also include stories without a kid profile (legacy)
+    // Build query - filter strictly by kid_profile_id
     let query = supabase
       .from("stories")
       .select("*")
       .eq("user_id", user.id)
+      .eq("is_deleted", false)
       .order("created_at", { ascending: false });
     
-    // Filter by selected kid profile OR stories without a kid profile (legacy stories)
+    // Filter strictly by selected kid profile
     if (selectedProfileId) {
-      query = query.or(`kid_profile_id.eq.${selectedProfileId},kid_profile_id.is.null`);
+      query = query.eq("kid_profile_id", selectedProfileId);
     }
     
     const { data: storiesData } = await query;
