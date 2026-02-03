@@ -431,7 +431,7 @@ const CreateStoryPage = () => {
               images={characterImages} 
               direction="left" 
               speed={60}
-              imageSize="medium"
+              imageSize="small"
               className="w-full"
               filterColor={getFilterColor()}
             />
@@ -439,7 +439,7 @@ const CreateStoryPage = () => {
 
           {/* Main Content - Characters Card */}
           <div className="container max-w-lg mx-auto px-4 relative z-10">
-            <Card className="border-2 border-primary/20 bg-card/95 backdrop-blur-sm shadow-lg">
+            <Card className="border-2 border-primary/20 bg-card/95 backdrop-blur-sm shadow-xl ring-1 ring-primary/10">
               <CardHeader className="pb-1 pt-3 md:pt-4">
                 <CardTitle className="text-base md:text-lg font-baloo">{t.charactersTitle}</CardTitle>
               </CardHeader>
@@ -464,7 +464,7 @@ const CreateStoryPage = () => {
               images={settingImages} 
               direction="right" 
               speed={55}
-              imageSize="medium"
+              imageSize="small"
               className="w-full"
               filterColor={getFilterColor()}
             />
@@ -472,7 +472,7 @@ const CreateStoryPage = () => {
 
           {/* Main Content - Story Description Card */}
           <div className="container max-w-lg mx-auto px-4 relative z-10">
-            <Card className="border-2 border-accent/20 bg-card/95 backdrop-blur-sm shadow-lg">
+            <Card className="border-2 border-accent/20 bg-card/95 backdrop-blur-sm shadow-xl ring-1 ring-accent/10">
               <CardHeader className="pb-1 pt-3 md:pt-4">
                 <CardTitle className="text-base md:text-lg font-baloo">{t.storyDescription}</CardTitle>
               </CardHeader>
@@ -490,65 +490,60 @@ const CreateStoryPage = () => {
         </div>
 
         {/* Settings & Create Button */}
-        <div className="container max-w-lg mx-auto px-4 py-3 md:py-4 space-y-3 md:space-y-4">
-          <Card className="border-2 border-muted bg-card/95 backdrop-blur-sm">
-            <CardContent className="pt-4 pb-3 space-y-3">
-              <div className="grid grid-cols-2 gap-3">
-                {/* Length */}
-                <div className="space-y-1">
-                  <Label className="text-sm">{t.length}</Label>
-                  <Select value={length} onValueChange={setLength} disabled={isGenerating}>
-                    <SelectTrigger className="h-9">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="very_short">{t.veryShort}</SelectItem>
-                      <SelectItem value="short">{t.short}</SelectItem>
-                      <SelectItem value="medium">{t.mediumLength}</SelectItem>
-                      <SelectItem value="long">{t.long}</SelectItem>
-                      <SelectItem value="very_long">{t.veryLong}</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+        <div className="container max-w-lg mx-auto px-4 py-3 md:py-4 space-y-3">
+          {/* Compact Options Row */}
+          <div className="flex items-center gap-2 bg-card/95 backdrop-blur-sm rounded-xl p-2 border border-muted shadow-sm">
+            {/* Length */}
+            <div className="flex items-center gap-1.5 flex-1">
+              <Label className="text-xs text-muted-foreground whitespace-nowrap">{t.length}</Label>
+              <Select value={length} onValueChange={setLength} disabled={isGenerating}>
+                <SelectTrigger className="h-8 text-xs flex-1 min-w-0">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="very_short">{t.veryShort}</SelectItem>
+                  <SelectItem value="short">{t.short}</SelectItem>
+                  <SelectItem value="medium">{t.mediumLength}</SelectItem>
+                  <SelectItem value="long">{t.long}</SelectItem>
+                  <SelectItem value="very_long">{t.veryLong}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
 
-                {/* Difficulty */}
-                <div className="space-y-1">
-                  <Label className="text-sm">{t.difficulty}</Label>
-                  <Select value={difficulty} onValueChange={setDifficulty} disabled={isGenerating}>
-                    <SelectTrigger className="h-9">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="easy">{t.easy}</SelectItem>
-                      <SelectItem value="medium">{t.medium}</SelectItem>
-                      <SelectItem value="difficult">{t.hard}</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
+            <div className="w-px h-6 bg-border" />
 
-              {/* Series Toggle */}
-              <div className="flex items-center justify-between p-2 rounded-lg bg-accent/10 border border-accent/20">
-                <div className="flex items-center gap-2">
-                  <BookOpen className="h-4 w-4 text-accent" />
-                  <div>
-                    <Label htmlFor="series-mode" className="text-sm font-medium cursor-pointer">
-                      {t.seriesMode}
-                    </Label>
-                    <p className="text-xs text-muted-foreground">
-                      {t.seriesDescription}
-                    </p>
-                  </div>
-                </div>
-                <Switch
-                  id="series-mode"
-                  checked={isSeries}
-                  onCheckedChange={setIsSeries}
-                  disabled={isGenerating}
-                />
-              </div>
-            </CardContent>
-          </Card>
+            {/* Difficulty */}
+            <div className="flex items-center gap-1.5 flex-1">
+              <Label className="text-xs text-muted-foreground whitespace-nowrap">{t.difficulty}</Label>
+              <Select value={difficulty} onValueChange={setDifficulty} disabled={isGenerating}>
+                <SelectTrigger className="h-8 text-xs flex-1 min-w-0">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="easy">{t.easy}</SelectItem>
+                  <SelectItem value="medium">{t.medium}</SelectItem>
+                  <SelectItem value="difficult">{t.hard}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="w-px h-6 bg-border" />
+
+            {/* Series Toggle - Compact */}
+            <div className="flex items-center gap-2">
+              <BookOpen className="h-4 w-4 text-accent hidden sm:block" />
+              <Label htmlFor="series-mode" className="text-xs cursor-pointer whitespace-nowrap">
+                {t.seriesMode}
+              </Label>
+              <Switch
+                id="series-mode"
+                checked={isSeries}
+                onCheckedChange={setIsSeries}
+                disabled={isGenerating}
+                className="scale-90"
+              />
+            </div>
+          </div>
 
           {/* Create Button */}
           <Button

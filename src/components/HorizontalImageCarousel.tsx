@@ -20,9 +20,9 @@ const HorizontalImageCarousel = ({
   const containerRef = useRef<HTMLDivElement>(null);
   
   const sizeClasses = {
-    small: "w-20 h-14 md:w-24 md:h-16",
-    medium: "w-24 h-16 md:w-28 md:h-20",
-    large: "w-28 h-20 md:w-36 md:h-24"
+    small: "w-16 h-12 md:w-20 md:h-14",
+    medium: "w-20 h-14 md:w-24 md:h-16",
+    large: "w-24 h-16 md:w-28 md:h-20"
   };
 
   // Duplicate images for seamless loop
