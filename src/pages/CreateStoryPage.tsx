@@ -395,7 +395,7 @@ const CreateStoryPage = () => {
         toast.success(t.success + " 🎉");
         
         // Navigate to reading page with the new story
-        navigate(`/reading/${storyData.id}`);
+        navigate(`/read/${storyData.id}`);
       } else {
         toast.error(t.error);
       }
