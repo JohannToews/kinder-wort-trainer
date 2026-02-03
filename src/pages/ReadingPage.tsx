@@ -28,6 +28,9 @@ const readingLabels: Record<string, {
   listeningMode: string;
   comprehensionQuestions: string;
   storyCompleted: string;
+  continueStory: string;
+  generatingContinuation: string;
+  episode: string;
 }> = {
   de: {
     thinking: "Ich denke nach...",
@@ -41,6 +44,9 @@ const readingLabels: Record<string, {
     listeningMode: "Höre die Geschichte...",
     comprehensionQuestions: "Verständnisfragen",
     storyCompleted: "Super! Du hast fertig gelesen!",
+    continueStory: "Wie geht es weiter?",
+    generatingContinuation: "Fortsetzung wird erstellt...",
+    episode: "Episode",
   },
   fr: {
     thinking: "Je réfléchis...",
@@ -54,6 +60,9 @@ const readingLabels: Record<string, {
     listeningMode: "Écoute l'histoire...",
     comprehensionQuestions: "Questions de compréhension",
     storyCompleted: "Super! Tu as fini de lire!",
+    continueStory: "Que se passe-t-il ensuite?",
+    generatingContinuation: "Création de la suite...",
+    episode: "Épisode",
   },
   en: {
     thinking: "Thinking...",
@@ -67,6 +76,9 @@ const readingLabels: Record<string, {
     listeningMode: "Listen to the story...",
     comprehensionQuestions: "Comprehension questions",
     storyCompleted: "Great! You finished reading!",
+    continueStory: "What happens next?",
+    generatingContinuation: "Creating continuation...",
+    episode: "Episode",
   },
   es: {
     thinking: "Pensando...",
@@ -80,6 +92,9 @@ const readingLabels: Record<string, {
     listeningMode: "Escucha la historia...",
     comprehensionQuestions: "Preguntas de comprensión",
     storyCompleted: "¡Genial! ¡Terminaste de leer!",
+    continueStory: "¿Qué pasa después?",
+    generatingContinuation: "Creando continuación...",
+    episode: "Episodio",
   },
   nl: {
     thinking: "Ik denk na...",
@@ -93,6 +108,9 @@ const readingLabels: Record<string, {
     listeningMode: "Luister naar het verhaal...",
     comprehensionQuestions: "Begripsvragen",
     storyCompleted: "Super! Je bent klaar met lezen!",
+    continueStory: "Wat gebeurt er nu?",
+    generatingContinuation: "Vervolg wordt gemaakt...",
+    episode: "Aflevering",
   },
   it: {
     thinking: "Sto pensando...",
@@ -106,6 +124,9 @@ const readingLabels: Record<string, {
     listeningMode: "Ascolta la storia...",
     comprehensionQuestions: "Domande di comprensione",
     storyCompleted: "Fantastico! Hai finito di leggere!",
+    continueStory: "Cosa succede dopo?",
+    generatingContinuation: "Creazione del seguito...",
+    episode: "Episodio",
   },
 };
 
@@ -118,6 +139,11 @@ interface Story {
   story_images?: string[] | null;
   text_type?: string;
   text_language?: string;
+  prompt?: string;
+  ending_type?: 'A' | 'B' | 'C' | null;
+  episode_number?: number | null;
+  series_id?: string | null;
+  kid_profile_id?: string | null;
 }
 
 // French stop words that should not be marked/highlighted
@@ -201,6 +227,10 @@ const ReadingPage = () => {
   // Reading settings (font size and line spacing)
   const [fontSize, setFontSize] = useState<FontSizeLevel>(2);
   const [lineSpacing, setLineSpacing] = useState<LineSpacingLevel>(2);
+  // Series continuation state
+  const [isGeneratingContinuation, setIsGeneratingContinuation] = useState(false);
+  // System prompt for story generation
+  const [customSystemPrompt, setCustomSystemPrompt] = useState("");
 
   // Get text language from story for UI labels and explanations
   const textLang = story?.text_language || 'fr';
@@ -212,6 +242,23 @@ const ReadingPage = () => {
       checkForQuestions();
     }
   }, [id]);
+
+  // Load system prompt for continuation
+  useEffect(() => {
+    const loadSystemPrompt = async () => {
+      const promptKey = `system_prompt_${kidAppLanguage}`;
+      const { data } = await supabase
+        .from("app_settings")
+        .select("value")
+        .eq("key", promptKey)
+        .maybeSingle();
+
+      if (data) {
+        setCustomSystemPrompt(data.value);
+      }
+    };
+    loadSystemPrompt();
+  }, [kidAppLanguage]);
 
   const checkForQuestions = async () => {
     const { count } = await supabase
@@ -305,11 +352,118 @@ const ReadingPage = () => {
     
     if (data) {
       setStory(data);
+      if (data.prompt) {
+        setStoryPrompt(data.prompt);
+      }
     } else {
       toast.error("Histoire non trouvée");
       navigate("/stories");
     }
     setIsLoading(false);
+  };
+
+  // Handle series continuation
+  const handleContinueSeries = async () => {
+    if (!story || !story.series_id) return;
+
+    setIsGeneratingContinuation(true);
+    toast.info(readingLabels[textLang]?.generatingContinuation || "Creating continuation...");
+
+    try {
+      const nextEpisodeNumber = (story.episode_number || 1) + 1;
+      
+      // Create continuation prompt with previous story context
+      const continuationPrompt = `Fortsetzung von "${story.title}" (Episode ${story.episode_number || 1}):\n\nVorherige Geschichte (Zusammenfassung):\n${story.content.slice(0, 500)}...\n\nUrsprüngliche Idee: ${story.prompt || ""}`;
+
+      // Call generate-story with continuation context
+      const { data, error } = await supabase.functions.invoke("generate-story", {
+        body: {
+          length: "medium",
+          difficulty: story.difficulty || "medium",
+          description: continuationPrompt,
+          textType: story.text_type || "fiction",
+          textLanguage: (story.text_language || "de").toUpperCase(),
+          customSystemPrompt,
+          endingType: "C", // Keep as cliffhanger for continuing series
+          episodeNumber: nextEpisodeNumber,
+          previousStoryId: story.id,
+          seriesId: story.series_id,
+        },
+      });
+
+      if (error) {
+        console.error("Generation error:", error);
+        toast.error("Fehler beim Erstellen der Fortsetzung");
+        return;
+      }
+
+      if (data?.title && data?.content) {
+        // Upload cover image if available
+        let coverUrl = null;
+        if (data.coverImageBase64) {
+          const base64Data = data.coverImageBase64.replace(/^data:image\/\w+;base64,/, "");
+          const fileName = `${Date.now()}-cover.png`;
+          
+          const { data: uploadData, error: uploadError } = await supabase.storage
+            .from("covers")
+            .upload(fileName, Uint8Array.from(atob(base64Data), c => c.charCodeAt(0)), {
+              contentType: "image/png",
+            });
+          
+          if (!uploadError && uploadData) {
+            const { data: urlData } = supabase.storage.from("covers").getPublicUrl(fileName);
+            coverUrl = urlData.publicUrl;
+          }
+        }
+
+        // Save continuation story
+        const { data: newStory, error: storyError } = await supabase
+          .from("stories")
+          .insert({
+            title: data.title,
+            content: data.content,
+            difficulty: story.difficulty,
+            text_type: story.text_type || "fiction",
+            text_language: story.text_language,
+            prompt: story.prompt,
+            cover_image_url: coverUrl,
+            story_images: data.storyImages || [],
+            user_id: user?.id,
+            kid_profile_id: story.kid_profile_id,
+            ending_type: "C",
+            episode_number: nextEpisodeNumber,
+            series_id: story.series_id,
+          })
+          .select()
+          .single();
+
+        if (storyError) {
+          console.error("Error saving continuation:", storyError);
+          toast.error("Fehler beim Speichern");
+          return;
+        }
+
+        // Save comprehension questions if available
+        if (data.questions && data.questions.length > 0 && newStory) {
+          const questionsToInsert = data.questions.map((q: { question: string; expectedAnswer: string }, idx: number) => ({
+            story_id: newStory.id,
+            question: q.question,
+            expected_answer: q.expectedAnswer,
+            order_index: idx,
+          }));
+
+          await supabase.from("comprehension_questions").insert(questionsToInsert);
+        }
+
+        toast.success(`Episode ${nextEpisodeNumber} erstellt! 🎉`);
+        navigate(`/read/${newStory.id}`);
+      }
+    } catch (err) {
+      console.error("Error:", err);
+      toast.error("Fehler beim Erstellen der Fortsetzung");
+    } finally {
+      setIsGeneratingContinuation(false);
+    }
   };
 
   const loadCachedExplanations = async () => {
@@ -1017,6 +1171,63 @@ const ReadingPage = () => {
                     appLanguage={user?.appLanguage || 'fr'}
                     onContinue={() => navigate("/stories")}
                   />
+                  
+                  {/* Continue Series Button - shown for series with cliffhanger ending */}
+                  {story?.ending_type === 'C' && story?.series_id && (
+                    <div className="mt-6 pt-6 border-t border-border">
+                      <Button
+                        onClick={handleContinueSeries}
+                        disabled={isGeneratingContinuation}
+                        className="w-full btn-primary-kid flex items-center justify-center gap-3 text-lg py-5"
+                      >
+                        {isGeneratingContinuation ? (
+                          <>
+                            <Loader2 className="h-5 w-5 animate-spin" />
+                            {readingLabels[textLang]?.generatingContinuation || "Creating..."}
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles className="h-5 w-5" />
+                            {readingLabels[textLang]?.continueStory || "What happens next?"} 
+                            <span className="text-sm opacity-80">
+                              ({readingLabels[textLang]?.episode || "Episode"} {(story.episode_number || 1) + 1})
+                            </span>
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              )}
+              
+              {/* Series continuation for stories without quiz */}
+              {!showQuiz && !hasQuestions && story?.ending_type === 'C' && story?.series_id && (
+                <div className="mt-8 pt-6 border-t border-border flex flex-col items-center gap-4">
+                  <p className="text-muted-foreground text-center">
+                    {textLang === 'de' ? 'Diese Geschichte ist Teil einer Serie!' : 
+                     textLang === 'fr' ? 'Cette histoire fait partie d\'une série!' :
+                     'This story is part of a series!'}
+                  </p>
+                  <Button
+                    onClick={handleContinueSeries}
+                    disabled={isGeneratingContinuation}
+                    className="btn-primary-kid flex items-center justify-center gap-3 text-lg py-5 px-8"
+                  >
+                    {isGeneratingContinuation ? (
+                      <>
+                        <Loader2 className="h-5 w-5 animate-spin" />
+                        {readingLabels[textLang]?.generatingContinuation || "Creating..."}
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="h-5 w-5" />
+                        {readingLabels[textLang]?.continueStory || "What happens next?"} 
+                        <span className="text-sm opacity-80">
+                          ({readingLabels[textLang]?.episode || "Episode"} {(story.episode_number || 1) + 1})
+                        </span>
+                      </>
+                    )}
+                  </Button>
                 </div>
               )}
             </div>
