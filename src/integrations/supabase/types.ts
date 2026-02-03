@@ -229,6 +229,7 @@ export type Database = {
           kid_profile_id: string | null
           prompt: string | null
           story_images: string[] | null
+          text_language: string | null
           text_type: string | null
           title: string
           updated_at: string
@@ -244,6 +245,7 @@ export type Database = {
           kid_profile_id?: string | null
           prompt?: string | null
           story_images?: string[] | null
+          text_language?: string | null
           text_type?: string | null
           title: string
           updated_at?: string
@@ -259,6 +261,7 @@ export type Database = {
           kid_profile_id?: string | null
           prompt?: string | null
           story_images?: string[] | null
+          text_language?: string | null
           text_type?: string | null
           title?: string
           updated_at?: string

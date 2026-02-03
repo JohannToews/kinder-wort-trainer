@@ -24,6 +24,7 @@ interface QuizWord {
   story_id: string;
   quiz_history?: string[];
   is_learned?: boolean;
+  text_language?: string;
 }
 
 interface QuizQuestion {
@@ -31,11 +32,13 @@ interface QuizQuestion {
   word: string;
   correctAnswer: string;
   options: string[];
+  language?: string;
 }
 
 interface Story {
   id: string;
   title: string;
+  text_language?: string;
 }
 
 const VocabularyQuizPage = () => {
@@ -139,7 +142,7 @@ const VocabularyQuizPage = () => {
     // Build stories query - filter by kid_profile_id if selected
     let storiesQuery = supabase
       .from("stories")
-      .select("id, title")
+      .select("id, title, text_language")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false });
     
@@ -149,12 +152,17 @@ const VocabularyQuizPage = () => {
     
     const { data: storiesData } = await storiesQuery;
     
+    // Create a map of story_id -> text_language
+    const storyLanguageMap = new Map<string, string>();
     if (storiesData) {
+      storiesData.forEach((s: any) => {
+        storyLanguageMap.set(s.id, s.text_language || 'fr');
+      });
       setStories(storiesData);
     }
     
     // Get story IDs for filtering words
-    const storyIds = storiesData?.map(s => s.id) || [];
+    const storyIds = storiesData?.map((s: any) => s.id) || [];
     
     if (storyIds.length === 0) {
       setAllWords([]);
@@ -166,7 +174,7 @@ const VocabularyQuizPage = () => {
     // Load words only from filtered stories
     const { data, error } = await supabase
       .from("marked_words")
-      .select("*, stories!inner(user_id, kid_profile_id)")
+      .select("*, stories!inner(user_id, kid_profile_id, text_language)")
       .in("story_id", storyIds)
       .not("explanation", "is", null)
       .or("difficulty.is.null,difficulty.neq.easy")
@@ -174,12 +182,15 @@ const VocabularyQuizPage = () => {
       .order("created_at", { ascending: false });
 
     if (data && data.length > 0) {
-      // Filter words that have explanations
+      // Filter words that have explanations and add text_language from stories
       const validWords = data.filter((w: any) => 
         w.explanation && 
         w.explanation.trim().length > 0 &&
         !w.is_learned
-      );
+      ).map((w: any) => ({
+        ...w,
+        text_language: w.stories?.text_language || 'fr'
+      }));
       setAllWords(validWords as QuizWord[]);
       setWords(validWords as QuizWord[]);
     } else {
@@ -191,12 +202,16 @@ const VocabularyQuizPage = () => {
 
   const generateQuizQuestion = async (word: QuizWord, retryCount = 0) => {
     setIsGeneratingQuiz(true);
+    
+    // Get the story's text_language
+    const wordLanguage = word.text_language || 'fr';
 
     try {
       const { data, error } = await supabase.functions.invoke("generate-quiz", {
         body: { 
           word: word.word, 
-          correctExplanation: word.explanation 
+          correctExplanation: word.explanation,
+          language: wordLanguage,
         },
       });
 
