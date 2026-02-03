@@ -404,6 +404,7 @@ const ReadingPage = () => {
           episodeNumber: nextEpisodeNumber,
           previousStoryId: story.id,
           seriesId: story.series_id,
+          userId: user?.id,
         },
       });
 

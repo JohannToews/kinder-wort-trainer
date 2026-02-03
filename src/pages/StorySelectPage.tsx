@@ -161,6 +161,7 @@ const StorySelectPage = () => {
           endingType: "C", // Continue as cliffhanger
           episodeNumber: (lastEpisode.episode_number || 1) + 1,
           seriesId: series.seriesId,
+          userId: user?.id,
         },
       });
       

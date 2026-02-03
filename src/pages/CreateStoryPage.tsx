@@ -326,6 +326,7 @@ const CreateStoryPage = () => {
           // Series mode parameters
           endingType: isSeries ? "C" : null,
           episodeNumber: isSeries ? 1 : null,
+          userId: user?.id,
         },
       });
 
