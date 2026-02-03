@@ -22,10 +22,11 @@ interface QuizResult {
 interface ComprehensionQuizProps {
   storyId: string;
   storyDifficulty?: string;
+  storyLanguage?: string;
   onComplete: (correctCount: number, totalCount: number) => void;
 }
 
-const ComprehensionQuiz = ({ storyId, storyDifficulty = "medium", onComplete }: ComprehensionQuizProps) => {
+const ComprehensionQuiz = ({ storyId, storyDifficulty = "medium", storyLanguage = "fr", onComplete }: ComprehensionQuizProps) => {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
@@ -176,6 +177,7 @@ const ComprehensionQuiz = ({ storyId, storyDifficulty = "medium", onComplete }: 
           question: currentQuestion.question,
           expectedAnswer: currentQuestion.expected_answer,
           childAnswer: transcript,
+          language: storyLanguage,
         },
       });
 

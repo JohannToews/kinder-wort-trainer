@@ -30,6 +30,7 @@ interface GeneratedStory {
   difficulty?: string; // The difficulty level selected during generation
   textType?: string; // fiction or non-fiction
   prompt?: string; // The user's generation prompt
+  textLanguage?: string; // The language of the story text (fr, de, en, etc.)
 }
 
 interface StoryGeneratorProps {
@@ -139,7 +140,7 @@ const StoryGenerator = ({ onStoryGenerated }: StoryGeneratorProps) => {
           );
         }
 
-        onStoryGenerated({ ...data, difficulty, textType, prompt: description });
+        onStoryGenerated({ ...data, difficulty, textType, prompt: description, textLanguage: textLanguage.toLowerCase() });
       } else {
         toast.error(t.error);
       }

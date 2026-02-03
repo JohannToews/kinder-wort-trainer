@@ -22,6 +22,7 @@ interface Story {
   difficulty?: string;
   story_images?: string[] | null;
   text_type?: string;
+  text_language?: string;
 }
 
 // French stop words that should not be marked/highlighted
@@ -811,6 +812,7 @@ const ReadingPage = () => {
                   <ComprehensionQuiz 
                     storyId={id!}
                     storyDifficulty={story?.difficulty || "medium"}
+                    storyLanguage={story?.text_language || "fr"}
                     onComplete={async (correctCount, totalCount) => {
                       // Save the result
                       setQuizResult({ correctCount, totalCount });

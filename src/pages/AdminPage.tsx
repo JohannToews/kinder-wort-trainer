@@ -46,6 +46,7 @@ interface GeneratedStory {
   difficulty?: string; // The difficulty level selected during generation
   textType?: string; // fiction or non-fiction
   prompt?: string; // The user's generation prompt
+  textLanguage?: string; // The language of the story text (fr, de, en, etc.)
 }
 
 const AdminPage = () => {
@@ -66,6 +67,7 @@ const AdminPage = () => {
   const [generatedDifficulty, setGeneratedDifficulty] = useState<string>("medium");
   const [generatedTextType, setGeneratedTextType] = useState<string>("fiction");
   const [generatedPrompt, setGeneratedPrompt] = useState<string>("");
+  const [generatedTextLanguage, setGeneratedTextLanguage] = useState<string>("fr");
   const [stories, setStories] = useState<Story[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("profile");
@@ -190,7 +192,7 @@ const AdminPage = () => {
       }
     }
 
-    // Insert story with user_id, kid_profile_id, story_images, difficulty, text_type, and prompt
+    // Insert story with user_id, kid_profile_id, story_images, difficulty, text_type, prompt, and text_language
     const { data: insertedStory, error } = await supabase.from("stories").insert({
       title,
       content,
@@ -201,7 +203,8 @@ const AdminPage = () => {
       difficulty: generatedDifficulty,
       text_type: generatedTextType,
       prompt: generatedPrompt || null,
-    }).select().single();
+      text_language: generatedTextLanguage,
+    } as any).select().single();
 
     if (error || !insertedStory) {
       toast.error(t.storySaveError);
@@ -236,7 +239,7 @@ const AdminPage = () => {
         const { data: questionsData, error: questionsError } = await supabase.functions.invoke(
           "generate-comprehension-questions",
           {
-            body: { storyContent: content, storyTitle: title },
+            body: { storyContent: content, storyTitle: title, language: generatedTextLanguage },
           }
         );
 
@@ -316,6 +319,7 @@ const AdminPage = () => {
     setGeneratedVocabulary([]);
     setGeneratedDifficulty("medium");
     setGeneratedTextType("fiction");
+    setGeneratedTextLanguage("fr");
     loadStories();
   };
 
@@ -488,7 +492,7 @@ const AdminPage = () => {
                 {storySubTab === "generator" && (
                   <StoryGenerator
                     onStoryGenerated={(story) => {
-                      console.log("Story generated with vocabulary:", story.vocabulary, "difficulty:", story.difficulty);
+                      console.log("Story generated with vocabulary:", story.vocabulary, "difficulty:", story.difficulty, "textLanguage:", story.textLanguage);
                       setTitle(story.title);
                       setContent(story.content);
                       if (story.difficulty) {
@@ -499,6 +503,9 @@ const AdminPage = () => {
                       }
                       if (story.prompt) {
                         setGeneratedPrompt(story.prompt);
+                      }
+                      if (story.textLanguage) {
+                        setGeneratedTextLanguage(story.textLanguage);
                       }
                       if (story.questions && story.questions.length > 0) {
                         setGeneratedQuestions(story.questions);
