@@ -562,7 +562,7 @@ serve(async (req) => {
   }
 
   try {
-    const { length, difficulty, description, schoolLevel, textType, textLanguage, globalLanguage, customSystemPrompt, endingType, episodeNumber, seriesId } = await req.json();
+    const { length, difficulty, description, schoolLevel, textType, textLanguage, globalLanguage, customSystemPrompt, endingType, episodeNumber, seriesId, userId } = await req.json();
 
     // Determine how many images to generate based on length
     const imageCountMap: Record<string, number> = {
@@ -822,6 +822,11 @@ Antworte NUR mit dem erweiterten Text (ohne Titel, ohne JSON-Format).`;
     
     const consistencyCheckPrompt = await getConsistencyCheckPrompt(adminLanguage);
     
+    // Track consistency check results
+    let totalIssuesFound = 0;
+    let totalIssuesCorrected = 0;
+    let allIssueDetails: string[] = [];
+    
     if (consistencyCheckPrompt) {
       console.log("Starting consistency check...");
       
@@ -846,6 +851,10 @@ Antworte NUR mit dem erweiterten Text (ohne Titel, ohne JSON-Format).`;
           break;
         }
         
+        // Track issues found in this check
+        totalIssuesFound += checkResult.issues.length;
+        allIssueDetails.push(...checkResult.issues);
+        
         correctionAttempts++;
         console.log(`Consistency check found ${checkResult.issues.length} issue(s), attempting correction ${correctionAttempts}/${maxCorrectionAttempts}...`);
         console.log("Issues:", checkResult.issues);
@@ -862,6 +871,7 @@ Antworte NUR mit dem erweiterten Text (ohne Titel, ohne JSON-Format).`;
         // Only update if correction actually changed something
         if (correctedStory.content !== story.content || correctedStory.title !== story.title) {
           story = correctedStory;
+          totalIssuesCorrected += checkResult.issues.length;
           console.log("Story corrected, re-checking...");
         } else {
           console.log("No changes made in correction, stopping");
@@ -871,6 +881,28 @@ Antworte NUR mit dem erweiterten Text (ohne Titel, ohne JSON-Format).`;
       
       if (correctionAttempts >= maxCorrectionAttempts) {
         console.log("Max correction attempts reached, proceeding with current version");
+      }
+      
+      // Save consistency check results to database
+      if (totalIssuesFound > 0 || true) { // Always track, even with 0 issues
+        try {
+          const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+          const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+          const supabase = createClient(supabaseUrl, supabaseKey);
+          
+          await supabase.from("consistency_check_results").insert({
+            story_title: story.title,
+            story_length: length,
+            difficulty: difficulty,
+            issues_found: totalIssuesFound,
+            issues_corrected: totalIssuesCorrected,
+            issue_details: allIssueDetails,
+            user_id: userId || null,
+          });
+          console.log("Consistency check results saved to database");
+        } catch (dbErr) {
+          console.error("Error saving consistency check results:", dbErr);
+        }
       }
     } else {
       console.log("No consistency check prompt configured, skipping check");

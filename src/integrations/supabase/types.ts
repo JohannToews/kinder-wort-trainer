@@ -73,6 +73,60 @@ export type Database = {
           },
         ]
       }
+      consistency_check_results: {
+        Row: {
+          created_at: string
+          difficulty: string
+          id: string
+          issue_details: string[] | null
+          issues_corrected: number
+          issues_found: number
+          story_id: string | null
+          story_length: string
+          story_title: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          difficulty: string
+          id?: string
+          issue_details?: string[] | null
+          issues_corrected?: number
+          issues_found?: number
+          story_id?: string | null
+          story_length: string
+          story_title: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          difficulty?: string
+          id?: string
+          issue_details?: string[] | null
+          issues_corrected?: number
+          issues_found?: number
+          story_id?: string | null
+          story_length?: string
+          story_title?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "consistency_check_results_story_id_fkey"
+            columns: ["story_id"]
+            isOneToOne: false
+            referencedRelation: "stories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "consistency_check_results_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       kid_profiles: {
         Row: {
           color_palette: string

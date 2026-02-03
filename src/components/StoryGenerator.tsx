@@ -112,6 +112,7 @@ const StoryGenerator = ({ onStoryGenerated }: StoryGeneratorProps) => {
           textType,
           textLanguage,
           customSystemPrompt,
+          userId: user?.id,
         },
       });
 

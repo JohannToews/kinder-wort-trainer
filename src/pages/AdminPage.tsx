@@ -15,6 +15,7 @@ import LevelConfigSection from "@/components/LevelConfigSection";
 import KidProfileSection from "@/components/KidProfileSection";
 import UserManagementSection from "@/components/UserManagementSection";
 import SystemPromptSection from "@/components/SystemPromptSection";
+import ConsistencyCheckStats from "@/components/ConsistencyCheckStats";
 import { useAuth } from "@/hooks/useAuth";
 import { useKidProfile } from "@/hooks/useKidProfile";
 import { useTranslations, Language } from "@/lib/translations";
@@ -946,6 +947,9 @@ const AdminPage = () => {
               <div className="max-w-4xl mx-auto space-y-6">
                 {/* System Prompt Editor */}
                 <SystemPromptSection language={adminLang} />
+                
+                {/* Consistency Check Statistics */}
+                <ConsistencyCheckStats language={adminLang} />
                 
                 {/* User Management */}
                 <UserManagementSection 
