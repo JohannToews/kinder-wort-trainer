@@ -1,11 +1,19 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
-// Language-specific prompts
+// Helper: Build prompt from custom template or fallback
+function buildPromptFromTemplate(template: string, word: string, context?: string): string {
+  let prompt = template.replace(/\{word\}/g, word);
+  prompt = prompt.replace(/\{context\}/g, context ? `Kontext des Satzes: "${context}"` : '');
+  return prompt;
+}
+
+// Language-specific prompts (fallback)
 const PROMPTS: Record<string, (word: string, context?: string) => string> = {
   fr: (word: string, context?: string) => `Tu es un dictionnaire vivant pour enfants français de 8 ans.
 
@@ -282,6 +290,8 @@ serve(async (req) => {
 
     const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY');
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     
     if (!GEMINI_API_KEY && !LOVABLE_API_KEY) {
       return new Response(
@@ -290,9 +300,31 @@ serve(async (req) => {
       );
     }
 
-    // Get language-specific prompt or fallback to French
-    const promptFn = PROMPTS[language] || PROMPTS.fr;
-    const prompt = promptFn(word, context);
+    // Try to get custom prompt from database first
+    let prompt: string;
+    try {
+      const supabase = createClient(supabaseUrl, supabaseServiceKey);
+      const promptKey = `system_prompt_word_explanation_${language}`;
+      const { data: customPrompt } = await supabase
+        .from('app_settings')
+        .select('value')
+        .eq('key', promptKey)
+        .maybeSingle();
+
+      if (customPrompt?.value) {
+        // Use custom prompt with placeholders replaced
+        prompt = buildPromptFromTemplate(customPrompt.value, word, context);
+      } else {
+        // Fallback to built-in prompts
+        const promptFn = PROMPTS[language] || PROMPTS.fr;
+        prompt = promptFn(word, context);
+      }
+    } catch (dbError) {
+      console.log('Could not fetch custom prompt, using fallback:', dbError);
+      const promptFn = PROMPTS[language] || PROMPTS.fr;
+      prompt = promptFn(word, context);
+    }
+
     let rawText: string | null = null;
 
     // Try primary (Gemini) first

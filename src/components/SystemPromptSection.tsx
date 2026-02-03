@@ -4,20 +4,48 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Save, Loader2, FileText, RefreshCw, BookOpen } from "lucide-react";
+import { Save, Loader2, FileText, RefreshCw, BookOpen, HelpCircle } from "lucide-react";
 import { useTranslations, Language } from "@/lib/translations";
 
 interface SystemPromptSectionProps {
   language: Language;
 }
 
+const DEFAULT_WORD_EXPLANATION_PROMPT = `Du bist ein lebendiges Wörterbuch für 8-jährige Kinder.
+
+Das zu erklärende Wort oder Ausdruck: "{word}"
+{context}
+
+AUFGABE:
+1. Falls das Wort falsch geschrieben ist, korrigiere es
+2. Gib eine EINFACHE und KLARE Erklärung in maximal 8 Wörtern
+
+STRENGE REGELN:
+1. Maximal 8 Wörter für die Erklärung, nicht mehr
+2. Verwende sehr einfache Wörter, die ein 8-jähriges Kind kennt
+3. Keine Satzzeichen am Ende (kein Punkt, kein Komma)
+4. Keine Wiederholung des zu erklärenden Wortes
+5. Bei Verben: erkläre die Handlung
+6. Bei Nomen: sage konkret, was es ist
+7. Bei Adjektiven: gib ein einfaches Synonym oder beschreibe es
+
+PERFEKTE BEISPIELE:
+- "mutig" → "Jemand der keine Angst hat"
+- "verschlingen" → "Sehr schnell und gierig essen"
+- "wunderschön" → "Ganz besonders schön"
+
+ANTWORTE NUR mit gültigem JSON:
+{"correctedWord": "korrigiertes_oder_originales_wort", "explanation": "kurze erklärung"}`;
+
 const SystemPromptSection = ({ language }: SystemPromptSectionProps) => {
   const t = useTranslations(language);
   const [systemPrompt, setSystemPrompt] = useState("");
   const [continuationPrompt, setContinuationPrompt] = useState("");
+  const [wordExplanationPrompt, setWordExplanationPrompt] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isSavingContinuation, setIsSavingContinuation] = useState(false);
+  const [isSavingWordExplanation, setIsSavingWordExplanation] = useState(false);
 
   useEffect(() => {
     loadPrompts();
@@ -27,11 +55,13 @@ const SystemPromptSection = ({ language }: SystemPromptSectionProps) => {
     setIsLoading(true);
     const promptKey = `system_prompt_${language}`;
     const continuationKey = `system_prompt_continuation_${language}`;
+    const wordExplanationKey = `system_prompt_word_explanation_${language}`;
     
-    // Load both prompts in parallel
-    const [promptResult, continuationResult] = await Promise.all([
+    // Load all prompts in parallel
+    const [promptResult, continuationResult, wordExplanationResult] = await Promise.all([
       supabase.from("app_settings").select("value").eq("key", promptKey).maybeSingle(),
-      supabase.from("app_settings").select("value").eq("key", continuationKey).maybeSingle()
+      supabase.from("app_settings").select("value").eq("key", continuationKey).maybeSingle(),
+      supabase.from("app_settings").select("value").eq("key", wordExplanationKey).maybeSingle()
     ]);
 
     if (promptResult.data && !promptResult.error) {
@@ -51,6 +81,13 @@ const SystemPromptSection = ({ language }: SystemPromptSectionProps) => {
 
     if (continuationResult.data && !continuationResult.error) {
       setContinuationPrompt(continuationResult.data.value);
+    }
+
+    if (wordExplanationResult.data && !wordExplanationResult.error) {
+      setWordExplanationPrompt(wordExplanationResult.data.value);
+    } else {
+      // Use default prompt if none saved
+      setWordExplanationPrompt(DEFAULT_WORD_EXPLANATION_PROMPT);
     }
     
     setIsLoading(false);
@@ -119,6 +156,39 @@ const SystemPromptSection = ({ language }: SystemPromptSectionProps) => {
                   "Error saving");
     } finally {
       setIsSavingContinuation(false);
+    }
+  };
+
+  const saveWordExplanationPrompt = async () => {
+    setIsSavingWordExplanation(true);
+    const promptKey = `system_prompt_word_explanation_${language}`;
+    
+    try {
+      const { error } = await supabase.functions.invoke("manage-users", {
+        body: {
+          action: "updateSystemPrompt",
+          promptKey,
+          promptValue: wordExplanationPrompt,
+        },
+      });
+
+      if (error) {
+        console.error("Error saving word explanation prompt:", error);
+        toast.error(language === 'de' ? "Fehler beim Speichern" : 
+                    language === 'fr' ? "Erreur lors de la sauvegarde" :
+                    "Error saving");
+      } else {
+        toast.success(language === 'de' ? "Wort-Erklärungs-Prompt gespeichert" : 
+                      language === 'fr' ? "Prompt d'explication sauvegardé" :
+                      "Word explanation prompt saved");
+      }
+    } catch (err) {
+      console.error("Error:", err);
+      toast.error(language === 'de' ? "Fehler beim Speichern" : 
+                  language === 'fr' ? "Erreur lors de la sauvegarde" :
+                  "Error saving");
+    } finally {
+      setIsSavingWordExplanation(false);
     }
   };
 
@@ -286,6 +356,84 @@ const SystemPromptSection = ({ language }: SystemPromptSectionProps) => {
                   : language === 'fr'
                   ? 'Astuce: Le prompt de continuation reçoit automatiquement l\'épisode précédent. Définissez ici uniquement les instructions pour la suite.'
                   : 'Tip: The continuation prompt automatically receives the previous episode. Only define the continuation instructions here.'}
+              </p>
+            </>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Word Explanation Prompt */}
+      <Card className="border-2 border-orange-500/30">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-lg">
+              <HelpCircle className="h-5 w-5 text-orange-500" />
+              {language === 'de' ? 'Wort-Erklärungen' : 
+               language === 'fr' ? 'Explications de Mots' : 
+               'Word Explanations'}
+            </div>
+            <span className="text-sm font-normal text-muted-foreground">
+              ({getLanguageLabel()})
+            </span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            {language === 'de' 
+              ? 'Dieser Prompt wird verwendet, wenn ein Kind beim Lesen auf ein unbekanntes Wort tippt. Nutze {word} als Platzhalter für das Wort und {context} für den optionalen Satzkontext.'
+              : language === 'fr'
+              ? 'Ce prompt est utilisé lorsqu\'un enfant clique sur un mot inconnu pendant la lecture. Utilisez {word} comme placeholder pour le mot et {context} pour le contexte optionnel.'
+              : 'This prompt is used when a child taps on an unknown word while reading. Use {word} as placeholder for the word and {context} for the optional sentence context.'}
+          </p>
+
+          {isLoading ? (
+            <div className="flex items-center gap-2 text-muted-foreground py-8 justify-center">
+              <Loader2 className="h-5 w-5 animate-spin" />
+              <span>{t.loading}</span>
+            </div>
+          ) : (
+            <>
+              <Textarea
+                value={wordExplanationPrompt}
+                onChange={(e) => setWordExplanationPrompt(e.target.value)}
+                className="min-h-[350px] text-sm font-mono leading-relaxed"
+                placeholder={language === 'de' 
+                  ? "Wort-Erklärungs-Prompt hier eingeben..." 
+                  : language === 'fr' 
+                  ? "Entrez le prompt d'explication de mots ici..."
+                  : "Enter word explanation prompt here..."}
+              />
+
+              <div className="flex items-center gap-3">
+                <Button
+                  onClick={saveWordExplanationPrompt}
+                  disabled={isSavingWordExplanation}
+                  className="btn-primary-kid"
+                >
+                  {isSavingWordExplanation ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      {language === 'de' ? 'Speichern...' : 
+                       language === 'fr' ? 'Sauvegarde...' : 
+                       'Saving...'}
+                    </>
+                  ) : (
+                    <>
+                      <Save className="h-4 w-4 mr-2" />
+                      {language === 'de' ? 'Speichern' : 
+                       language === 'fr' ? 'Sauvegarder' : 
+                       'Save'}
+                    </>
+                  )}
+                </Button>
+              </div>
+
+              <p className="text-xs text-muted-foreground italic">
+                {language === 'de' 
+                  ? 'Hinweis: Die Antwort muss als JSON mit "correctedWord" und "explanation" zurückgegeben werden.'
+                  : language === 'fr'
+                  ? 'Note: La réponse doit être retournée en JSON avec "correctedWord" et "explanation".'
+                  : 'Note: The response must be returned as JSON with "correctedWord" and "explanation".'}
               </p>
             </>
           )}
