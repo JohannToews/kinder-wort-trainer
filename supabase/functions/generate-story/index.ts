@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -110,6 +111,140 @@ async function callLovableAI(
   }
   
   throw lastError || new Error("Max retries exceeded");
+}
+
+// Interface for consistency check result
+interface ConsistencyCheckResult {
+  hasIssues: boolean;
+  issues: string[];
+  suggestedFixes: string;
+}
+
+// Helper function to fetch consistency check prompt from database
+async function getConsistencyCheckPrompt(language: string): Promise<string | null> {
+  try {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+    
+    const promptKey = `system_prompt_consistency_check_${language}`;
+    const { data } = await supabase
+      .from("app_settings")
+      .select("value")
+      .eq("key", promptKey)
+      .maybeSingle();
+    
+    return data?.value || null;
+  } catch (error) {
+    console.error("Error fetching consistency check prompt:", error);
+    return null;
+  }
+}
+
+// Helper function to perform consistency check on generated story
+async function performConsistencyCheck(
+  apiKey: string,
+  story: { title: string; content: string },
+  checkPrompt: string,
+  seriesContext?: { previousEpisode?: string; episodeNumber?: number }
+): Promise<ConsistencyCheckResult> {
+  const seriesInfo = seriesContext?.previousEpisode 
+    ? `\n\n--- SERIEN-KONTEXT (Episode ${seriesContext.episodeNumber}) ---\nVorherige Episode:\n${seriesContext.previousEpisode.substring(0, 1500)}...`
+    : '';
+
+  const userPrompt = `Prüfe diese Geschichte auf Qualität und Konsistenz:
+
+TITEL: ${story.title}
+
+INHALT:
+${story.content}
+${seriesInfo}
+
+Analysiere den Text und antworte NUR mit einem JSON-Objekt in diesem Format:
+{
+  "hasIssues": true/false,
+  "issues": ["Liste der gefundenen Probleme"],
+  "suggestedFixes": "Konkrete Anweisungen zur Korrektur aller Probleme in einem zusammenhängenden Text"
+}
+
+Falls keine Probleme gefunden: {"hasIssues": false, "issues": [], "suggestedFixes": ""}`;
+
+  try {
+    const response = await callLovableAI(apiKey, checkPrompt, userPrompt, 0.3);
+    
+    const jsonMatch = response.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      console.log("Could not parse consistency check response, assuming no issues");
+      return { hasIssues: false, issues: [], suggestedFixes: "" };
+    }
+    
+    const result = JSON.parse(jsonMatch[0]);
+    return {
+      hasIssues: result.hasIssues === true,
+      issues: Array.isArray(result.issues) ? result.issues : [],
+      suggestedFixes: result.suggestedFixes || ""
+    };
+  } catch (error) {
+    console.error("Error in consistency check:", error);
+    return { hasIssues: false, issues: [], suggestedFixes: "" };
+  }
+}
+
+// Helper function to correct story based on consistency check results
+async function correctStory(
+  apiKey: string,
+  story: { title: string; content: string; questions: any[]; vocabulary: any[] },
+  issues: string[],
+  suggestedFixes: string,
+  targetLanguage: string
+): Promise<{ title: string; content: string; questions: any[]; vocabulary: any[] }> {
+  const correctionPrompt = `Du bist ein Texteditor. Korrigiere den folgenden Text basierend auf den gefundenen Problemen.
+
+WICHTIG:
+- Behalte die Sprache (${targetLanguage}) bei
+- Behalte den Stil und die Struktur bei
+- Korrigiere NUR die genannten Probleme
+- Der Text muss weiterhin kindgerecht sein`;
+
+  const userPrompt = `Korrigiere diese Geschichte:
+
+TITEL: ${story.title}
+
+INHALT:
+${story.content}
+
+GEFUNDENE PROBLEME:
+${issues.map((issue, i) => `${i + 1}. ${issue}`).join('\n')}
+
+KORREKTURANWEISUNGEN:
+${suggestedFixes}
+
+Antworte NUR mit einem JSON-Objekt:
+{
+  "title": "Korrigierter Titel (oder original wenn kein Problem)",
+  "content": "Der vollständig korrigierte Text"
+}`;
+
+  try {
+    const response = await callLovableAI(apiKey, correctionPrompt, userPrompt, 0.5);
+    
+    const jsonMatch = response.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      console.error("Could not parse correction response");
+      return story;
+    }
+    
+    const corrected = JSON.parse(jsonMatch[0]);
+    return {
+      title: corrected.title || story.title,
+      content: corrected.content || story.content,
+      questions: story.questions,
+      vocabulary: story.vocabulary
+    };
+  } catch (error) {
+    console.error("Error correcting story:", error);
+    return story;
+  }
 }
 
 // Helper function to call Lovable AI Gateway for IMAGE generation (fallback when Gemini is rate-limited)
@@ -679,6 +814,68 @@ Antworte NUR mit dem erweiterten Text (ohne Titel, ohne JSON-Format).`;
         console.log(`Final word count: ${wordCountActual} (min: ${minWordCount}) - proceeding with available content`);
       }
     }
+
+    // ================== CONSISTENCY CHECK ==================
+    // Perform automatic quality check on the generated story
+    const adminLangMap: Record<string, string> = { DE: 'de', FR: 'fr', EN: 'en' };
+    const adminLanguage = adminLangMap[textLanguage] || 'de';
+    
+    const consistencyCheckPrompt = await getConsistencyCheckPrompt(adminLanguage);
+    
+    if (consistencyCheckPrompt) {
+      console.log("Starting consistency check...");
+      
+      // Build series context for the check (if this is a continuation)
+      const seriesContext = episodeNumber && episodeNumber > 1 && description
+        ? { previousEpisode: description, episodeNumber }
+        : undefined;
+      
+      let correctionAttempts = 0;
+      const maxCorrectionAttempts = 2;
+      
+      while (correctionAttempts < maxCorrectionAttempts) {
+        const checkResult = await performConsistencyCheck(
+          LOVABLE_API_KEY,
+          story,
+          consistencyCheckPrompt,
+          seriesContext
+        );
+        
+        if (!checkResult.hasIssues) {
+          console.log(`Consistency check passed${correctionAttempts > 0 ? ' after correction' : ''}`);
+          break;
+        }
+        
+        correctionAttempts++;
+        console.log(`Consistency check found ${checkResult.issues.length} issue(s), attempting correction ${correctionAttempts}/${maxCorrectionAttempts}...`);
+        console.log("Issues:", checkResult.issues);
+        
+        // Attempt to correct the story
+        const correctedStory = await correctStory(
+          LOVABLE_API_KEY,
+          story,
+          checkResult.issues,
+          checkResult.suggestedFixes,
+          targetLanguage
+        );
+        
+        // Only update if correction actually changed something
+        if (correctedStory.content !== story.content || correctedStory.title !== story.title) {
+          story = correctedStory;
+          console.log("Story corrected, re-checking...");
+        } else {
+          console.log("No changes made in correction, stopping");
+          break;
+        }
+      }
+      
+      if (correctionAttempts >= maxCorrectionAttempts) {
+        console.log("Max correction attempts reached, proceeding with current version");
+      }
+    } else {
+      console.log("No consistency check prompt configured, skipping check");
+    }
+    // ================== END CONSISTENCY CHECK ==================
 
     // Generate cover image based on description and school level
     const effectiveSchoolLevel = schoolLevel || "CE2";
