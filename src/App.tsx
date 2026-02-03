@@ -13,6 +13,7 @@ import ReadingPage from "./pages/ReadingPage";
 import VocabularyQuizPage from "./pages/VocabularyQuizPage";
 import VocabularyManagePage from "./pages/VocabularyManagePage";
 import ResultsPage from "./pages/ResultsPage";
+import FeedbackStatsPage from "./pages/FeedbackStatsPage";
 import LoginPage from "./pages/LoginPage";
 // Registration disabled - users are created by admin only
 import NotFound from "./pages/NotFound";
@@ -62,6 +63,11 @@ const App = () => (
             <Route path="/results" element={
               <ProtectedRoute>
                 <ResultsPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/feedback-stats" element={
+              <ProtectedRoute>
+                <FeedbackStatsPage />
               </ProtectedRoute>
             } />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
