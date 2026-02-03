@@ -86,11 +86,13 @@ serve(async (req) => {
     }
 
     if (action === "updateSystemPrompt" && promptKey && promptValue !== undefined) {
-      // Update global system prompt in app_settings
+      // Upsert global system prompt in app_settings (create if not exists)
       const { error } = await supabase
         .from("app_settings")
-        .update({ value: promptValue, updated_at: new Date().toISOString() })
-        .eq("key", promptKey);
+        .upsert(
+          { key: promptKey, value: promptValue, updated_at: new Date().toISOString() },
+          { onConflict: "key" }
+        );
 
       if (error) throw error;
 
