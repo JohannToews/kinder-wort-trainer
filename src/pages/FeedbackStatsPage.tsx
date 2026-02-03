@@ -9,10 +9,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Star, Loader2, TrendingDown, BookOpen, CheckCircle, XCircle, Trash2, Filter, MessageSquare, BookMarked } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Star, Loader2, TrendingDown, BookOpen, CheckCircle, XCircle, Trash2, Filter, MessageSquare, BookMarked, Eye } from "lucide-react";
 import { format } from "date-fns";
 import { Language } from "@/lib/translations";
-
+import { Button } from "@/components/ui/button";
 interface StoryRating {
   id: string;
   story_title: string;
@@ -479,8 +480,9 @@ const FeedbackStatsPage = () => {
   // Filter states for feedback
   const [filterFeedbackKid, setFilterFeedbackKid] = useState<string>("all");
   const [filterRating, setFilterRating] = useState<string>("all");
-  const [filterWeakestPart, setFilterWeakestPart] = useState<string>("all");
 
+  // Detail dialog state
+  const [selectedRating, setSelectedRating] = useState<StoryRating | null>(null);
   const adminLang = (user?.adminLanguage || 'de') as Language;
   const t = translations[adminLang] || translations.de;
 
@@ -650,10 +652,9 @@ const FeedbackStatsPage = () => {
     return ratings.filter(rating => {
       if (filterFeedbackKid !== "all" && rating.kid_name !== filterFeedbackKid) return false;
       if (filterRating !== "all" && rating.quality_rating !== parseInt(filterRating)) return false;
-      if (filterWeakestPart !== "all" && rating.weakest_part !== filterWeakestPart) return false;
       return true;
     });
-  }, [ratings, filterFeedbackKid, filterRating, filterWeakestPart]);
+  }, [ratings, filterFeedbackKid, filterRating]);
 
   const avgRating = ratings.length > 0
     ? (ratings.reduce((sum, r) => sum + r.quality_rating, 0) / ratings.length).toFixed(1)
@@ -1077,7 +1078,7 @@ const FeedbackStatsPage = () => {
                   <Filter className="h-4 w-4 text-muted-foreground" />
                   <span className="text-sm font-medium">Filter</span>
                 </div>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                <div className="grid grid-cols-2 gap-3">
                   <Select value={filterFeedbackKid} onValueChange={setFilterFeedbackKid}>
                     <SelectTrigger className="h-9">
                       <SelectValue placeholder={t.child} />
@@ -1098,17 +1099,6 @@ const FeedbackStatsPage = () => {
                       {[1, 2, 3, 4, 5].map(r => (
                         <SelectItem key={r} value={r.toString()}>{r} ⭐</SelectItem>
                       ))}
-                    </SelectContent>
-                  </Select>
-                  <Select value={filterWeakestPart} onValueChange={setFilterWeakestPart}>
-                    <SelectTrigger className="h-9">
-                      <SelectValue placeholder={t.weakestPart} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">{t.all}</SelectItem>
-                      <SelectItem value="beginning">{t.beginning}</SelectItem>
-                      <SelectItem value="development">{t.development}</SelectItem>
-                      <SelectItem value="ending">{t.ending}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -1133,8 +1123,7 @@ const FeedbackStatsPage = () => {
                           <TableHead>{t.storyTitle}</TableHead>
                           <TableHead>{t.prompt}</TableHead>
                           <TableHead>{t.rating}</TableHead>
-                          <TableHead>{t.weakestPart}</TableHead>
-                          <TableHead>{t.reason}</TableHead>
+                          <TableHead></TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -1160,8 +1149,18 @@ const FeedbackStatsPage = () => {
                               {rating.story_prompt || "-"}
                             </TableCell>
                             <TableCell>{renderStars(rating.quality_rating)}</TableCell>
-                            <TableCell>{translateWeakestPart(rating.weakest_part)}</TableCell>
-                            <TableCell>{translateReason(rating.weakness_reason)}</TableCell>
+                            <TableCell>
+                              {rating.weakness_reason && (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => setSelectedRating(rating)}
+                                  className="h-8 w-8"
+                                >
+                                  <Eye className="h-4 w-4" />
+                                </Button>
+                              )}
+                            </TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
@@ -1172,6 +1171,36 @@ const FeedbackStatsPage = () => {
             )}
           </TabsContent>
         </Tabs>
+
+        {/* Detail Dialog */}
+        <Dialog open={!!selectedRating} onOpenChange={(open) => !open && setSelectedRating(null)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>{selectedRating?.story_title}</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">{t.rating}:</span>
+                {selectedRating && renderStars(selectedRating.quality_rating)}
+              </div>
+              {selectedRating?.kid_name && (
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-muted-foreground">{t.child}:</span>
+                  <span className="font-medium">{selectedRating.kid_name}</span>
+                </div>
+              )}
+              {selectedRating?.weakness_reason && (
+                <div className="space-y-2">
+                  <span className="text-sm text-muted-foreground">Kommentar:</span>
+                  <p className="bg-muted p-3 rounded-lg">{selectedRating.weakness_reason}</p>
+                </div>
+              )}
+              <div className="text-xs text-muted-foreground">
+                {selectedRating && format(new Date(selectedRating.created_at), "dd.MM.yyyy HH:mm")}
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );
