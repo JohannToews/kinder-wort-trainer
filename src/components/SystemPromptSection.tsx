@@ -44,19 +44,22 @@ const SystemPromptSection = ({ language }: SystemPromptSectionProps) => {
   const [continuationPrompt, setContinuationPrompt] = useState("");
   const [wordExplanationPrompt, setWordExplanationPrompt] = useState("");
   const [consistencyCheckPrompt, setConsistencyCheckPrompt] = useState("");
-  const [storyCreationPrompt, setStoryCreationPrompt] = useState("");
+  const [elternModulPrompt, setElternModulPrompt] = useState("");
+  const [kinderModulPrompt, setKinderModulPrompt] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isSavingContinuation, setIsSavingContinuation] = useState(false);
   const [isSavingWordExplanation, setIsSavingWordExplanation] = useState(false);
   const [isSavingConsistencyCheck, setIsSavingConsistencyCheck] = useState(false);
-  const [isSavingStoryCreation, setIsSavingStoryCreation] = useState(false);
+  const [isSavingElternModul, setIsSavingElternModul] = useState(false);
+  const [isSavingKinderModul, setIsSavingKinderModul] = useState(false);
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
     system: false,
     continuation: false,
     wordExplanation: false,
     consistencyCheck: false,
-    storyCreation: false,
+    elternModul: false,
+    kinderModul: false,
   });
 
   useEffect(() => {
@@ -69,15 +72,17 @@ const SystemPromptSection = ({ language }: SystemPromptSectionProps) => {
     const continuationKey = `system_prompt_continuation_${language}`;
     const wordExplanationKey = `system_prompt_word_explanation_${language}`;
     const consistencyCheckKey = `system_prompt_consistency_check_${language}`;
-    const storyCreationKey = `system_prompt_story_creation_${language}`;
+    const elternModulKey = `system_prompt_story_creation_${language}`;
+    const kinderModulKey = `system_prompt_kid_creation_${language}`;
     
     // Load all prompts in parallel
-    const [promptResult, continuationResult, wordExplanationResult, consistencyCheckResult, storyCreationResult] = await Promise.all([
+    const [promptResult, continuationResult, wordExplanationResult, consistencyCheckResult, elternModulResult, kinderModulResult] = await Promise.all([
       supabase.from("app_settings").select("value").eq("key", promptKey).maybeSingle(),
       supabase.from("app_settings").select("value").eq("key", continuationKey).maybeSingle(),
       supabase.from("app_settings").select("value").eq("key", wordExplanationKey).maybeSingle(),
       supabase.from("app_settings").select("value").eq("key", consistencyCheckKey).maybeSingle(),
-      supabase.from("app_settings").select("value").eq("key", storyCreationKey).maybeSingle()
+      supabase.from("app_settings").select("value").eq("key", elternModulKey).maybeSingle(),
+      supabase.from("app_settings").select("value").eq("key", kinderModulKey).maybeSingle()
     ]);
 
     if (promptResult.data && !promptResult.error) {
@@ -110,8 +115,12 @@ const SystemPromptSection = ({ language }: SystemPromptSectionProps) => {
       setConsistencyCheckPrompt(consistencyCheckResult.data.value);
     }
 
-    if (storyCreationResult.data && !storyCreationResult.error) {
-      setStoryCreationPrompt(storyCreationResult.data.value);
+    if (elternModulResult.data && !elternModulResult.error) {
+      setElternModulPrompt(elternModulResult.data.value);
+    }
+
+    if (kinderModulResult.data && !kinderModulResult.error) {
+      setKinderModulPrompt(kinderModulResult.data.value);
     }
     
     setIsLoading(false);
@@ -249,8 +258,8 @@ const SystemPromptSection = ({ language }: SystemPromptSectionProps) => {
     }
   };
 
-  const saveStoryCreationPrompt = async () => {
-    setIsSavingStoryCreation(true);
+  const saveElternModulPrompt = async () => {
+    setIsSavingElternModul(true);
     const promptKey = `system_prompt_story_creation_${language}`;
     
     try {
@@ -258,19 +267,19 @@ const SystemPromptSection = ({ language }: SystemPromptSectionProps) => {
         body: {
           action: "updateSystemPrompt",
           promptKey,
-          promptValue: storyCreationPrompt,
+          promptValue: elternModulPrompt,
         },
       });
 
       if (error) {
-        console.error("Error saving story creation prompt:", error);
+        console.error("Error saving Eltern-Modul prompt:", error);
         toast.error(language === 'de' ? "Fehler beim Speichern" : 
                     language === 'fr' ? "Erreur lors de la sauvegarde" :
                     "Error saving");
       } else {
-        toast.success(language === 'de' ? "Story-Erstellungs-Prompt gespeichert" : 
-                      language === 'fr' ? "Prompt de création d'histoire sauvegardé" :
-                      "Story creation prompt saved");
+        toast.success(language === 'de' ? "ELTERN-MODUL Prompt gespeichert" : 
+                      language === 'fr' ? "Prompt MODUL PARENTS sauvegardé" :
+                      "PARENT MODULE prompt saved");
       }
     } catch (err) {
       console.error("Error:", err);
@@ -278,7 +287,40 @@ const SystemPromptSection = ({ language }: SystemPromptSectionProps) => {
                   language === 'fr' ? "Erreur lors de la sauvegarde" :
                   "Error saving");
     } finally {
-      setIsSavingStoryCreation(false);
+      setIsSavingElternModul(false);
+    }
+  };
+
+  const saveKinderModulPrompt = async () => {
+    setIsSavingKinderModul(true);
+    const promptKey = `system_prompt_kid_creation_${language}`;
+    
+    try {
+      const { error } = await supabase.functions.invoke("manage-users", {
+        body: {
+          action: "updateSystemPrompt",
+          promptKey,
+          promptValue: kinderModulPrompt,
+        },
+      });
+
+      if (error) {
+        console.error("Error saving Kinder-Modul prompt:", error);
+        toast.error(language === 'de' ? "Fehler beim Speichern" : 
+                    language === 'fr' ? "Erreur lors de la sauvegarde" :
+                    "Error saving");
+      } else {
+        toast.success(language === 'de' ? "KINDER-MODUL Prompt gespeichert" : 
+                      language === 'fr' ? "Prompt MODUL ENFANTS sauvegardé" :
+                      "CHILD MODULE prompt saved");
+      }
+    } catch (err) {
+      console.error("Error:", err);
+      toast.error(language === 'de' ? "Fehler beim Speichern" : 
+                  language === 'fr' ? "Erreur lors de la sauvegarde" :
+                  "Error saving");
+    } finally {
+      setIsSavingKinderModul(false);
     }
   };
 
@@ -632,18 +674,18 @@ const SystemPromptSection = ({ language }: SystemPromptSectionProps) => {
         </Card>
       </Collapsible>
 
-      {/* Story Creation Parameters Prompt */}
-      <Collapsible open={openSections.storyCreation} onOpenChange={() => toggleSection('storyCreation')}>
-        <Card className="border-2 border-purple-500/30">
+      {/* ELTERN-MODUL (Admin/Lehrer Story-Erstellung) */}
+      <Collapsible open={openSections.elternModul} onOpenChange={() => toggleSection('elternModul')}>
+        <Card className="border-2 border-primary/30">
           <CollapsibleTrigger asChild>
             <CardHeader className="pb-3 cursor-pointer hover:bg-muted/50 transition-colors">
               <CardTitle className="flex items-center justify-between">
                 <div className="flex items-center gap-2 text-lg">
-                  {openSections.storyCreation ? <ChevronDown className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
-                  <Wand2 className="h-5 w-5 text-purple-500" />
-                  {language === 'de' ? 'Story-Erstellungs-Parameter' : 
-                   language === 'fr' ? 'Paramètres de Création d\'Histoire' : 
-                   'Story Creation Parameters'}
+                  {openSections.elternModul ? <ChevronDown className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
+                  <Wand2 className="h-5 w-5 text-primary" />
+                  {language === 'de' ? 'ELTERN-MODUL (Admin/Lehrer)' : 
+                   language === 'fr' ? 'MODULE PARENTS (Admin/Enseignant)' : 
+                   'PARENT MODULE (Admin/Teacher)'}
                 </div>
                 <span className="text-sm font-normal text-muted-foreground">
                   ({getLanguageLabel()})
@@ -655,10 +697,10 @@ const SystemPromptSection = ({ language }: SystemPromptSectionProps) => {
             <CardContent className="space-y-4 pt-0">
               <p className="text-sm text-muted-foreground">
                 {language === 'de' 
-                  ? 'Dieser Prompt erklärt dem Modell, wie es mit den vom Wizard eingegebenen Parametern umgehen soll (Länge, Schwierigkeit, Serie, Charaktere, Orte, Zeitepoche, etc.).'
+                  ? 'Dieser Prompt wird verwendet, wenn Eltern/Lehrer im Admin-Bereich eine Geschichte mit einer kurzen Beschreibung erstellen. Fokus auf Leseverständnis und Inferenz-Fragen.'
                   : language === 'fr'
-                  ? 'Ce prompt explique au modèle comment gérer les paramètres saisis par l\'assistant (longueur, difficulté, série, personnages, lieux, époque, etc.).'
-                  : 'This prompt explains to the model how to handle the parameters entered by the wizard (length, difficulty, series, characters, locations, time period, etc.).'}
+                  ? 'Ce prompt est utilisé quand les parents/enseignants créent une histoire avec une courte description dans l\'espace admin. Focus sur la compréhension et les questions d\'inférence.'
+                  : 'This prompt is used when parents/teachers create a story with a short description in the admin area. Focus on reading comprehension and inference questions.'}
               </p>
 
               {isLoading ? (
@@ -669,23 +711,23 @@ const SystemPromptSection = ({ language }: SystemPromptSectionProps) => {
               ) : (
                 <>
                   <Textarea
-                    value={storyCreationPrompt}
-                    onChange={(e) => setStoryCreationPrompt(e.target.value)}
+                    value={elternModulPrompt}
+                    onChange={(e) => setElternModulPrompt(e.target.value)}
                     className="min-h-[350px] text-sm font-mono leading-relaxed"
                     placeholder={language === 'de' 
-                      ? "Story-Erstellungs-Prompt hier eingeben...\n\nBeispiel-Platzhalter:\n- {length} = kurz/mittel/lang\n- {difficulty} = einfach/mittel/schwer\n- {isSeries} = ja/nein\n- {storyType} = Abenteuer/Detektiv/etc.\n- {characters} = Liste der Charaktere\n- {locations} = Orte\n- {timePeriod} = Zeitepoche" 
+                      ? "ELTERN-MODUL Prompt hier eingeben...\n\nDieser Prompt wird mit dem CORE Prompt kombiniert." 
                       : language === 'fr' 
-                      ? "Entrez le prompt de création d'histoire ici...\n\nPlaceholders exemple:\n- {length} = court/moyen/long\n- {difficulty} = facile/moyen/difficile\n- {isSeries} = oui/non\n- {storyType} = Aventure/Détective/etc.\n- {characters} = Liste des personnages\n- {locations} = Lieux\n- {timePeriod} = Époque"
-                      : "Enter story creation prompt here...\n\nExample placeholders:\n- {length} = short/medium/long\n- {difficulty} = easy/medium/hard\n- {isSeries} = yes/no\n- {storyType} = Adventure/Detective/etc.\n- {characters} = Character list\n- {locations} = Locations\n- {timePeriod} = Time period"}
+                      ? "Entrez le prompt MODULE PARENTS ici...\n\nCe prompt sera combiné avec le prompt CORE."
+                      : "Enter PARENT MODULE prompt here...\n\nThis prompt will be combined with the CORE prompt."}
                   />
 
                   <div className="flex items-center gap-3">
                     <Button
-                      onClick={saveStoryCreationPrompt}
-                      disabled={isSavingStoryCreation}
+                      onClick={saveElternModulPrompt}
+                      disabled={isSavingElternModul}
                       className="btn-primary-kid"
                     >
-                      {isSavingStoryCreation ? (
+                      {isSavingElternModul ? (
                         <>
                           <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                           {language === 'de' ? 'Speichern...' : 
@@ -705,10 +747,95 @@ const SystemPromptSection = ({ language }: SystemPromptSectionProps) => {
 
                   <p className="text-xs text-muted-foreground italic">
                     {language === 'de' 
-                      ? 'Tipp: Verwende Platzhalter wie {length}, {difficulty}, {characters} etc., die bei der Generierung automatisch ersetzt werden.'
+                      ? '💡 Verwendung: CORE + ELTERN-MODUL (+ optional SERIEN-MODUL)'
                       : language === 'fr'
-                      ? 'Astuce: Utilisez des placeholders comme {length}, {difficulty}, {characters} etc., qui seront automatiquement remplacés lors de la génération.'
-                      : 'Tip: Use placeholders like {length}, {difficulty}, {characters} etc., which will be automatically replaced during generation.'}
+                      ? '💡 Utilisation: CORE + MODULE PARENTS (+ optionnel MODULE SÉRIES)'
+                      : '💡 Usage: CORE + PARENT MODULE (+ optional SERIES MODULE)'}
+                  </p>
+                </>
+              )}
+            </CardContent>
+          </CollapsibleContent>
+        </Card>
+      </Collapsible>
+
+      {/* KINDER-MODUL (Kind erstellt eigene Geschichte) */}
+      <Collapsible open={openSections.kinderModul} onOpenChange={() => toggleSection('kinderModul')}>
+        <Card className="border-2 border-accent/30">
+          <CollapsibleTrigger asChild>
+            <CardHeader className="pb-3 cursor-pointer hover:bg-muted/50 transition-colors">
+              <CardTitle className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-lg">
+                  {openSections.kinderModul ? <ChevronDown className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
+                  <Wand2 className="h-5 w-5 text-accent" />
+                  {language === 'de' ? 'KINDER-MODUL (Kind-Wizard)' : 
+                   language === 'fr' ? 'MODULE ENFANTS (Assistant Enfant)' : 
+                   'CHILD MODULE (Kid Wizard)'}
+                </div>
+                <span className="text-sm font-normal text-muted-foreground">
+                  ({getLanguageLabel()})
+                </span>
+              </CardTitle>
+            </CardHeader>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <CardContent className="space-y-4 pt-0">
+              <p className="text-sm text-muted-foreground">
+                {language === 'de' 
+                  ? 'Dieser Prompt wird verwendet, wenn ein Kind über den Wizard eine eigene Geschichte erstellt. Platzhalter für Charaktere, Orte und Zeitepochen werden automatisch ersetzt.'
+                  : language === 'fr'
+                  ? 'Ce prompt est utilisé quand un enfant crée sa propre histoire via l\'assistant. Les placeholders pour personnages, lieux et époques seront automatiquement remplacés.'
+                  : 'This prompt is used when a child creates their own story via the wizard. Placeholders for characters, locations and time periods will be automatically replaced.'}
+              </p>
+
+              {isLoading ? (
+                <div className="flex items-center gap-2 text-muted-foreground py-8 justify-center">
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  <span>{t.loading}</span>
+                </div>
+              ) : (
+                <>
+                  <Textarea
+                    value={kinderModulPrompt}
+                    onChange={(e) => setKinderModulPrompt(e.target.value)}
+                    className="min-h-[350px] text-sm font-mono leading-relaxed"
+                    placeholder={language === 'de' 
+                      ? "KINDER-MODUL Prompt hier eingeben...\n\nVerfügbare Platzhalter:\n- {storyType} = Abenteuer/Detektiv/etc.\n- {characters} = Liste der gewählten Charaktere\n- {locations} = Gewählte Orte\n- {timePeriod} = Zeitepoche\n- {kidName} = Name des Kindes\n- {kidHobbies} = Hobbies des Kindes" 
+                      : language === 'fr' 
+                      ? "Entrez le prompt MODULE ENFANTS ici...\n\nPlaceholders disponibles:\n- {storyType} = Aventure/Détective/etc.\n- {characters} = Liste des personnages choisis\n- {locations} = Lieux choisis\n- {timePeriod} = Époque\n- {kidName} = Nom de l'enfant\n- {kidHobbies} = Loisirs de l'enfant"
+                      : "Enter CHILD MODULE prompt here...\n\nAvailable placeholders:\n- {storyType} = Adventure/Detective/etc.\n- {characters} = List of chosen characters\n- {locations} = Chosen locations\n- {timePeriod} = Time period\n- {kidName} = Child's name\n- {kidHobbies} = Child's hobbies"}
+                  />
+
+                  <div className="flex items-center gap-3">
+                    <Button
+                      onClick={saveKinderModulPrompt}
+                      disabled={isSavingKinderModul}
+                      className="btn-primary-kid"
+                    >
+                      {isSavingKinderModul ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          {language === 'de' ? 'Speichern...' : 
+                           language === 'fr' ? 'Sauvegarde...' : 
+                           'Saving...'}
+                        </>
+                      ) : (
+                        <>
+                          <Save className="h-4 w-4 mr-2" />
+                          {language === 'de' ? 'Speichern' : 
+                           language === 'fr' ? 'Sauvegarder' : 
+                           'Save'}
+                        </>
+                      )}
+                    </Button>
+                  </div>
+
+                  <p className="text-xs text-muted-foreground italic">
+                    {language === 'de' 
+                      ? '💡 Verwendung: CORE + KINDER-MODUL (+ optional SERIEN-MODUL)'
+                      : language === 'fr'
+                      ? '💡 Utilisation: CORE + MODULE ENFANTS (+ optionnel MODULE SÉRIES)'
+                      : '💡 Usage: CORE + CHILD MODULE (+ optional SERIES MODULE)'}
                   </p>
                 </>
               )}
