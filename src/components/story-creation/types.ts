@@ -10,6 +10,8 @@ export type CharacterType =
 
 export type FamilyMember = "mama" | "papa" | "oma" | "opa" | "other";
 
+export type SiblingGender = "brother" | "sister";
+
 export type SpecialAttribute = 
   | "superpowers" 
   | "magic" 
@@ -20,9 +22,11 @@ export type SpecialAttribute =
 
 export interface SelectedCharacter {
   id: string;
-  type: CharacterType | FamilyMember;
+  type: CharacterType | FamilyMember | SiblingGender;
   name: string;
   label: string;
+  age?: number;
+  gender?: SiblingGender;
 }
 
 export interface CharacterSelectionTranslations {
@@ -54,6 +58,12 @@ export interface CharacterSelectionTranslations {
   talents: string;
   normal: string;
   skip: string;
+  brother: string;
+  sister: string;
+  siblingAge: string;
+  selectOrName: string;
+  useDefaultName: string;
+  enterCustomName: string;
 }
 
 export const characterSelectionTranslations: Record<Language, CharacterSelectionTranslations> = {
@@ -86,6 +96,12 @@ export const characterSelectionTranslations: Record<Language, CharacterSelection
     talents: "Besondere Talente",
     normal: "Nein, ganz normal",
     skip: "Überspringen",
+    brother: "Bruder",
+    sister: "Schwester",
+    siblingAge: "Alter",
+    selectOrName: "Auswählen oder Name eingeben",
+    useDefaultName: "Als",
+    enterCustomName: "Eigener Name",
   },
   fr: {
     header: "Qui sont les personnages principaux de ton histoire?",
@@ -116,6 +132,12 @@ export const characterSelectionTranslations: Record<Language, CharacterSelection
     talents: "Talents spéciaux",
     normal: "Non, tout à fait normal",
     skip: "Passer",
+    brother: "Frère",
+    sister: "Sœur",
+    siblingAge: "Âge",
+    selectOrName: "Sélectionner ou entrer un nom",
+    useDefaultName: "Comme",
+    enterCustomName: "Nom personnalisé",
   },
   en: {
     header: "Who are the main characters in your story?",
@@ -146,6 +168,12 @@ export const characterSelectionTranslations: Record<Language, CharacterSelection
     talents: "Special Talents",
     normal: "No, just normal",
     skip: "Skip",
+    brother: "Brother",
+    sister: "Sister",
+    siblingAge: "Age",
+    selectOrName: "Select or enter a name",
+    useDefaultName: "As",
+    enterCustomName: "Custom name",
   },
   es: {
     header: "¿Quiénes son los personajes principales de tu historia?",
@@ -176,6 +204,12 @@ export const characterSelectionTranslations: Record<Language, CharacterSelection
     talents: "Talentos especiales",
     normal: "No, normal",
     skip: "Saltar",
+    brother: "Hermano",
+    sister: "Hermana",
+    siblingAge: "Edad",
+    selectOrName: "Seleccionar o ingresar nombre",
+    useDefaultName: "Como",
+    enterCustomName: "Nombre personalizado",
   },
   nl: {
     header: "Wie zijn de hoofdpersonen in je verhaal?",
@@ -206,6 +240,12 @@ export const characterSelectionTranslations: Record<Language, CharacterSelection
     talents: "Speciale talenten",
     normal: "Nee, gewoon normaal",
     skip: "Overslaan",
+    brother: "Broer",
+    sister: "Zus",
+    siblingAge: "Leeftijd",
+    selectOrName: "Selecteer of voer naam in",
+    useDefaultName: "Als",
+    enterCustomName: "Eigen naam",
   },
   it: {
     header: "Chi sono i personaggi principali della tua storia?",
@@ -236,6 +276,12 @@ export const characterSelectionTranslations: Record<Language, CharacterSelection
     talents: "Talenti speciali",
     normal: "No, normale",
     skip: "Salta",
+    brother: "Fratello",
+    sister: "Sorella",
+    siblingAge: "Età",
+    selectOrName: "Seleziona o inserisci nome",
+    useDefaultName: "Come",
+    enterCustomName: "Nome personalizzato",
   },
   bs: {
     header: "Ko su glavni likovi u tvojoj priči?",
@@ -266,5 +312,11 @@ export const characterSelectionTranslations: Record<Language, CharacterSelection
     talents: "Posebni talenti",
     normal: "Ne, normalno",
     skip: "Preskoči",
+    brother: "Brat",
+    sister: "Sestra",
+    siblingAge: "Dob",
+    selectOrName: "Odaberi ili unesi ime",
+    useDefaultName: "Kao",
+    enterCustomName: "Vlastito ime",
   },
 };

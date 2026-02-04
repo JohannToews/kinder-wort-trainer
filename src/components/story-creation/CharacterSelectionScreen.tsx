@@ -4,11 +4,14 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import CharacterTile from "./CharacterTile";
 import NameInputModal from "./NameInputModal";
+import FamilyMemberModal from "./FamilyMemberModal";
+import SiblingInputModal from "./SiblingInputModal";
 import SelectionSummary from "./SelectionSummary";
 import BonusAttributesModal from "./BonusAttributesModal";
 import {
   CharacterType,
   FamilyMember,
+  SiblingGender,
   SelectedCharacter,
   SpecialAttribute,
   CharacterSelectionTranslations,
@@ -32,7 +35,7 @@ interface CharacterSelectionScreenProps {
   onBack: () => void;
 }
 
-type ViewState = "main" | "family" | "siblings" | "friends" | "famous";
+type ViewState = "main" | "family";
 
 const CharacterSelectionScreen = ({
   translations,
@@ -41,11 +44,21 @@ const CharacterSelectionScreen = ({
 }: CharacterSelectionScreenProps) => {
   const [viewState, setViewState] = useState<ViewState>("main");
   const [selectedCharacters, setSelectedCharacters] = useState<SelectedCharacter[]>([]);
+  
+  // Modal states
   const [nameModalOpen, setNameModalOpen] = useState(false);
   const [nameModalTarget, setNameModalTarget] = useState<{
-    type: CharacterType | FamilyMember;
+    type: CharacterType;
     label: string;
   } | null>(null);
+  
+  const [familyModalOpen, setFamilyModalOpen] = useState(false);
+  const [familyModalTarget, setFamilyModalTarget] = useState<{
+    type: FamilyMember;
+    label: string;
+  } | null>(null);
+  
+  const [siblingModalOpen, setSiblingModalOpen] = useState(false);
   const [bonusModalOpen, setBonusModalOpen] = useState(false);
 
   const mainTiles = [
@@ -64,9 +77,14 @@ const CharacterSelectionScreen = ({
     { type: "opa" as FamilyMember, image: grandpaImg, label: translations.opa },
   ];
 
-  const openNameModal = (type: CharacterType | FamilyMember, label: string) => {
+  const openNameModal = (type: CharacterType, label: string) => {
     setNameModalTarget({ type, label });
     setNameModalOpen(true);
+  };
+
+  const openFamilyModal = (type: FamilyMember, label: string) => {
+    setFamilyModalTarget({ type, label });
+    setFamilyModalOpen(true);
   };
 
   const handleMainTileClick = (type: CharacterType) => {
@@ -78,17 +96,15 @@ const CharacterSelectionScreen = ({
         setViewState("family");
         break;
       case "siblings":
-        openNameModal("siblings", translations.siblings);
+        setSiblingModalOpen(true);
         break;
       case "friends":
         openNameModal("friends", translations.friends);
         break;
       case "famous":
-        // For now, just add a generic "famous character"
         openNameModal("famous", translations.famous);
         break;
       case "surprise":
-        // Auto-select and proceed
         handleSurprise();
         break;
     }
@@ -102,7 +118,7 @@ const CharacterSelectionScreen = ({
       opa: translations.opa,
       other: translations.other,
     };
-    openNameModal(type, labels[type]);
+    openFamilyModal(type, labels[type]);
   };
 
   const handleSaveName = useCallback((name: string) => {
@@ -117,19 +133,46 @@ const CharacterSelectionScreen = ({
 
     setSelectedCharacters((prev) => [...prev, newCharacter]);
     toast.success(`✓ ${name} ${translations.nameSaved}`);
+  }, [nameModalTarget, translations.nameSaved]);
+
+  const handleSaveFamilyMember = useCallback((name: string, useDefault: boolean) => {
+    if (!familyModalTarget) return;
+
+    const newCharacter: SelectedCharacter = {
+      id: `${familyModalTarget.type}-${Date.now()}`,
+      type: familyModalTarget.type,
+      name,
+      label: useDefault ? familyModalTarget.label : name,
+    };
+
+    setSelectedCharacters((prev) => [...prev, newCharacter]);
+    toast.success(`✓ ${name} ${translations.nameSaved}`);
     
-    // Return to main view if in family submenu
-    if (viewState === "family") {
-      setViewState("main");
-    }
-  }, [nameModalTarget, translations.nameSaved, viewState]);
+    // Return to main view
+    setViewState("main");
+  }, [familyModalTarget, translations.nameSaved]);
+
+  const handleSaveSibling = useCallback((name: string, gender: SiblingGender, age: number) => {
+    const genderLabel = gender === "brother" ? translations.brother : translations.sister;
+    
+    const newCharacter: SelectedCharacter = {
+      id: `sibling-${Date.now()}`,
+      type: gender,
+      name,
+      label: `${name} (${genderLabel}, ${age})`,
+      age,
+      gender,
+    };
+
+    setSelectedCharacters((prev) => [...prev, newCharacter]);
+    toast.success(`✓ ${name} ${translations.nameSaved}`);
+  }, [translations.brother, translations.sister, translations.nameSaved]);
 
   const handleRemoveCharacter = (id: string) => {
     setSelectedCharacters((prev) => prev.filter((c) => c.id !== id));
   };
 
   const handleSurprise = () => {
-    // Auto-generate a random character selection
     const surpriseCharacter: SelectedCharacter = {
       id: `surprise-${Date.now()}`,
       type: "surprise",
@@ -205,7 +248,7 @@ const CharacterSelectionScreen = ({
             <Button
               variant="outline"
               className="w-full h-14 rounded-xl border-dashed border-2"
-              onClick={() => openNameModal("other", translations.other)}
+              onClick={() => openFamilyModal("other", translations.other)}
             >
               <Plus className="w-5 h-5 mr-2" />
               {translations.other}
@@ -222,12 +265,30 @@ const CharacterSelectionScreen = ({
         translations={translations}
       />
 
-      {/* Name Input Modal */}
+      {/* Name Input Modal (for me, friends, famous) */}
       <NameInputModal
         open={nameModalOpen}
         onClose={() => setNameModalOpen(false)}
         onSave={handleSaveName}
         characterLabel={nameModalTarget?.label || ""}
+        translations={translations}
+      />
+
+      {/* Family Member Modal (for mama, papa, oma, opa, other) */}
+      <FamilyMemberModal
+        open={familyModalOpen}
+        onClose={() => setFamilyModalOpen(false)}
+        onSave={handleSaveFamilyMember}
+        memberType={familyModalTarget?.type || "other"}
+        defaultLabel={familyModalTarget?.label || ""}
+        translations={translations}
+      />
+
+      {/* Sibling Input Modal */}
+      <SiblingInputModal
+        open={siblingModalOpen}
+        onClose={() => setSiblingModalOpen(false)}
+        onSave={handleSaveSibling}
         translations={translations}
       />
 
