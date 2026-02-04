@@ -66,7 +66,7 @@ const NameInputModal = ({
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
       <DialogContent 
         ref={contentRef}
-        className="w-[85vw] max-w-[400px] rounded-2xl top-[15%] translate-y-0 data-[state=open]:slide-in-from-top-[10%]"
+        className="w-[85vw] max-w-[400px] rounded-2xl sm:top-[50%] sm:translate-y-[-50%] max-sm:top-[10%] max-sm:translate-y-0 landscape:top-[5%] landscape:translate-y-0 landscape:max-h-[85vh] landscape:overflow-y-auto"
       >
         <DialogHeader>
           <DialogTitle className="text-lg md:text-xl font-baloo text-center">
