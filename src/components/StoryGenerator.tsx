@@ -120,6 +120,7 @@ const StoryGenerator = ({ onStoryGenerated }: StoryGeneratorProps) => {
           textLanguage,
           customSystemPrompt,
           userId: user?.id,
+          source: 'admin', // Admin/Lehrer Modus → CORE + ELTERN-MODUL
         },
       });
 

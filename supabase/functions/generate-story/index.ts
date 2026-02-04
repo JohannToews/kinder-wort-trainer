@@ -660,12 +660,97 @@ serve(async (req) => {
   const startTime = Date.now();
 
   try {
-    const { length, difficulty, description, schoolLevel, textType, textLanguage, globalLanguage, customSystemPrompt, endingType, episodeNumber, seriesId, userId } = await req.json();
+    const { 
+      length, 
+      difficulty, 
+      description, 
+      schoolLevel, 
+      textType, 
+      textLanguage, 
+      globalLanguage, 
+      customSystemPrompt, 
+      endingType, 
+      episodeNumber, 
+      seriesId, 
+      userId,
+      // New modular parameters
+      source = 'admin', // 'admin' or 'kid'
+      isSeries = false,
+      storyType,
+      characters,
+      locations,
+      timePeriod,
+      kidName,
+      kidHobbies
+    } = await req.json();
 
     // Initialize Supabase client
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
+
+    // ================== MODULAR PROMPT LOADING ==================
+    // Load prompts from database based on source and settings
+    const adminLangCode = (textLanguage || 'DE').toLowerCase();
+    
+    // Helper function to load a prompt from app_settings
+    async function loadPrompt(key: string): Promise<string | null> {
+      const { data } = await supabase
+        .from("app_settings")
+        .select("value")
+        .eq("key", key)
+        .maybeSingle();
+      return data?.value || null;
+    }
+
+    // Load prompts in parallel
+    const [corePrompt, elternModulPrompt, kinderModulPrompt, serienModulPrompt] = await Promise.all([
+      loadPrompt(`system_prompt_${adminLangCode}`),
+      loadPrompt(`system_prompt_story_creation_${adminLangCode}`),
+      loadPrompt(`system_prompt_kid_creation_${adminLangCode}`),
+      loadPrompt(`system_prompt_continuation_${adminLangCode}`)
+    ]);
+
+    console.log("Loaded prompts:", {
+      source,
+      isSeries,
+      hasCorePrompt: !!corePrompt,
+      hasElternModul: !!elternModulPrompt,
+      hasKinderModul: !!kinderModulPrompt,
+      hasSerienModul: !!serienModulPrompt
+    });
+
+    // Build composite system prompt based on source
+    let compositePrompt = "";
+
+    // CORE: Always included
+    if (corePrompt) {
+      compositePrompt += `# CORE PROMPT\n${corePrompt}\n\n`;
+    }
+
+    // MODULE: Add ELTERN-MODUL or KINDER-MODUL based on source
+    if (source === 'admin' && elternModulPrompt) {
+      compositePrompt += `# ELTERN-MODUL (Admin/Lehrer Modus)\n${elternModulPrompt}\n\n`;
+    } else if (source === 'kid' && kinderModulPrompt) {
+      // Replace placeholders in KINDER-MODUL
+      let kidPrompt = kinderModulPrompt;
+      if (storyType) kidPrompt = kidPrompt.replace(/\{storyType\}/g, storyType);
+      if (characters) kidPrompt = kidPrompt.replace(/\{characters\}/g, Array.isArray(characters) ? characters.join(', ') : characters);
+      if (locations) kidPrompt = kidPrompt.replace(/\{locations\}/g, Array.isArray(locations) ? locations.join(', ') : locations);
+      if (timePeriod) kidPrompt = kidPrompt.replace(/\{timePeriod\}/g, timePeriod);
+      if (kidName) kidPrompt = kidPrompt.replace(/\{kidName\}/g, kidName);
+      if (kidHobbies) kidPrompt = kidPrompt.replace(/\{kidHobbies\}/g, kidHobbies);
+      
+      compositePrompt += `# KINDER-MODUL (Kind erstellt eigene Geschichte)\n${kidPrompt}\n\n`;
+    }
+
+    // SERIEN-MODUL: Add if isSeries is true OR if episodeNumber > 1
+    if ((isSeries || (episodeNumber && episodeNumber > 1)) && serienModulPrompt) {
+      compositePrompt += `# SERIEN-MODUL\n${serienModulPrompt}\n\n`;
+    }
+
+    // Fallback to customSystemPrompt if no composite could be built
+    const baseSystemPrompt = compositePrompt.trim() || customSystemPrompt || "";
 
     // Determine how many images to generate based on length
     const imageCountMap: Record<string, number> = {
@@ -747,6 +832,11 @@ serve(async (req) => {
 **MINDESTANZAHL WÖRTER:** ${minWordCount} (STRIKT EINHALTEN!)
 **Texttyp:** ${textTypeDescription}
 **Anzahl Verständnisfragen:** ${questionCount}
+${source === 'kid' && storyType ? `**Story-Typ:** ${storyType}` : ''}
+${source === 'kid' && characters ? `**Charaktere:** ${Array.isArray(characters) ? characters.join(', ') : characters}` : ''}
+${source === 'kid' && locations ? `**Orte:** ${Array.isArray(locations) ? locations.join(', ') : locations}` : ''}
+${source === 'kid' && timePeriod ? `**Zeitepoche:** ${timePeriod}` : ''}
+${isSeries ? `**Serie:** Ja - Geschichte wird als Teil einer Serie erstellt` : ''}
 
 ---
 ## KRITISCHE QUALITÄTSKONTROLLE - TEXTLÄNGE
@@ -774,9 +864,9 @@ Typische Techniken zur Texterweiterung:
 5. **Der Text MUSS mindestens ${minWordCount} Wörter lang sein!**
 `;
 
-    // Combine the custom system prompt with dynamic context
-    const fullSystemPrompt = customSystemPrompt 
-      ? `${customSystemPrompt}\n${dynamicContext}`
+    // Combine the composite system prompt with dynamic context
+    const fullSystemPrompt = baseSystemPrompt 
+      ? `${baseSystemPrompt}\n${dynamicContext}`
       : dynamicContext;
 
     // Build series continuation context if applicable
