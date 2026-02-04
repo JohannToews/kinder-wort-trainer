@@ -20,6 +20,231 @@ export type SpecialAttribute =
   | "talents" 
   | "normal";
 
+export type LocationType = 
+  | "deepsea" 
+  | "mountains" 
+  | "space" 
+  | "magic" 
+  | "nature" 
+  | "home" 
+  | "surprise";
+
+export type TimePeriod = 
+  | "dinosaurs" 
+  | "stoneage" 
+  | "egypt" 
+  | "pirates" 
+  | "medieval" 
+  | "wildwest" 
+  | "vintage" 
+  | "today" 
+  | "nearfuture" 
+  | "farfuture";
+
+export interface SettingSelectionTranslations {
+  header: string;
+  locationHeader: string;
+  timeHeader: string;
+  deepsea: string;
+  mountains: string;
+  space: string;
+  magicWorlds: string;
+  nature: string;
+  home: string;
+  surprise: string;
+  dinosaurs: string;
+  stoneage: string;
+  egypt: string;
+  pirates: string;
+  medieval: string;
+  wildwest: string;
+  vintage: string;
+  today: string;
+  nearfuture: string;
+  farfuture: string;
+  continue: string;
+  back: string;
+  maxLocations: string;
+}
+
+export const settingSelectionTranslations: Record<Language, SettingSelectionTranslations> = {
+  de: {
+    header: "Welt & Setting",
+    locationHeader: "Wo findet die Geschichte statt?",
+    timeHeader: "In welcher Zeit spielt die Geschichte?",
+    deepsea: "Tiefsee & Meer",
+    mountains: "In den Bergen",
+    space: "Weltraum & Planeten",
+    magicWorlds: "Magische Welten",
+    nature: "Natur & Tiere",
+    home: "Zuhause",
+    surprise: "Überrasch mich",
+    dinosaurs: "Dinosaurier",
+    stoneage: "Steinzeit",
+    egypt: "Ägypten",
+    pirates: "Piraten",
+    medieval: "Mittelalter",
+    wildwest: "Wilder Westen",
+    vintage: "1930er-50er",
+    today: "Heute",
+    nearfuture: "Nahe Zukunft",
+    farfuture: "Ferne Zukunft",
+    continue: "Weiter",
+    back: "Zurück",
+    maxLocations: "Max. 3 Orte",
+  },
+  fr: {
+    header: "Monde & Cadre",
+    locationHeader: "Où se déroule l'histoire?",
+    timeHeader: "À quelle époque se passe l'histoire?",
+    deepsea: "Océan profond",
+    mountains: "Montagnes",
+    space: "Espace & Planètes",
+    magicWorlds: "Mondes magiques",
+    nature: "Nature & Animaux",
+    home: "Maison",
+    surprise: "Surprends-moi",
+    dinosaurs: "Dinosaures",
+    stoneage: "Âge de pierre",
+    egypt: "Égypte",
+    pirates: "Pirates",
+    medieval: "Moyen Âge",
+    wildwest: "Far West",
+    vintage: "Années 30-50",
+    today: "Aujourd'hui",
+    nearfuture: "Futur proche",
+    farfuture: "Futur lointain",
+    continue: "Continuer",
+    back: "Retour",
+    maxLocations: "Max. 3 lieux",
+  },
+  en: {
+    header: "World & Setting",
+    locationHeader: "Where does the story take place?",
+    timeHeader: "When does the story take place?",
+    deepsea: "Deep Sea & Ocean",
+    mountains: "In the Mountains",
+    space: "Space & Planets",
+    magicWorlds: "Magical Worlds",
+    nature: "Nature & Animals",
+    home: "At Home",
+    surprise: "Surprise Me",
+    dinosaurs: "Dinosaurs",
+    stoneage: "Stone Age",
+    egypt: "Egypt",
+    pirates: "Pirates",
+    medieval: "Medieval",
+    wildwest: "Wild West",
+    vintage: "1930s-50s",
+    today: "Today",
+    nearfuture: "Near Future",
+    farfuture: "Far Future",
+    continue: "Continue",
+    back: "Back",
+    maxLocations: "Max. 3 locations",
+  },
+  es: {
+    header: "Mundo & Escenario",
+    locationHeader: "¿Dónde ocurre la historia?",
+    timeHeader: "¿En qué época ocurre la historia?",
+    deepsea: "Mar profundo",
+    mountains: "Montañas",
+    space: "Espacio & Planetas",
+    magicWorlds: "Mundos mágicos",
+    nature: "Naturaleza & Animales",
+    home: "Casa",
+    surprise: "Sorpréndeme",
+    dinosaurs: "Dinosaurios",
+    stoneage: "Edad de Piedra",
+    egypt: "Egipto",
+    pirates: "Piratas",
+    medieval: "Medieval",
+    wildwest: "Salvaje Oeste",
+    vintage: "Años 30-50",
+    today: "Hoy",
+    nearfuture: "Futuro cercano",
+    farfuture: "Futuro lejano",
+    continue: "Continuar",
+    back: "Volver",
+    maxLocations: "Máx. 3 lugares",
+  },
+  nl: {
+    header: "Wereld & Setting",
+    locationHeader: "Waar speelt het verhaal zich af?",
+    timeHeader: "In welke tijd speelt het verhaal?",
+    deepsea: "Diepzee & Oceaan",
+    mountains: "Bergen",
+    space: "Ruimte & Planeten",
+    magicWorlds: "Magische werelden",
+    nature: "Natuur & Dieren",
+    home: "Thuis",
+    surprise: "Verras me",
+    dinosaurs: "Dinosaurussen",
+    stoneage: "Steentijd",
+    egypt: "Egypte",
+    pirates: "Piraten",
+    medieval: "Middeleeuwen",
+    wildwest: "Wilde Westen",
+    vintage: "Jaren 30-50",
+    today: "Vandaag",
+    nearfuture: "Nabije toekomst",
+    farfuture: "Verre toekomst",
+    continue: "Verder",
+    back: "Terug",
+    maxLocations: "Max. 3 locaties",
+  },
+  it: {
+    header: "Mondo & Ambientazione",
+    locationHeader: "Dove si svolge la storia?",
+    timeHeader: "In quale epoca si svolge la storia?",
+    deepsea: "Mare profondo",
+    mountains: "Montagne",
+    space: "Spazio & Pianeti",
+    magicWorlds: "Mondi magici",
+    nature: "Natura & Animali",
+    home: "Casa",
+    surprise: "Sorprendimi",
+    dinosaurs: "Dinosauri",
+    stoneage: "Età della pietra",
+    egypt: "Egitto",
+    pirates: "Pirati",
+    medieval: "Medioevo",
+    wildwest: "Selvaggio West",
+    vintage: "Anni 30-50",
+    today: "Oggi",
+    nearfuture: "Futuro prossimo",
+    farfuture: "Futuro lontano",
+    continue: "Continua",
+    back: "Indietro",
+    maxLocations: "Max. 3 luoghi",
+  },
+  bs: {
+    header: "Svijet & Okruženje",
+    locationHeader: "Gdje se priča odvija?",
+    timeHeader: "U koje doba se priča odvija?",
+    deepsea: "Duboko more",
+    mountains: "Planine",
+    space: "Svemir & Planeti",
+    magicWorlds: "Magični svjetovi",
+    nature: "Priroda & Životinje",
+    home: "Kuća",
+    surprise: "Iznenadi me",
+    dinosaurs: "Dinosaurusi",
+    stoneage: "Kameno doba",
+    egypt: "Egipat",
+    pirates: "Pirati",
+    medieval: "Srednji vijek",
+    wildwest: "Divlji zapad",
+    vintage: "Godine 30-50",
+    today: "Danas",
+    nearfuture: "Bliska budućnost",
+    farfuture: "Daleka budućnost",
+    continue: "Nastavi",
+    back: "Nazad",
+    maxLocations: "Maks. 3 lokacije",
+  },
+};
+
 export interface SelectedCharacter {
   id: string;
   type: CharacterType | FamilyMember | SiblingGender;
