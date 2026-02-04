@@ -9,6 +9,7 @@ import QuizCompletionResult from "@/components/QuizCompletionResult";
 import StoryAudioPlayer from "@/components/StoryAudioPlayer";
 import StoryFeedbackDialog from "@/components/StoryFeedbackDialog";
 import ReadingSettings, { FontSizeLevel, LineSpacingLevel, getReadingTextClasses } from "@/components/ReadingSettings";
+import SyllableText, { isSyllableModeSupported } from "@/components/SyllableText";
 import { useColorPalette } from "@/hooks/useColorPalette";
 import { useAuth } from "@/hooks/useAuth";
 import { useKidProfile } from "@/hooks/useKidProfile";
@@ -243,6 +244,8 @@ const ReadingPage = () => {
   // Reading settings (font size and line spacing)
   const [fontSize, setFontSize] = useState<FontSizeLevel>(2);
   const [lineSpacing, setLineSpacing] = useState<LineSpacingLevel>(2);
+  // Syllable mode for reading assistance (German only)
+  const [syllableMode, setSyllableMode] = useState(false);
   // Series continuation state
   const [isGeneratingContinuation, setIsGeneratingContinuation] = useState(false);
   // System prompt for story generation
@@ -953,7 +956,14 @@ const ReadingPage = () => {
 
                   // Stop words: no click interaction, but still show as marked if part of a phrase
                   if (!canBeMarked) {
-                    return (
+                    return syllableMode ? (
+                      <SyllableText
+                        key={wIndex}
+                        text={word}
+                        dataPosition={positionKey}
+                        className={markingClass}
+                      />
+                    ) : (
                       <span 
                         key={wIndex}
                         data-position={positionKey}
@@ -964,7 +974,15 @@ const ReadingPage = () => {
                     );
                   }
 
-                  return (
+                  return syllableMode ? (
+                    <SyllableText
+                      key={wIndex}
+                      text={word}
+                      dataPosition={positionKey}
+                      onClick={(e) => handleWordClick(word, e)}
+                      className={`word-highlight ${markingClass}`}
+                    />
+                  ) : (
                     <span
                       key={wIndex}
                       data-position={positionKey}
@@ -1061,6 +1079,9 @@ const ReadingPage = () => {
                 onFontSizeChange={setFontSize}
                 onLineSpacingChange={setLineSpacing}
                 language={textLang}
+                syllableMode={syllableMode}
+                onSyllableModeChange={setSyllableMode}
+                showSyllableOption={isSyllableModeSupported(textLang)}
               />
             </div>
 

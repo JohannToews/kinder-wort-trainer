@@ -1,5 +1,7 @@
 import { Button } from "@/components/ui/button";
-import { Type, AlignJustify } from "lucide-react";
+import { Type, AlignJustify, BookA } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 
 // Labels for reading settings in different languages
 const settingsLabels: Record<string, {
@@ -8,6 +10,7 @@ const settingsLabels: Record<string, {
   small: string;
   medium: string;
   large: string;
+  syllables: string;
 }> = {
   de: {
     fontSize: "Schriftgröße",
@@ -15,6 +18,7 @@ const settingsLabels: Record<string, {
     small: "Klein",
     medium: "Mittel",
     large: "Groß",
+    syllables: "Silben",
   },
   fr: {
     fontSize: "Taille du texte",
@@ -22,6 +26,7 @@ const settingsLabels: Record<string, {
     small: "Petit",
     medium: "Moyen",
     large: "Grand",
+    syllables: "Syllabes",
   },
   en: {
     fontSize: "Font size",
@@ -29,6 +34,7 @@ const settingsLabels: Record<string, {
     small: "Small",
     medium: "Medium",
     large: "Large",
+    syllables: "Syllables",
   },
   es: {
     fontSize: "Tamaño de letra",
@@ -36,6 +42,7 @@ const settingsLabels: Record<string, {
     small: "Pequeño",
     medium: "Medio",
     large: "Grande",
+    syllables: "Sílabas",
   },
   nl: {
     fontSize: "Lettergrootte",
@@ -43,6 +50,7 @@ const settingsLabels: Record<string, {
     small: "Klein",
     medium: "Gemiddeld",
     large: "Groot",
+    syllables: "Lettergrepen",
   },
   it: {
     fontSize: "Dimensione testo",
@@ -50,6 +58,7 @@ const settingsLabels: Record<string, {
     small: "Piccolo",
     medium: "Medio",
     large: "Grande",
+    syllables: "Sillabe",
   },
   bs: {
     fontSize: "Veličina fonta",
@@ -57,6 +66,7 @@ const settingsLabels: Record<string, {
     small: "Malo",
     medium: "Srednje",
     large: "Veliko",
+    syllables: "Slogovi",
   },
 };
 
@@ -69,6 +79,9 @@ interface ReadingSettingsProps {
   onFontSizeChange: (level: FontSizeLevel) => void;
   onLineSpacingChange: (level: LineSpacingLevel) => void;
   language: string;
+  syllableMode?: boolean;
+  onSyllableModeChange?: (enabled: boolean) => void;
+  showSyllableOption?: boolean;
 }
 
 const ReadingSettings = ({
@@ -77,6 +90,9 @@ const ReadingSettings = ({
   onFontSizeChange,
   onLineSpacingChange,
   language,
+  syllableMode = false,
+  onSyllableModeChange,
+  showSyllableOption = false,
 }: ReadingSettingsProps) => {
   const t = settingsLabels[language] || settingsLabels.fr;
   const levels: FontSizeLevel[] = [1, 2, 3];
@@ -123,6 +139,28 @@ const ReadingSettings = ({
           ))}
         </div>
       </div>
+
+      {/* Syllable Mode Toggle (only for German) */}
+      {showSyllableOption && onSyllableModeChange && (
+        <div className="flex items-center gap-2">
+          <BookA className="h-4 w-4 text-muted-foreground" />
+          <Label htmlFor="syllable-mode" className="text-xs text-muted-foreground cursor-pointer">
+            {t.syllables}
+          </Label>
+          <Switch
+            id="syllable-mode"
+            checked={syllableMode}
+            onCheckedChange={onSyllableModeChange}
+            className="scale-90"
+          />
+          {syllableMode && (
+            <span className="text-xs">
+              <span style={{ color: "#2563eb" }}>Sil</span>
+              <span style={{ color: "#92400e" }}>ben</span>
+            </span>
+          )}
+        </div>
+      )}
     </div>
   );
 };
