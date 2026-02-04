@@ -7,6 +7,7 @@ import CharacterSelectionScreen from "@/components/story-creation/CharacterSelec
 import SettingSelectionScreen from "@/components/story-creation/SettingSelectionScreen";
 import {
   StoryType,
+  EducationalTopic,
   SelectedCharacter,
   SpecialAttribute,
   LocationType,
@@ -29,6 +30,8 @@ const CreateStoryPage = () => {
   const [currentScreen, setCurrentScreen] = useState<WizardScreen>("story-type");
   const [selectedStoryType, setSelectedStoryType] = useState<StoryType | null>(null);
   const [humorLevel, setHumorLevel] = useState<number | undefined>(undefined);
+  const [educationalTopic, setEducationalTopic] = useState<EducationalTopic | undefined>(undefined);
+  const [customTopic, setCustomTopic] = useState<string | undefined>(undefined);
   const [selectedCharacters, setSelectedCharacters] = useState<SelectedCharacter[]>([]);
   const [selectedAttributes, setSelectedAttributes] = useState<SpecialAttribute[]>([]);
   const [selectedLocations, setSelectedLocations] = useState<LocationType[]>([]);
@@ -40,9 +43,16 @@ const CreateStoryPage = () => {
   const settingTranslations = settingSelectionTranslations[kidAppLanguage] || settingSelectionTranslations.de;
 
   // Handle story type selection complete
-  const handleStoryTypeComplete = (storyType: StoryType, humor?: number) => {
+  const handleStoryTypeComplete = (
+    storyType: StoryType, 
+    humor?: number, 
+    topic?: EducationalTopic, 
+    customTopicText?: string
+  ) => {
     setSelectedStoryType(storyType);
     setHumorLevel(humor);
+    setEducationalTopic(topic);
+    setCustomTopic(customTopicText);
     setCurrentScreen("characters");
   };
 

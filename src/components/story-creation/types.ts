@@ -253,6 +253,13 @@ export type StoryType =
   | "friendship" 
   | "surprise";
 
+export type EducationalTopic = 
+  | "nature" 
+  | "monuments" 
+  | "countries" 
+  | "science" 
+  | "other";
+
 export interface StoryTypeSelectionTranslations {
   header: string;
   educational: string;
@@ -268,6 +275,13 @@ export interface StoryTypeSelectionTranslations {
   humorHigh: string;
   continue: string;
   back: string;
+  // Educational topics
+  educationalTopicHeader: string;
+  natureAnimals: string;
+  monumentsHistory: string;
+  countriesCities: string;
+  science: string;
+  other: string;
 }
 
 export const storyTypeSelectionTranslations: Record<Language, StoryTypeSelectionTranslations> = {
@@ -286,6 +300,12 @@ export const storyTypeSelectionTranslations: Record<Language, StoryTypeSelection
     humorHigh: "Total verrückt",
     continue: "Weiter",
     back: "Zurück",
+    educationalTopicHeader: "Was möchtest du lernen?",
+    natureAnimals: "Natur & Tiere",
+    monumentsHistory: "Monumente & Geschichte",
+    countriesCities: "Länder & Städte",
+    science: "Wissenschaft",
+    other: "Anderes Thema",
   },
   fr: {
     header: "Quel type d'histoire veux-tu?",
@@ -302,6 +322,12 @@ export const storyTypeSelectionTranslations: Record<Language, StoryTypeSelection
     humorHigh: "Totalement fou",
     continue: "Continuer",
     back: "Retour",
+    educationalTopicHeader: "Que veux-tu apprendre?",
+    natureAnimals: "Nature & Animaux",
+    monumentsHistory: "Monuments & Histoire",
+    countriesCities: "Pays & Villes",
+    science: "Science",
+    other: "Autre sujet",
   },
   en: {
     header: "What kind of story do you want?",
@@ -318,6 +344,12 @@ export const storyTypeSelectionTranslations: Record<Language, StoryTypeSelection
     humorHigh: "Totally crazy",
     continue: "Continue",
     back: "Back",
+    educationalTopicHeader: "What do you want to learn?",
+    natureAnimals: "Nature & Animals",
+    monumentsHistory: "Monuments & History",
+    countriesCities: "Countries & Cities",
+    science: "Science",
+    other: "Other topic",
   },
   es: {
     header: "¿Qué tipo de historia quieres?",
@@ -334,6 +366,12 @@ export const storyTypeSelectionTranslations: Record<Language, StoryTypeSelection
     humorHigh: "Totalmente loco",
     continue: "Continuar",
     back: "Volver",
+    educationalTopicHeader: "¿Qué quieres aprender?",
+    natureAnimals: "Naturaleza & Animales",
+    monumentsHistory: "Monumentos & Historia",
+    countriesCities: "Países & Ciudades",
+    science: "Ciencia",
+    other: "Otro tema",
   },
   nl: {
     header: "Wat voor verhaal wil je?",
@@ -350,6 +388,12 @@ export const storyTypeSelectionTranslations: Record<Language, StoryTypeSelection
     humorHigh: "Totaal gek",
     continue: "Verder",
     back: "Terug",
+    educationalTopicHeader: "Wat wil je leren?",
+    natureAnimals: "Natuur & Dieren",
+    monumentsHistory: "Monumenten & Geschiedenis",
+    countriesCities: "Landen & Steden",
+    science: "Wetenschap",
+    other: "Ander onderwerp",
   },
   it: {
     header: "Che tipo di storia vuoi?",
@@ -366,6 +410,12 @@ export const storyTypeSelectionTranslations: Record<Language, StoryTypeSelection
     humorHigh: "Totalmente pazzo",
     continue: "Continua",
     back: "Indietro",
+    educationalTopicHeader: "Cosa vuoi imparare?",
+    natureAnimals: "Natura & Animali",
+    monumentsHistory: "Monumenti & Storia",
+    countriesCities: "Paesi & Città",
+    science: "Scienza",
+    other: "Altro argomento",
   },
   bs: {
     header: "Kakvu priču želiš?",
@@ -382,6 +432,12 @@ export const storyTypeSelectionTranslations: Record<Language, StoryTypeSelection
     humorHigh: "Totalno ludo",
     continue: "Nastavi",
     back: "Nazad",
+    educationalTopicHeader: "Šta želiš naučiti?",
+    natureAnimals: "Priroda & Životinje",
+    monumentsHistory: "Spomenici & Povijest",
+    countriesCities: "Zemlje & Gradovi",
+    science: "Nauka",
+    other: "Druga tema",
   },
 };
 
