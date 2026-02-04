@@ -21,6 +21,8 @@ interface KidProfile {
   color_palette: string;
   image_style: string;
   cover_image_url: string | null;
+  gender?: string;
+  age?: number;
 }
 
 interface KidProfileSectionProps {
@@ -29,13 +31,25 @@ interface KidProfileSectionProps {
   onProfileUpdate?: (profile: KidProfile) => void;
 }
 
-// 5 distinct, visually different palettes
+// 8 distinct, visually different palettes
 const COLOR_PALETTES = [
   { id: 'ocean', color: 'bg-blue-500', border: 'border-blue-600', gradient: 'from-blue-400 to-cyan-500' },
   { id: 'sunset', color: 'bg-gradient-to-r from-orange-400 to-rose-500', border: 'border-orange-500', gradient: 'from-orange-400 to-rose-500' },
   { id: 'forest', color: 'bg-emerald-600', border: 'border-emerald-700', gradient: 'from-emerald-500 to-teal-600' },
   { id: 'lavender', color: 'bg-gradient-to-r from-purple-400 to-indigo-500', border: 'border-purple-500', gradient: 'from-purple-400 to-indigo-500' },
   { id: 'sunshine', color: 'bg-gradient-to-r from-amber-400 to-yellow-500', border: 'border-amber-500', gradient: 'from-amber-400 to-yellow-500' },
+  { id: 'cocoa', color: 'bg-gradient-to-r from-amber-700 to-orange-800', border: 'border-amber-800', gradient: 'from-amber-700 to-orange-800' },
+  { id: 'rose', color: 'bg-gradient-to-r from-pink-400 to-rose-500', border: 'border-pink-500', gradient: 'from-pink-400 to-rose-500' },
+  { id: 'midnight', color: 'bg-gradient-to-r from-slate-700 to-blue-900', border: 'border-slate-800', gradient: 'from-slate-700 to-blue-900' },
+];
+
+// Image style options
+const IMAGE_STYLES = [
+  { id: 'cute', value: 'cute playful cartoon style with big expressive eyes' },
+  { id: 'watercolor', value: 'soft watercolor illustration style' },
+  { id: 'comic', value: 'modern comic book style with bold lines' },
+  { id: 'realistic', value: 'semi-realistic digital art style' },
+  { id: 'anime', value: 'anime manga illustration style' },
 ];
 
 const KidProfileSection = ({ language, userId, onProfileUpdate }: KidProfileSectionProps) => {
@@ -55,8 +69,10 @@ const KidProfileSection = ({ language, userId, onProfileUpdate }: KidProfileSect
     school_class: 'CE1',
     hobbies: '',
     color_palette: 'ocean',
-    image_style: 'modern cartoon',
+    image_style: 'cute playful cartoon style with big expressive eyes',
     cover_image_url: null,
+    gender: '',
+    age: undefined,
   };
 
   useEffect(() => {
@@ -95,8 +111,10 @@ const KidProfileSection = ({ language, userId, onProfileUpdate }: KidProfileSect
         school_class: d.school_class,
         hobbies: d.hobbies,
         color_palette: d.color_palette,
-        image_style: (d as any).image_style || 'modern cartoon',
+        image_style: (d as any).image_style || 'cute playful cartoon style with big expressive eyes',
         cover_image_url: d.cover_image_url,
+        gender: (d as any).gender || '',
+        age: (d as any).age || undefined,
       }));
       setProfiles(mappedProfiles);
       if (mappedProfiles[0]?.cover_image_url) {
@@ -140,8 +158,10 @@ const KidProfileSection = ({ language, userId, onProfileUpdate }: KidProfileSect
       school_class: 'CE1',
       hobbies: '',
       color_palette: 'ocean',
-      image_style: 'modern cartoon',
+      image_style: 'cute playful cartoon style with big expressive eyes',
       cover_image_url: null,
+      gender: '',
+      age: undefined,
     };
     setProfiles(prev => [...prev, newProfile]);
     setSelectedProfileIndex(profiles.length);
@@ -184,7 +204,21 @@ const KidProfileSection = ({ language, userId, onProfileUpdate }: KidProfileSect
       case 'forest': return t.paletteForest;
       case 'lavender': return t.paletteLavender;
       case 'sunshine': return t.paletteSunshine;
+      case 'cocoa': return t.paletteCocoa;
+      case 'rose': return t.paletteRose;
+      case 'midnight': return t.paletteMidnight;
       default: return paletteId;
+    }
+  };
+
+  const getImageStyleLabel = (styleId: string) => {
+    switch (styleId) {
+      case 'cute playful cartoon style with big expressive eyes': return t.imageStyleCute;
+      case 'soft watercolor illustration style': return t.imageStyleWatercolor;
+      case 'modern comic book style with bold lines': return t.imageStyleComic;
+      case 'semi-realistic digital art style': return t.imageStyleRealistic;
+      case 'anime manga illustration style': return t.imageStyleAnime;
+      default: return t.imageStyleCute;
     }
   };
 
@@ -257,6 +291,8 @@ const KidProfileSection = ({ language, userId, onProfileUpdate }: KidProfileSect
         color_palette: currentProfile.color_palette,
         image_style: currentProfile.image_style,
         cover_image_url: coverUrl,
+        gender: currentProfile.gender || null,
+        age: currentProfile.age || null,
       };
 
       let savedData;
@@ -291,8 +327,10 @@ const KidProfileSection = ({ language, userId, onProfileUpdate }: KidProfileSect
         school_class: savedData.school_class,
         hobbies: savedData.hobbies,
         color_palette: savedData.color_palette,
-        image_style: savedData.image_style || 'modern cartoon',
+        image_style: savedData.image_style || 'cute playful cartoon style with big expressive eyes',
         cover_image_url: savedData.cover_image_url,
+        gender: (savedData as any).gender || '',
+        age: (savedData as any).age || undefined,
       };
 
       setProfiles(prev => {
@@ -332,50 +370,50 @@ const KidProfileSection = ({ language, userId, onProfileUpdate }: KidProfileSect
 
   return (
     <Card className="border-2 border-primary/30 mb-8">
-      <CardHeader>
-        <CardTitle className="flex items-center justify-between">
-          <div className="flex items-center gap-2 text-xl">
-            <User className="h-5 w-5 text-primary" />
-            {t.kidProfile}
-          </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={addNewProfile}
-            className="flex items-center gap-1"
-          >
-            <Plus className="h-4 w-4" />
-            {t.addChild}
-          </Button>
+      <CardHeader className="pb-2">
+        <CardTitle className="flex items-center gap-2 text-xl">
+          <User className="h-5 w-5 text-primary" />
+          {t.kidProfile}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
-        {/* Profile Tabs */}
-        {profiles.length > 1 && (
-          <div className="flex flex-wrap gap-2">
+        {/* Profile Tabs - prominent design */}
+        <div className="bg-muted/50 rounded-lg p-2">
+          <div className="flex flex-wrap items-center gap-2">
             {profiles.map((profile, index) => (
-              <div key={index} className="flex items-center gap-1">
-                <Button
-                  variant={selectedProfileIndex === index ? "default" : "outline"}
-                  size="sm"
+              <div key={index} className="flex items-center">
+                <button
                   onClick={() => selectProfile(index)}
+                  className={`px-4 py-2 rounded-lg font-medium transition-all ${
+                    selectedProfileIndex === index 
+                      ? 'bg-primary text-primary-foreground shadow-md' 
+                      : 'bg-background hover:bg-muted text-muted-foreground hover:text-foreground'
+                  }`}
                 >
                   {profile.name || `${t.kidProfile} ${index + 1}`}
-                </Button>
-                {profiles.length > 1 && (
+                </button>
+                {profiles.length > 1 && selectedProfileIndex === index && (
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-7 w-7 text-destructive hover:bg-destructive/10"
-                    onClick={() => deleteProfile(index)}
+                    className="h-8 w-8 ml-1 text-destructive hover:bg-destructive/10"
+                    onClick={(e) => { e.stopPropagation(); deleteProfile(index); }}
                   >
-                    <Trash2 className="h-3 w-3" />
+                    <Trash2 className="h-4 w-4" />
                   </Button>
                 )}
               </div>
             ))}
+            <Button
+              onClick={addNewProfile}
+              className="flex items-center gap-2 bg-primary/10 hover:bg-primary/20 text-primary border-2 border-dashed border-primary/40"
+              variant="outline"
+            >
+              <Plus className="h-4 w-4" />
+              {t.addChild}
+            </Button>
           </div>
-        )}
+        </div>
 
         <p className="text-sm text-muted-foreground">
           {t.kidProfileDescription}
@@ -384,17 +422,55 @@ const KidProfileSection = ({ language, userId, onProfileUpdate }: KidProfileSect
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Left column: Inputs */}
           <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="kidName">{t.kidName}</Label>
-              <Input
-                id="kidName"
-                value={currentProfile.name}
-                onChange={(e) => updateCurrentProfile({ name: e.target.value })}
-                placeholder={language === 'de' ? 'z.B. Emma' : language === 'es' ? 'ej. Emma' : language === 'nl' ? 'bijv. Emma' : language === 'en' ? 'e.g. Emma' : 'ex. Emma'}
-              />
+            {/* Name, Gender, Age row */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2 col-span-2 sm:col-span-1">
+                <Label htmlFor="kidName">{t.kidName}</Label>
+                <Input
+                  id="kidName"
+                  value={currentProfile.name}
+                  onChange={(e) => updateCurrentProfile({ name: e.target.value })}
+                  placeholder={language === 'de' ? 'z.B. Emma' : language === 'es' ? 'ej. Emma' : language === 'nl' ? 'bijv. Emma' : language === 'en' ? 'e.g. Emma' : 'ex. Emma'}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>{t.gender}</Label>
+                <Select 
+                  value={currentProfile.gender || ''} 
+                  onValueChange={(value) => updateCurrentProfile({ gender: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="—" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="male">{t.genderMale}</SelectItem>
+                    <SelectItem value="female">{t.genderFemale}</SelectItem>
+                    <SelectItem value="diverse">{t.genderDiverse}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            {/* Age and School row */}
+            <div className="grid grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label>{t.age}</Label>
+                <Select 
+                  value={currentProfile.age?.toString() || ''} 
+                  onValueChange={(value) => updateCurrentProfile({ age: parseInt(value) || undefined })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="—" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {[4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16].map((age) => (
+                      <SelectItem key={age} value={age.toString()}>
+                        {age}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               <div className="space-y-2">
                 <Label>{t.schoolSystem}</Label>
                 <Select value={currentProfile.school_system} onValueChange={handleSchoolSystemChange}>
@@ -442,13 +518,26 @@ const KidProfileSection = ({ language, userId, onProfileUpdate }: KidProfileSect
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="imageStyle">{t.imageStyle}</Label>
-              <Input
-                id="imageStyle"
-                value={currentProfile.image_style}
-                onChange={(e) => updateCurrentProfile({ image_style: e.target.value })}
-                placeholder={language === 'de' ? 'z.B. Comic, Aquarell, Schwarz-Weiß' : language === 'es' ? 'ej. cómic, acuarela' : language === 'nl' ? 'bijv. strip, aquarel' : language === 'en' ? 'e.g. comic, watercolor' : 'ex. bande dessinée, aquarelle'}
-              />
+              <Label>{t.imageStyle}</Label>
+              <Select 
+                value={currentProfile.image_style} 
+                onValueChange={(value) => updateCurrentProfile({ image_style: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue>{getImageStyleLabel(currentProfile.image_style)}</SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {IMAGE_STYLES.map((style) => (
+                    <SelectItem key={style.id} value={style.value}>
+                      {style.id === 'cute' ? t.imageStyleCute :
+                       style.id === 'watercolor' ? t.imageStyleWatercolor :
+                       style.id === 'comic' ? t.imageStyleComic :
+                       style.id === 'realistic' ? t.imageStyleRealistic :
+                       t.imageStyleAnime}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="space-y-2">
@@ -461,7 +550,7 @@ const KidProfileSection = ({ language, userId, onProfileUpdate }: KidProfileSect
                   <button
                     key={palette.id}
                     onClick={() => updateCurrentProfile({ color_palette: palette.id })}
-                    className={`px-4 py-2 rounded-full border-2 transition-all bg-gradient-to-r ${palette.gradient} ${
+                    className={`px-3 py-1.5 rounded-full border-2 transition-all bg-gradient-to-r ${palette.gradient} ${
                       currentProfile.color_palette === palette.id 
                         ? `${palette.border} ring-2 ring-offset-2 ring-primary` 
                         : 'border-transparent hover:border-muted'

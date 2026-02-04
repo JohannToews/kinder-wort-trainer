@@ -104,13 +104,28 @@ export interface Translations {
   schoolSystem: string;
   schoolClass: string;
   imageStyle: string;
+  gender: string;
+  age: string;
+  genderMale: string;
+  genderFemale: string;
+  genderDiverse: string;
   
-  // Color palettes (5 distinct)
+  // Image styles
+  imageStyleCute: string;
+  imageStyleWatercolor: string;
+  imageStyleComic: string;
+  imageStyleRealistic: string;
+  imageStyleAnime: string;
+  
+  // Color palettes (8 distinct)
   paletteOcean: string;
   paletteSunset: string;
   paletteForest: string;
   paletteLavender: string;
   paletteSunshine: string;
+  paletteCocoa: string;
+  paletteRose: string;
+  paletteMidnight: string;
 }
 
 const translations: Record<Language, Translations> = {
@@ -206,15 +221,29 @@ const translations: Record<Language, Translations> = {
     profileSaved: 'Profil gespeichert! 🎨',
     coverGenerated: 'Titelbild wurde generiert! 🖼️',
     addChild: 'Kind hinzufügen',
-    schoolSystem: 'Schulsystem',
+    schoolSystem: 'Schule / App-Sprache',
     schoolClass: 'Schulklasse',
     imageStyle: 'Bild-Stil',
+    gender: 'Geschlecht',
+    age: 'Alter',
+    genderMale: 'Junge',
+    genderFemale: 'Mädchen',
+    genderDiverse: 'Divers',
+    
+    imageStyleCute: 'Niedlich & verspielt',
+    imageStyleWatercolor: 'Aquarell',
+    imageStyleComic: 'Comic-Stil',
+    imageStyleRealistic: 'Realistisch',
+    imageStyleAnime: 'Anime/Manga',
     
     paletteOcean: 'Ozean',
     paletteSunset: 'Sonnenuntergang',
     paletteForest: 'Wald',
     paletteLavender: 'Lavendel',
     paletteSunshine: 'Sonne',
+    paletteCocoa: 'Kakao',
+    paletteRose: 'Rosa',
+    paletteMidnight: 'Mitternacht',
   },
   
   en: {
@@ -309,15 +338,29 @@ const translations: Record<Language, Translations> = {
     profileSaved: 'Profile saved! 🎨',
     coverGenerated: 'Cover image generated! 🖼️',
     addChild: 'Add child',
-    schoolSystem: 'School system',
+    schoolSystem: 'School / App Language',
     schoolClass: 'Grade',
     imageStyle: 'Image Style',
+    gender: 'Gender',
+    age: 'Age',
+    genderMale: 'Boy',
+    genderFemale: 'Girl',
+    genderDiverse: 'Diverse',
+    
+    imageStyleCute: 'Cute & playful',
+    imageStyleWatercolor: 'Watercolor',
+    imageStyleComic: 'Comic style',
+    imageStyleRealistic: 'Realistic',
+    imageStyleAnime: 'Anime/Manga',
     
     paletteOcean: 'Ocean',
     paletteSunset: 'Sunset',
     paletteForest: 'Forest',
     paletteLavender: 'Lavender',
     paletteSunshine: 'Sunshine',
+    paletteCocoa: 'Cocoa',
+    paletteRose: 'Rose',
+    paletteMidnight: 'Midnight',
   },
   
   fr: {
@@ -412,15 +455,29 @@ const translations: Record<Language, Translations> = {
     profileSaved: 'Profil sauvegardé ! 🎨',
     coverGenerated: 'Image de couverture générée ! 🖼️',
     addChild: 'Ajouter un enfant',
-    schoolSystem: 'Système scolaire',
+    schoolSystem: 'École / Langue App',
     schoolClass: 'Classe',
     imageStyle: 'Style d\'image',
+    gender: 'Genre',
+    age: 'Âge',
+    genderMale: 'Garçon',
+    genderFemale: 'Fille',
+    genderDiverse: 'Autre',
+    
+    imageStyleCute: 'Mignon & ludique',
+    imageStyleWatercolor: 'Aquarelle',
+    imageStyleComic: 'Style BD',
+    imageStyleRealistic: 'Réaliste',
+    imageStyleAnime: 'Anime/Manga',
     
     paletteOcean: 'Océan',
     paletteSunset: 'Coucher de soleil',
     paletteForest: 'Forêt',
     paletteLavender: 'Lavande',
     paletteSunshine: 'Soleil',
+    paletteCocoa: 'Cacao',
+    paletteRose: 'Rose',
+    paletteMidnight: 'Minuit',
   },
   
   es: {
@@ -515,15 +572,29 @@ const translations: Record<Language, Translations> = {
     profileSaved: '¡Perfil guardado! 🎨',
     coverGenerated: '¡Imagen de portada generada! 🖼️',
     addChild: 'Añadir niño',
-    schoolSystem: 'Sistema escolar',
+    schoolSystem: 'Escuela / Idioma App',
     schoolClass: 'Grado',
     imageStyle: 'Estilo de imagen',
+    gender: 'Género',
+    age: 'Edad',
+    genderMale: 'Niño',
+    genderFemale: 'Niña',
+    genderDiverse: 'Diverso',
+    
+    imageStyleCute: 'Lindo & juguetón',
+    imageStyleWatercolor: 'Acuarela',
+    imageStyleComic: 'Estilo cómic',
+    imageStyleRealistic: 'Realista',
+    imageStyleAnime: 'Anime/Manga',
     
     paletteOcean: 'Océano',
     paletteSunset: 'Atardecer',
     paletteForest: 'Bosque',
     paletteLavender: 'Lavanda',
     paletteSunshine: 'Sol',
+    paletteCocoa: 'Cacao',
+    paletteRose: 'Rosa',
+    paletteMidnight: 'Medianoche',
   },
   
   nl: {
@@ -618,15 +689,29 @@ const translations: Record<Language, Translations> = {
     profileSaved: 'Profiel opgeslagen! 🎨',
     coverGenerated: 'Omslagafbeelding gegenereerd! 🖼️',
     addChild: 'Kind toevoegen',
-    schoolSystem: 'Schoolsysteem',
+    schoolSystem: 'School / App-taal',
     schoolClass: 'Groep',
     imageStyle: 'Afbeeldingsstijl',
+    gender: 'Geslacht',
+    age: 'Leeftijd',
+    genderMale: 'Jongen',
+    genderFemale: 'Meisje',
+    genderDiverse: 'Divers',
+    
+    imageStyleCute: 'Schattig & speels',
+    imageStyleWatercolor: 'Aquarel',
+    imageStyleComic: 'Stripstijl',
+    imageStyleRealistic: 'Realistisch',
+    imageStyleAnime: 'Anime/Manga',
     
     paletteOcean: 'Oceaan',
     paletteSunset: 'Zonsondergang',
     paletteForest: 'Bos',
     paletteLavender: 'Lavendel',
     paletteSunshine: 'Zon',
+    paletteCocoa: 'Cacao',
+    paletteRose: 'Roze',
+    paletteMidnight: 'Middernacht',
   },
   
   it: {
@@ -721,15 +806,29 @@ const translations: Record<Language, Translations> = {
     profileSaved: 'Profilo salvato! 🎨',
     coverGenerated: 'Immagine di copertina generata! 🖼️',
     addChild: 'Aggiungi bambino',
-    schoolSystem: 'Sistema scolastico',
+    schoolSystem: 'Scuola / Lingua App',
     schoolClass: 'Classe',
     imageStyle: 'Stile immagine',
+    gender: 'Genere',
+    age: 'Età',
+    genderMale: 'Ragazzo',
+    genderFemale: 'Ragazza',
+    genderDiverse: 'Altro',
+    
+    imageStyleCute: 'Carino & giocoso',
+    imageStyleWatercolor: 'Acquerello',
+    imageStyleComic: 'Stile fumetto',
+    imageStyleRealistic: 'Realistico',
+    imageStyleAnime: 'Anime/Manga',
     
     paletteOcean: 'Oceano',
     paletteSunset: 'Tramonto',
     paletteForest: 'Foresta',
     paletteLavender: 'Lavanda',
     paletteSunshine: 'Sole',
+    paletteCocoa: 'Cacao',
+    paletteRose: 'Rosa',
+    paletteMidnight: 'Mezzanotte',
   },
   
   bs: {
@@ -824,15 +923,29 @@ const translations: Record<Language, Translations> = {
     profileSaved: 'Profil sačuvan! 🎨',
     coverGenerated: 'Naslovna slika generisana! 🖼️',
     addChild: 'Dodaj dijete',
-    schoolSystem: 'Školski sistem',
+    schoolSystem: 'Škola / Jezik Aplikacije',
     schoolClass: 'Razred',
     imageStyle: 'Stil slike',
+    gender: 'Spol',
+    age: 'Starost',
+    genderMale: 'Dječak',
+    genderFemale: 'Djevojčica',
+    genderDiverse: 'Drugo',
+    
+    imageStyleCute: 'Slatko & razigrano',
+    imageStyleWatercolor: 'Akvarel',
+    imageStyleComic: 'Strip stil',
+    imageStyleRealistic: 'Realistično',
+    imageStyleAnime: 'Anime/Manga',
     
     paletteOcean: 'Okean',
     paletteSunset: 'Zalazak sunca',
     paletteForest: 'Šuma',
     paletteLavender: 'Lavanda',
     paletteSunshine: 'Sunce',
+    paletteCocoa: 'Kakao',
+    paletteRose: 'Roze',
+    paletteMidnight: 'Ponoć',
   },
 };
 
