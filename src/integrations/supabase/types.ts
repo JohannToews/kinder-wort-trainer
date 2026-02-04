@@ -162,9 +162,11 @@ export type Database = {
       }
       kid_profiles: {
         Row: {
+          age: number | null
           color_palette: string
           cover_image_url: string | null
           created_at: string
+          gender: string | null
           hobbies: string
           id: string
           image_style: string | null
@@ -175,9 +177,11 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          age?: number | null
           color_palette?: string
           cover_image_url?: string | null
           created_at?: string
+          gender?: string | null
           hobbies?: string
           id?: string
           image_style?: string | null
@@ -188,9 +192,11 @@ export type Database = {
           user_id: string
         }
         Update: {
+          age?: number | null
           color_palette?: string
           cover_image_url?: string | null
           created_at?: string
+          gender?: string | null
           hobbies?: string
           id?: string
           image_style?: string | null
