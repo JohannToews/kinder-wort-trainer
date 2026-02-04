@@ -215,6 +215,12 @@ const CharacterSelectionScreen = ({
   };
 
   const handleContinue = () => {
+    // If in family view, go back to main view first
+    if (viewState === "family") {
+      setViewState("main");
+      return;
+    }
+    // From main view, proceed to bonus attributes
     setBonusModalOpen(true);
   };
 
