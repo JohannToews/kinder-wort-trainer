@@ -913,10 +913,10 @@ Antworte NUR mit einem validen JSON-Objekt in diesem exakten Format:
       "explanation": "kindgerechte Erklärung auf ${targetLanguage} (max 15 Wörter)"
     }
   ],
-  "structure_beginning": 1-5,
-  "structure_middle": 1-5,
-  "structure_ending": 1-5,
-  "emotional_coloring": "Kurze Beschreibung der emotionalen Färbung (z.B. 'fröhlich und abenteuerlustig', 'spannend mit Happy End', 'nachdenklich und lehrreich')"
+  "structure_beginning": "A1-A6",
+  "structure_middle": "M1-M6",
+  "structure_ending": "E1-E6",
+  "emotional_coloring": "EM-X (Name) – z.B. EM-T (Thrill/Spannung)"
 }
 
 **WICHTIG FÜR MULTIPLE-CHOICE FRAGEN:**
@@ -926,14 +926,13 @@ Antworte NUR mit einem validen JSON-Objekt in diesem exakten Format:
 - MISCHE die Position der korrekten Antwort (nicht immer an erster Stelle!)
 - Die correctAnswer muss EXAKT mit einer der options übereinstimmen
 
-**STRUKTUR-BEWERTUNG (1-5 Punkte pro Teil):**
-- structure_beginning: Qualität der Einführung (Setting, Charaktere, Handlungsauslöser)
-- structure_middle: Qualität des Hauptteils (Konflikt, Entwicklung, Spannung)
-- structure_ending: Qualität des Abschlusses (Auflösung, Lerneffekt, Zufriedenheit)
-Bewerte deine eigene Geschichte ehrlich von 1 (schwach) bis 5 (exzellent) für jeden Teil.
+**STORY-STRUKTUR-KLASSIFIKATION (wie im CORE-Prompt definiert):**
+- structure_beginning: Wähle A1 (In Medias Res), A2 (Rätsel-Hook), A3 (Charaktermoment), A4 (Weltenbau), A5 (Dialogue-Hook) oder A6 (Ordinary World)
+- structure_middle: Wähle M1 (Eskalation), M2 (Rätsel-Schichten), M3 (Beziehungs-Entwicklung), M4 (Parallele Handlungen), M5 (Countdown) oder M6 (Wendepunkt-Kette)
+- structure_ending: Wähle E1 (Klassisch-Befriedigend), E2 (Twist-Ende), E3 (Offenes Ende), E4 (Bittersüß), E5 (Rückkehr mit Veränderung) oder E6 (Leser-Entscheidung/Cliffhanger)
 
-**EMOTIONAL COLORING:**
-Beschreibe in 3-6 Wörtern die emotionale Grundstimmung der Geschichte.
+**EMOTIONALE FÄRBUNG (wie im CORE-Prompt definiert):**
+- emotional_coloring: Wähle EM-J (Joy/Freude), EM-T (Thrill/Spannung), EM-H (Humor), EM-W (Warmth/Wärme), EM-D (Depth/Tiefgang) oder EM-C (Curiosity/Neugier) mit kurzer Beschreibung
 
 Erstelle genau ${questionCount} Multiple-Choice Fragen mit der richtigen Mischung:
 - ~30% explizite Informationsfragen
@@ -954,7 +953,23 @@ Wähle genau 10 Vokabelwörter aus.`;
     });
 
     // Generate the story using Lovable AI Gateway
-    let story: { title: string; content: string; questions: any[]; vocabulary: any[] } = {
+    // Helper to extract category number from A1-A6, M1-M6, E1-E6
+    const extractCategoryNumber = (category: string | undefined): number | null => {
+      if (!category) return null;
+      const match = category.match(/[AME](\d)/);
+      return match ? parseInt(match[1], 10) : null;
+    };
+
+    let story: { 
+      title: string; 
+      content: string; 
+      questions: any[]; 
+      vocabulary: any[];
+      structure_beginning?: string;
+      structure_middle?: string;
+      structure_ending?: string;
+      emotional_coloring?: string;
+    } = {
       title: "",
       content: "",
       questions: [],
@@ -1289,9 +1304,16 @@ CRITICAL: ABSOLUTELY NO TEXT, NO LETTERS, NO WORDS, NO NUMBERS, NO WRITING of an
         : null;
 
     console.log(`Story generated with ${story.vocabulary?.length || 0} vocabulary words`);
+    console.log(`Structure classification: beginning=${story.structure_beginning}, middle=${story.structure_middle}, ending=${story.structure_ending}`);
+    console.log(`Emotional coloring: ${story.emotional_coloring}`);
 
     return new Response(JSON.stringify({
       ...story,
+      // Convert category strings (A1-A6, M1-M6, E1-E6) to numbers for DB storage
+      structure_beginning: extractCategoryNumber(story.structure_beginning),
+      structure_middle: extractCategoryNumber(story.structure_middle),
+      structure_ending: extractCategoryNumber(story.structure_ending),
+      emotional_coloring: story.emotional_coloring || null,
       coverImageBase64,
       storyImages,
       imageWarning,

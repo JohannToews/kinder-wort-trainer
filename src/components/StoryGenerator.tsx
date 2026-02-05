@@ -31,6 +31,10 @@ interface GeneratedStory {
   textType?: string; // fiction or non-fiction
   prompt?: string; // The user's generation prompt
   textLanguage?: string; // The language of the story text (fr, de, en, etc.)
+  structure_beginning?: number | null; // Story structure classification (1-6 for A1-A6)
+  structure_middle?: number | null; // Story structure classification (1-6 for M1-M6)
+  structure_ending?: number | null; // Story structure classification (1-6 for E1-E6)
+  emotional_coloring?: string | null; // Emotional tone (e.g. "EM-T (Thrill/Spannung)")
 }
 
 interface StoryGeneratorProps {
