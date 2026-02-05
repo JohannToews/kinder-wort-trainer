@@ -70,6 +70,10 @@ const AdminPage = () => {
   const [generatedTextType, setGeneratedTextType] = useState<string>("fiction");
   const [generatedPrompt, setGeneratedPrompt] = useState<string>("");
   const [generatedTextLanguage, setGeneratedTextLanguage] = useState<string>("fr");
+  const [generatedStructureBeginning, setGeneratedStructureBeginning] = useState<number | null>(null);
+  const [generatedStructureMiddle, setGeneratedStructureMiddle] = useState<number | null>(null);
+  const [generatedStructureEnding, setGeneratedStructureEnding] = useState<number | null>(null);
+  const [generatedEmotionalColoring, setGeneratedEmotionalColoring] = useState<string | null>(null);
   const [stories, setStories] = useState<Story[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("profile");
@@ -209,7 +213,7 @@ const AdminPage = () => {
       }
     }
 
-    // Insert story with user_id, kid_profile_id, story_images, difficulty, text_type, prompt, and text_language
+    // Insert story with user_id, kid_profile_id, story_images, difficulty, text_type, prompt, text_language, and structure classification
     const { data: insertedStory, error } = await supabase.from("stories").insert({
       title,
       content,
@@ -221,6 +225,10 @@ const AdminPage = () => {
       text_type: generatedTextType,
       prompt: generatedPrompt || null,
       text_language: generatedTextLanguage,
+      structure_beginning: generatedStructureBeginning,
+      structure_middle: generatedStructureMiddle,
+      structure_ending: generatedStructureEnding,
+      emotional_coloring: generatedEmotionalColoring,
     } as any).select().single();
 
     if (error || !insertedStory) {
@@ -576,6 +584,11 @@ const AdminPage = () => {
                       if (story.storyImages && story.storyImages.length > 0) {
                         setGeneratedStoryImages(story.storyImages);
                       }
+                      // Set structure classification and emotional coloring
+                      setGeneratedStructureBeginning(story.structure_beginning ?? null);
+                      setGeneratedStructureMiddle(story.structure_middle ?? null);
+                      setGeneratedStructureEnding(story.structure_ending ?? null);
+                      setGeneratedEmotionalColoring(story.emotional_coloring ?? null);
                       setStorySubTab("editor");
                       toast.info(t.storyTransferred);
                     }}
