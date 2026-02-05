@@ -46,6 +46,7 @@ const getEducationalDescription = (
       monuments: "Berühmte Monumente und Geschichte",
       countries: "Länder und Städte der Welt",
       science: "Wissenschaft und Entdeckungen",
+      music: "Musik und Kunst",
       other: customTopic || "Interessantes Thema",
     },
     fr: {
@@ -53,6 +54,7 @@ const getEducationalDescription = (
       monuments: "Monuments célèbres et histoire",
       countries: "Pays et villes du monde",
       science: "Science et découvertes",
+      music: "Musique et art",
       other: customTopic || "Sujet intéressant",
     },
     en: {
@@ -60,6 +62,7 @@ const getEducationalDescription = (
       monuments: "Famous monuments and history",
       countries: "Countries and cities of the world",
       science: "Science and discoveries",
+      music: "Music and art",
       other: customTopic || "Interesting topic",
     },
   };
@@ -326,7 +329,6 @@ const CreateStoryPage = () => {
       everyday: { de: "Alltagsgeschichte", fr: "Histoire du quotidien", en: "Everyday story" },
       humor: { de: "Lustige Geschichte", fr: "Histoire drôle", en: "Funny story" },
       educational: { de: "Sachgeschichte", fr: "Histoire éducative", en: "Educational story" },
-      music: { de: "Musik- & Kunstgeschichte", fr: "Histoire de musique & art", en: "Music & art story" },
     };
     
     const storyTypeLabel = storyTypeLabels[selectedStoryType || "fantasy"][kidAppLanguage] || storyTypeLabels[selectedStoryType || "fantasy"].de;
