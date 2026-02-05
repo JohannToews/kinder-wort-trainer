@@ -14,6 +14,7 @@ import { StreakFlame, StreakMilestoneCard } from "@/components/gamification/Stre
 import { LevelBadge, LevelCard } from "@/components/gamification/LevelBadge";
 import { PointsDisplay } from "@/components/gamification/PointsDisplay";
 import { LevelUpModal } from "@/components/gamification/LevelUpModal";
+import { getTranslatedLevelName } from "@/lib/levelTranslations";
 
 // Translations for results page
 const resultsTranslations: Record<string, {
@@ -308,7 +309,10 @@ const ResultsPage = () => {
             {/* Level Badge and Progress */}
             <div className="text-center space-y-3">
               <LevelBadge 
-                level={progress.level} 
+                level={{
+                  ...progress.level,
+                  title: getTranslatedLevelName(progress.level.level, kidAppLanguage)
+                }} 
                 totalPoints={progress.totalPoints}
                 size="lg"
                 className="justify-center"
@@ -324,7 +328,7 @@ const ResultsPage = () => {
                   <p className="text-xs text-muted-foreground">
                     {t.pointsToNext
                       .replace('{n}', String(pointsToNextLevel))
-                      .replace('{level}', levels.find(l => l.level_number === progress.level.level + 1)?.title || '')}
+                      .replace('{level}', getTranslatedLevelName(progress.level.level + 1, kidAppLanguage))}
                   </p>
                 </div>
               )}
@@ -420,7 +424,7 @@ const ResultsPage = () => {
                 <LevelCard
                   key={level.level_number}
                   levelNumber={level.level_number}
-                  title={level.title}
+                  title={getTranslatedLevelName(level.level_number, kidAppLanguage)}
                   icon={level.icon || '🔒'}
                   minPoints={level.min_points}
                   isUnlocked={progress.totalPoints >= level.min_points}

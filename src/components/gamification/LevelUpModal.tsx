@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Sparkles, Star } from "lucide-react";
 import confetti from "canvas-confetti";
 import type { LevelInfo } from "@/hooks/useGamification";
+import { getTranslatedLevelName } from "@/lib/levelTranslations";
 
 interface LevelUpModalProps {
   level: LevelInfo | null;
@@ -148,7 +149,7 @@ export const LevelUpModal = ({ level, onClose, language = 'de' }: LevelUpModalPr
             <p className="text-sm text-muted-foreground mb-1">{t.newTitle}</p>
             <p className="text-xl font-baloo font-bold text-primary flex items-center justify-center gap-2">
               <span>{level.icon}</span>
-              <span>{level.title}</span>
+              <span>{getTranslatedLevelName(level.level, language || 'de')}</span>
             </p>
           </div>
 
