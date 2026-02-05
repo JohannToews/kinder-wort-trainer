@@ -505,6 +505,7 @@ export type Database = {
           cover_image_url: string | null
           created_at: string
           difficulty: string | null
+          emotional_coloring: string | null
           ending_type: Database["public"]["Enums"]["ending_type"] | null
           episode_number: number | null
           generation_status: string | null
@@ -516,6 +517,9 @@ export type Database = {
           series_id: string | null
           story_images: string[] | null
           story_images_status: string | null
+          structure_beginning: number | null
+          structure_ending: number | null
+          structure_middle: number | null
           text_language: string | null
           text_type: string | null
           title: string
@@ -528,6 +532,7 @@ export type Database = {
           cover_image_url?: string | null
           created_at?: string
           difficulty?: string | null
+          emotional_coloring?: string | null
           ending_type?: Database["public"]["Enums"]["ending_type"] | null
           episode_number?: number | null
           generation_status?: string | null
@@ -539,6 +544,9 @@ export type Database = {
           series_id?: string | null
           story_images?: string[] | null
           story_images_status?: string | null
+          structure_beginning?: number | null
+          structure_ending?: number | null
+          structure_middle?: number | null
           text_language?: string | null
           text_type?: string | null
           title: string
@@ -551,6 +559,7 @@ export type Database = {
           cover_image_url?: string | null
           created_at?: string
           difficulty?: string | null
+          emotional_coloring?: string | null
           ending_type?: Database["public"]["Enums"]["ending_type"] | null
           episode_number?: number | null
           generation_status?: string | null
@@ -562,6 +571,9 @@ export type Database = {
           series_id?: string | null
           story_images?: string[] | null
           story_images_status?: string | null
+          structure_beginning?: number | null
+          structure_ending?: number | null
+          structure_middle?: number | null
           text_language?: string | null
           text_type?: string | null
           title?: string
