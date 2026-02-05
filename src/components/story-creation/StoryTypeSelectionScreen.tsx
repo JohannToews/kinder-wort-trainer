@@ -75,7 +75,6 @@ const StoryTypeSelectionScreen = ({
     { type: "animals" as StoryType, image: animalsImg, label: translations.animals },
     { type: "everyday" as StoryType, image: everydayImg, label: translations.everyday },
     { type: "humor" as StoryType, image: humorImg, label: translations.humor },
-    { type: "music" as StoryType, image: musicArtImg, label: translations.music },
     { type: "educational" as StoryType, image: educationalImg, label: translations.educational },
   ];
 
@@ -84,6 +83,7 @@ const StoryTypeSelectionScreen = ({
     { type: "monuments" as EducationalTopic, image: monumentsImg, label: translations.monumentsHistory },
     { type: "countries" as EducationalTopic, image: countriesImg, label: translations.countriesCities },
     { type: "science" as EducationalTopic, image: scienceImg, label: translations.science },
+    { type: "music" as EducationalTopic, image: musicArtImg, label: translations.musicArt },
     { type: "other" as EducationalTopic, image: educationalImg, label: translations.other },
   ];
 
@@ -129,6 +129,7 @@ const StoryTypeSelectionScreen = ({
       case "monuments": return translations.placeholderMonuments;
       case "countries": return translations.placeholderCountries;
       case "science": return translations.placeholderScience;
+      case "music": return translations.placeholderMusic;
       case "other": return translations.placeholderOther;
       default: return "";
     }
