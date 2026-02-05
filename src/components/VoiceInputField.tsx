@@ -272,52 +272,55 @@ const VoiceInputField = ({
     : value;
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       {label && <Label className="text-base font-medium">{label}</Label>}
-      <div className="flex gap-3 items-start">
-        <div className="flex-1">
-          <InputComponent
-            value={isRecording ? value : displayValue}
-            onChange={(e) => {
-              if (!isRecording) {
-                onChange(e.target.value);
-              }
-            }}
-            placeholder={placeholder}
-            className={multiline ? "min-h-[100px] text-base" : "text-base"}
-            readOnly={isRecording}
-          />
-          {/* Live transcription display */}
-          {isRecording && interimTranscript && (
-            <div className="mt-2 p-3 bg-primary/10 rounded-lg border border-primary/30">
-              <p className="text-sm text-primary font-medium animate-pulse">
-                {interimTranscript}
-              </p>
-            </div>
-          )}
+      
+      {/* Input field */}
+      <InputComponent
+        value={isRecording ? value : displayValue}
+        onChange={(e) => {
+          if (!isRecording) {
+            onChange(e.target.value);
+          }
+        }}
+        placeholder={placeholder}
+        className={multiline ? "min-h-[100px] text-base" : "text-base"}
+        readOnly={isRecording}
+      />
+      
+      {/* Live transcription display */}
+      {isRecording && interimTranscript && (
+        <div className="p-4 bg-primary/10 rounded-xl border-2 border-primary/30 animate-fade-in">
+          <p className="text-base text-primary font-medium">
+            {interimTranscript}
+          </p>
         </div>
+      )}
+      
+      {/* Big microphone button - centered below */}
+      <div className="flex flex-col items-center gap-2 pt-2">
         <Button
           type="button"
-          variant={isRecording ? "destructive" : "outline"}
-          className={`flex-shrink-0 rounded-full transition-all duration-200 ${
+          className={`rounded-full transition-all duration-300 shadow-lg ${
             isRecording 
-              ? "h-16 w-16 md:h-20 md:w-20 animate-pulse shadow-lg" 
-              : "h-14 w-14 md:h-16 md:w-16 hover:scale-105"
+              ? "h-20 w-20 md:h-24 md:w-24 bg-destructive hover:bg-destructive/90 animate-pulse" 
+              : "h-20 w-20 md:h-24 md:w-24 bg-primary hover:bg-primary/90 hover:scale-105"
           }`}
           onClick={isRecording ? stopRecording : startRecording}
         >
           {isRecording ? (
-            <MicOff className="h-7 w-7 md:h-8 md:w-8" />
+            <MicOff className="h-10 w-10 md:h-12 md:w-12 text-destructive-foreground" />
           ) : (
-            <Mic className="h-7 w-7 md:h-8 md:w-8" />
+            <Mic className="h-10 w-10 md:h-12 md:w-12 text-primary-foreground" />
           )}
         </Button>
+        
+        {isRecording && (
+          <p className="text-sm text-primary font-medium animate-pulse">
+            {msgs.recording}
+          </p>
+        )}
       </div>
-      {isRecording && (
-        <p className="text-sm text-primary font-medium animate-pulse text-center">
-          {msgs.recording}
-        </p>
-      )}
     </div>
   );
 };
