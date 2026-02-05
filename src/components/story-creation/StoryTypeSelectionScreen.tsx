@@ -24,6 +24,7 @@ import everydayImg from "@/assets/story-types/everyday.jpg";
 import humorImg from "@/assets/story-types/humor.jpg";
 import educationalImg from "@/assets/story-types/educational.jpg";
 import musicArtImg from "@/assets/story-types/music-art.jpg";
+import otherTopicImg from "@/assets/story-types/other-topic.jpg";
 import surpriseBoxImg from "@/assets/characters/surprise-box.jpg";
 
 // Educational topic images
@@ -84,7 +85,7 @@ const StoryTypeSelectionScreen = ({
     { type: "countries" as EducationalTopic, image: countriesImg, label: translations.countriesCities },
     { type: "science" as EducationalTopic, image: scienceImg, label: translations.science },
     { type: "music" as EducationalTopic, image: musicArtImg, label: translations.musicArt },
-    { type: "other" as EducationalTopic, image: educationalImg, label: translations.other },
+    { type: "other" as EducationalTopic, image: otherTopicImg, label: translations.other },
   ];
 
   const handleTypeClick = (type: StoryType) => {
