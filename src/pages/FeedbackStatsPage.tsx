@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Star, Loader2, TrendingDown, BookOpen, CheckCircle, XCircle, Trash2, Filter, MessageSquare, BookMarked, Eye, ShieldCheck } from "lucide-react";
+import { Star, Loader2, TrendingDown, BookOpen, CheckCircle, XCircle, Trash2, Filter, MessageSquare, BookMarked, Eye, ShieldCheck, BarChart3, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { format } from "date-fns";
 import { Language } from "@/lib/translations";
 import { Button } from "@/components/ui/button";
@@ -28,6 +28,18 @@ interface StoryRating {
   weakest_part: string | null;
   weakness_reason: string | null;
   created_at: string;
+}
+
+interface StoryClassification {
+  id: string;
+  title: string;
+  created_at: string;
+  username?: string;
+  quality_rating: number | null;
+  structure_beginning: number | null;
+  structure_middle: number | null;
+  structure_ending: number | null;
+  emotional_coloring: string | null;
 }
 
 interface StoryStats {
@@ -103,6 +115,11 @@ const translations: Record<Language, {
   notAnswered: string;
   noQuestions: string;
   consistencyTab: string;
+  classificationTab: string;
+  structureBeginning: string;
+  structureMiddle: string;
+  structureEnding: string;
+  emotionalColoring: string;
 }> = {
   de: {
     title: "Story-Statistiken",
@@ -155,6 +172,11 @@ const translations: Record<Language, {
     notAnswered: "Nicht beantwortet",
     noQuestions: "Keine Fragen",
     consistencyTab: "Qualitätsprüfung",
+    classificationTab: "Klassifikation",
+    structureBeginning: "Anfang",
+    structureMiddle: "Mitte",
+    structureEnding: "Ende",
+    emotionalColoring: "Emotional Coloring",
   },
   fr: {
     title: "Statistiques des histoires",
@@ -207,6 +229,11 @@ const translations: Record<Language, {
     notAnswered: "Non répondu",
     noQuestions: "Pas de questions",
     consistencyTab: "Contrôle qualité",
+    classificationTab: "Classification",
+    structureBeginning: "Début",
+    structureMiddle: "Milieu",
+    structureEnding: "Fin",
+    emotionalColoring: "Coloration émotionnelle",
   },
   en: {
     title: "Story Statistics",
@@ -259,6 +286,11 @@ const translations: Record<Language, {
     notAnswered: "Not answered",
     noQuestions: "No questions",
     consistencyTab: "Quality Check",
+    classificationTab: "Classification",
+    structureBeginning: "Beginning",
+    structureMiddle: "Middle",
+    structureEnding: "Ending",
+    emotionalColoring: "Emotional Coloring",
   },
   es: {
     title: "Estadísticas de historias",
@@ -311,6 +343,11 @@ const translations: Record<Language, {
     notAnswered: "Sin responder",
     noQuestions: "Sin preguntas",
     consistencyTab: "Control de calidad",
+    classificationTab: "Clasificación",
+    structureBeginning: "Inicio",
+    structureMiddle: "Medio",
+    structureEnding: "Final",
+    emotionalColoring: "Coloración emocional",
   },
   nl: {
     title: "Verhaal Statistieken",
@@ -363,6 +400,11 @@ const translations: Record<Language, {
     notAnswered: "Niet beantwoord",
     noQuestions: "Geen vragen",
     consistencyTab: "Kwaliteitscontrole",
+    classificationTab: "Classificatie",
+    structureBeginning: "Begin",
+    structureMiddle: "Midden",
+    structureEnding: "Einde",
+    emotionalColoring: "Emotionele kleuring",
   },
   it: {
     title: "Statistiche delle storie",
@@ -415,6 +457,11 @@ const translations: Record<Language, {
     notAnswered: "Non risposto",
     noQuestions: "Nessuna domanda",
     consistencyTab: "Controllo qualità",
+    classificationTab: "Classificazione",
+    structureBeginning: "Inizio",
+    structureMiddle: "Mezzo",
+    structureEnding: "Fine",
+    emotionalColoring: "Colorazione emotiva",
   },
   bs: {
     title: "Statistika priča",
@@ -467,6 +514,11 @@ const translations: Record<Language, {
     notAnswered: "Nije odgovoreno",
     noQuestions: "Nema pitanja",
     consistencyTab: "Provjera kvalitete",
+    classificationTab: "Klasifikacija",
+    structureBeginning: "Početak",
+    structureMiddle: "Sredina",
+    structureEnding: "Kraj",
+    emotionalColoring: "Emocionalno bojenje",
   },
 };
 
@@ -498,6 +550,11 @@ const FeedbackStatsPage = () => {
   // Selection states for deletion
   const [selectedFeedbackIds, setSelectedFeedbackIds] = useState<Set<string>>(new Set());
   const [isDeletingFeedback, setIsDeletingFeedback] = useState(false);
+  
+  // Classification state
+  const [classifications, setClassifications] = useState<StoryClassification[]>([]);
+  const [classificationSortKey, setClassificationSortKey] = useState<keyof StoryClassification>("created_at");
+  const [classificationSortDir, setClassificationSortDir] = useState<"asc" | "desc">("desc");
   
   const adminLang = (user?.adminLanguage || 'de') as Language;
   const t = translations[adminLang] || translations.de;
@@ -533,6 +590,10 @@ const FeedbackStatsPage = () => {
         created_at,
         user_id,
         kid_profile_id,
+        structure_beginning,
+        structure_middle,
+        structure_ending,
+        emotional_coloring,
         kid_profiles (
           name,
           school_class,
@@ -632,6 +693,23 @@ const FeedbackStatsPage = () => {
         };
       });
       setStories(mappedStories);
+      
+      // Build classification data
+      const classificationData: StoryClassification[] = storiesData.map((story: any) => {
+        const ratingData = ratingsData?.find(r => r.story_id === story.id);
+        return {
+          id: story.id,
+          title: story.title,
+          created_at: story.created_at,
+          username: story.user_id ? usersMap.get(story.user_id) : undefined,
+          quality_rating: ratingData?.quality_rating || null,
+          structure_beginning: story.structure_beginning,
+          structure_middle: story.structure_middle,
+          structure_ending: story.structure_ending,
+          emotional_coloring: story.emotional_coloring,
+        };
+      });
+      setClassifications(classificationData);
     }
 
     setIsLoading(false);
@@ -671,6 +749,47 @@ const FeedbackStatsPage = () => {
       return true;
     });
   }, [ratings, filterFeedbackKid, filterRating]);
+
+  // Sorted classifications
+  const sortedClassifications = useMemo(() => {
+    return [...classifications].sort((a, b) => {
+      const aVal = a[classificationSortKey];
+      const bVal = b[classificationSortKey];
+      
+      if (aVal === null || aVal === undefined) return 1;
+      if (bVal === null || bVal === undefined) return -1;
+      
+      if (typeof aVal === 'string' && typeof bVal === 'string') {
+        return classificationSortDir === 'asc' 
+          ? aVal.localeCompare(bVal) 
+          : bVal.localeCompare(aVal);
+      }
+      
+      if (typeof aVal === 'number' && typeof bVal === 'number') {
+        return classificationSortDir === 'asc' ? aVal - bVal : bVal - aVal;
+      }
+      
+      return 0;
+    });
+  }, [classifications, classificationSortKey, classificationSortDir]);
+
+  const handleClassificationSort = (key: keyof StoryClassification) => {
+    if (classificationSortKey === key) {
+      setClassificationSortDir(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      setClassificationSortKey(key);
+      setClassificationSortDir('desc');
+    }
+  };
+
+  const SortIcon = ({ column }: { column: keyof StoryClassification }) => {
+    if (classificationSortKey !== column) {
+      return <ArrowUpDown className="h-4 w-4 ml-1 opacity-50" />;
+    }
+    return classificationSortDir === 'asc' 
+      ? <ArrowUp className="h-4 w-4 ml-1" />
+      : <ArrowDown className="h-4 w-4 ml-1" />;
+  };
 
   const avgRating = ratings.length > 0
     ? (ratings.reduce((sum, r) => sum + r.quality_rating, 0) / ratings.length).toFixed(1)
@@ -906,6 +1025,10 @@ const FeedbackStatsPage = () => {
             <TabsTrigger value="consistency" className="flex items-center gap-2">
               <ShieldCheck className="h-4 w-4" />
               {t.consistencyTab}
+            </TabsTrigger>
+            <TabsTrigger value="classification" className="flex items-center gap-2">
+              <BarChart3 className="h-4 w-4" />
+              {t.classificationTab}
             </TabsTrigger>
           </TabsList>
 
@@ -1268,6 +1391,152 @@ const FeedbackStatsPage = () => {
           {/* Consistency Check Tab */}
           <TabsContent value="consistency">
             <ConsistencyCheckStats language={(user?.adminLanguage || 'de') as Language} />
+          </TabsContent>
+
+          {/* Classification Tab */}
+          <TabsContent value="classification">
+            {sortedClassifications.length === 0 ? (
+              <Card>
+                <CardContent className="py-12 text-center">
+                  <p className="text-muted-foreground">{t.noData}</p>
+                </CardContent>
+              </Card>
+            ) : (
+              <Card>
+                <CardContent className="p-0">
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead 
+                            className="cursor-pointer hover:bg-muted/50"
+                            onClick={() => handleClassificationSort("username")}
+                          >
+                            <div className="flex items-center">
+                              {t.user}
+                              <SortIcon column="username" />
+                            </div>
+                          </TableHead>
+                          <TableHead 
+                            className="cursor-pointer hover:bg-muted/50"
+                            onClick={() => handleClassificationSort("created_at")}
+                          >
+                            <div className="flex items-center">
+                              {t.date}
+                              <SortIcon column="created_at" />
+                            </div>
+                          </TableHead>
+                          <TableHead 
+                            className="cursor-pointer hover:bg-muted/50"
+                            onClick={() => handleClassificationSort("title")}
+                          >
+                            <div className="flex items-center">
+                              {t.storyTitle}
+                              <SortIcon column="title" />
+                            </div>
+                          </TableHead>
+                          <TableHead 
+                            className="cursor-pointer hover:bg-muted/50"
+                            onClick={() => handleClassificationSort("quality_rating")}
+                          >
+                            <div className="flex items-center">
+                              {t.rating}
+                              <SortIcon column="quality_rating" />
+                            </div>
+                          </TableHead>
+                          <TableHead 
+                            className="cursor-pointer hover:bg-muted/50"
+                            onClick={() => handleClassificationSort("structure_beginning")}
+                          >
+                            <div className="flex items-center">
+                              {t.structureBeginning}
+                              <SortIcon column="structure_beginning" />
+                            </div>
+                          </TableHead>
+                          <TableHead 
+                            className="cursor-pointer hover:bg-muted/50"
+                            onClick={() => handleClassificationSort("structure_middle")}
+                          >
+                            <div className="flex items-center">
+                              {t.structureMiddle}
+                              <SortIcon column="structure_middle" />
+                            </div>
+                          </TableHead>
+                          <TableHead 
+                            className="cursor-pointer hover:bg-muted/50"
+                            onClick={() => handleClassificationSort("structure_ending")}
+                          >
+                            <div className="flex items-center">
+                              {t.structureEnding}
+                              <SortIcon column="structure_ending" />
+                            </div>
+                          </TableHead>
+                          <TableHead 
+                            className="cursor-pointer hover:bg-muted/50"
+                            onClick={() => handleClassificationSort("emotional_coloring")}
+                          >
+                            <div className="flex items-center">
+                              {t.emotionalColoring}
+                              <SortIcon column="emotional_coloring" />
+                            </div>
+                          </TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {sortedClassifications.map((item) => (
+                          <TableRow key={item.id}>
+                            <TableCell>{item.username || "-"}</TableCell>
+                            <TableCell className="whitespace-nowrap">
+                              {format(new Date(item.created_at), "dd.MM.yyyy")}
+                            </TableCell>
+                            <TableCell className="max-w-[200px] truncate font-medium" title={item.title}>
+                              {item.title}
+                            </TableCell>
+                            <TableCell>
+                              {item.quality_rating ? (
+                                <Badge variant="outline">{item.quality_rating}/5</Badge>
+                              ) : (
+                                <span className="text-muted-foreground">-</span>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              {item.structure_beginning ? (
+                                <Badge variant={item.structure_beginning >= 4 ? "default" : item.structure_beginning >= 3 ? "secondary" : "destructive"}>
+                                  {item.structure_beginning}/5
+                                </Badge>
+                              ) : (
+                                <span className="text-muted-foreground">-</span>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              {item.structure_middle ? (
+                                <Badge variant={item.structure_middle >= 4 ? "default" : item.structure_middle >= 3 ? "secondary" : "destructive"}>
+                                  {item.structure_middle}/5
+                                </Badge>
+                              ) : (
+                                <span className="text-muted-foreground">-</span>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              {item.structure_ending ? (
+                                <Badge variant={item.structure_ending >= 4 ? "default" : item.structure_ending >= 3 ? "secondary" : "destructive"}>
+                                  {item.structure_ending}/5
+                                </Badge>
+                              ) : (
+                                <span className="text-muted-foreground">-</span>
+                              )}
+                            </TableCell>
+                            <TableCell className="max-w-[150px] truncate" title={item.emotional_coloring || ""}>
+                              {item.emotional_coloring || "-"}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </TabsContent>
         </Tabs>
 
