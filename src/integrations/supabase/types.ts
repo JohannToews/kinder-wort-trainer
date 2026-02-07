@@ -14,6 +14,63 @@ export type Database = {
   }
   public: {
     Tables: {
+      age_rules: {
+        Row: {
+          allowed_tenses: string[]
+          created_at: string | null
+          dialogue_ratio: string | null
+          example_sentences: string[] | null
+          id: string
+          language: string
+          max_age: number
+          max_sentence_length: number
+          max_word_count: number
+          min_age: number
+          min_word_count: number
+          narrative_guidelines: string
+          narrative_perspective: string | null
+          paragraph_length: string | null
+          sentence_structures: string
+          updated_at: string | null
+        }
+        Insert: {
+          allowed_tenses: string[]
+          created_at?: string | null
+          dialogue_ratio?: string | null
+          example_sentences?: string[] | null
+          id?: string
+          language: string
+          max_age: number
+          max_sentence_length: number
+          max_word_count: number
+          min_age: number
+          min_word_count: number
+          narrative_guidelines: string
+          narrative_perspective?: string | null
+          paragraph_length?: string | null
+          sentence_structures: string
+          updated_at?: string | null
+        }
+        Update: {
+          allowed_tenses?: string[]
+          created_at?: string | null
+          dialogue_ratio?: string | null
+          example_sentences?: string[] | null
+          id?: string
+          language?: string
+          max_age?: number
+          max_sentence_length?: number
+          max_word_count?: number
+          min_age?: number
+          min_word_count?: number
+          narrative_guidelines?: string
+          narrative_perspective?: string | null
+          paragraph_length?: string | null
+          sentence_structures?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       app_settings: {
         Row: {
           created_at: string
@@ -129,39 +186,6 @@ export type Database = {
           item_name?: string
           keywords?: string[] | null
           rarity?: string
-        }
-        Relationships: []
-      }
-      content_themes_by_level: {
-        Row: {
-          id: string
-          theme_key: string
-          labels: Json
-          min_safety_level: number
-          min_age: number | null
-          example_texts: Json
-          sort_order: number
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          theme_key: string
-          labels: Json
-          min_safety_level: number
-          min_age?: number | null
-          example_texts: Json
-          sort_order?: number
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          theme_key?: string
-          labels?: Json
-          min_safety_level?: number
-          min_age?: number | null
-          example_texts?: Json
-          sort_order?: number
-          created_at?: string
         }
         Relationships: []
       }
@@ -293,6 +317,96 @@ export type Database = {
         }
         Relationships: []
       }
+      difficulty_rules: {
+        Row: {
+          created_at: string | null
+          description: Json
+          difficulty_level: number
+          example_vocabulary: string[] | null
+          figurative_language: string
+          humor_types: string[]
+          id: string
+          idiom_usage: string
+          label: Json
+          language: string
+          new_words_per_story: number
+          repetition_strategy: string
+          updated_at: string | null
+          vocabulary_scope: string
+        }
+        Insert: {
+          created_at?: string | null
+          description: Json
+          difficulty_level: number
+          example_vocabulary?: string[] | null
+          figurative_language: string
+          humor_types: string[]
+          id?: string
+          idiom_usage: string
+          label: Json
+          language: string
+          new_words_per_story: number
+          repetition_strategy: string
+          updated_at?: string | null
+          vocabulary_scope: string
+        }
+        Update: {
+          created_at?: string | null
+          description?: Json
+          difficulty_level?: number
+          example_vocabulary?: string[] | null
+          figurative_language?: string
+          humor_types?: string[]
+          id?: string
+          idiom_usage?: string
+          label?: Json
+          language?: string
+          new_words_per_story?: number
+          repetition_strategy?: string
+          updated_at?: string | null
+          vocabulary_scope?: string
+        }
+        Relationships: []
+      }
+      emotion_rules: {
+        Row: {
+          character_development: string
+          conflict_patterns: string[]
+          created_at: string | null
+          emotion_key: string
+          emotional_vocabulary: string[] | null
+          id: string
+          labels: Json
+          language: string
+          resolution_patterns: string[] | null
+          updated_at: string | null
+        }
+        Insert: {
+          character_development: string
+          conflict_patterns: string[]
+          created_at?: string | null
+          emotion_key: string
+          emotional_vocabulary?: string[] | null
+          id?: string
+          labels: Json
+          language: string
+          resolution_patterns?: string[] | null
+          updated_at?: string | null
+        }
+        Update: {
+          character_development?: string
+          conflict_patterns?: string[]
+          created_at?: string | null
+          emotion_key?: string
+          emotional_vocabulary?: string[] | null
+          id?: string
+          labels?: Json
+          language?: string
+          resolution_patterns?: string[] | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       image_cache: {
         Row: {
           created_at: string | null
@@ -323,6 +437,42 @@ export type Database = {
         }
         Relationships: []
       }
+      image_style_rules: {
+        Row: {
+          age_group: string
+          art_style: string | null
+          color_palette: string | null
+          created_at: string | null
+          id: string
+          negative_prompt: string | null
+          style_prompt: string
+          theme_key: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          age_group: string
+          art_style?: string | null
+          color_palette?: string | null
+          created_at?: string | null
+          id?: string
+          negative_prompt?: string | null
+          style_prompt: string
+          theme_key?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          age_group?: string
+          art_style?: string | null
+          color_palette?: string | null
+          created_at?: string | null
+          id?: string
+          negative_prompt?: string | null
+          style_prompt?: string
+          theme_key?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       kid_profiles: {
         Row: {
           age: number | null
@@ -330,6 +480,7 @@ export type Database = {
           content_safety_level: number
           cover_image_url: string | null
           created_at: string
+          difficulty_level: number
           explanation_language: string
           gender: string | null
           hobbies: string
@@ -350,6 +501,7 @@ export type Database = {
           content_safety_level?: number
           cover_image_url?: string | null
           created_at?: string
+          difficulty_level?: number
           explanation_language?: string
           gender?: string | null
           hobbies?: string
@@ -370,6 +522,7 @@ export type Database = {
           content_safety_level?: number
           cover_image_url?: string | null
           created_at?: string
+          difficulty_level?: number
           explanation_language?: string
           gender?: string | null
           hobbies?: string
@@ -866,6 +1019,48 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      theme_rules: {
+        Row: {
+          character_archetypes: string[] | null
+          created_at: string | null
+          id: string
+          labels: Json
+          language: string
+          plot_templates: string[]
+          sensory_details: string | null
+          setting_descriptions: string
+          theme_key: string
+          typical_conflicts: string[] | null
+          updated_at: string | null
+        }
+        Insert: {
+          character_archetypes?: string[] | null
+          created_at?: string | null
+          id?: string
+          labels: Json
+          language: string
+          plot_templates: string[]
+          sensory_details?: string | null
+          setting_descriptions: string
+          theme_key: string
+          typical_conflicts?: string[] | null
+          updated_at?: string | null
+        }
+        Update: {
+          character_archetypes?: string[] | null
+          created_at?: string | null
+          id?: string
+          labels?: Json
+          language?: string
+          plot_templates?: string[]
+          sensory_details?: string | null
+          setting_descriptions?: string
+          theme_key?: string
+          typical_conflicts?: string[] | null
+          updated_at?: string | null
+        }
+        Relationships: []
       }
       user_profiles: {
         Row: {
