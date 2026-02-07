@@ -186,6 +186,40 @@ export interface Translations {
   vocabDeleteError: string;
   vocabWordRemoved: string;
   vocabAllWords: string;
+
+  // Parent Settings Panel – Learning Themes
+  parentSettingsTab: string;
+  learningThemesTitle: string;
+  learningThemesDescription: string;
+  learningThemesMax3: string;
+  learningThemesLimitReached: string;
+  learningFrequency: string;
+  frequencyOccasional: string;
+  frequencyRegular: string;
+  frequencyFrequent: string;
+  categorySocial: string;
+  categoryEmotional: string;
+  categoryCharacter: string;
+  categoryCognitive: string;
+
+  // Parent Settings Panel – Content Guardrails
+  contentGuardrailsTitle: string;
+  contentGuardrailsDescription: string;
+  guardrailLevel1: string;
+  guardrailLevel1Desc: string;
+  guardrailLevel2: string;
+  guardrailLevel2Desc: string;
+  guardrailLevel3: string;
+  guardrailLevel3Desc: string;
+  guardrailLevel4: string;
+  guardrailLevel4Desc: string;
+  guardrailAllowed: string;
+  guardrailNotAllowed: string;
+  guardrailGlobalExclusions: string;
+  guardrailGlobalExclusionsDesc: string;
+  parentSettingsSaved: string;
+  parentSettingsSaveError: string;
+  noKidProfileSelected: string;
 }
 
 const translations: Record<Language, Translations> = {
@@ -351,6 +385,38 @@ const translations: Record<Language, Translations> = {
     vocabDeleteError: 'Fehler beim Löschen',
     vocabWordRemoved: 'Wort entfernt',
     vocabAllWords: 'Alle Wörter',
+
+    parentSettingsTab: 'Erziehung',
+    learningThemesTitle: 'Lernthemen',
+    learningThemesDescription: 'Welche Werte sollen in den Geschichten vorkommen? Wähle bis zu 3 Themen.',
+    learningThemesMax3: 'Maximal 3 Themen',
+    learningThemesLimitReached: 'Maximum erreicht – bitte erst ein Thema abwählen',
+    learningFrequency: 'Häufigkeit',
+    frequencyOccasional: 'Gelegentlich',
+    frequencyRegular: 'Regelmäßig',
+    frequencyFrequent: 'Häufig',
+    categorySocial: 'Soziales',
+    categoryEmotional: 'Emotionales',
+    categoryCharacter: 'Charakter',
+    categoryCognitive: 'Kognitives',
+
+    contentGuardrailsTitle: 'Content-Grenzen',
+    contentGuardrailsDescription: 'Welche emotionalen Themen dürfen in den Geschichten vorkommen?',
+    guardrailLevel1: 'Nur Positives',
+    guardrailLevel1Desc: 'Nur fröhliche, konfliktfreie Geschichten ohne Angst oder Traurigkeit.',
+    guardrailLevel2: 'Leichte Konflikte',
+    guardrailLevel2Desc: 'Kleine Alltagskonflikte mit positivem Ausgang.',
+    guardrailLevel3: 'Mittlere Themen',
+    guardrailLevel3Desc: 'Realistischere Themen wie Trennung, Mobbing oder Umzug.',
+    guardrailLevel4: 'Offene Themen',
+    guardrailLevel4Desc: 'Auch schwierigere Themen wie Tod oder Krieg, kindgerecht aufbereitet.',
+    guardrailAllowed: 'Erlaubt',
+    guardrailNotAllowed: 'Nicht erlaubt',
+    guardrailGlobalExclusions: 'Immer ausgeschlossen',
+    guardrailGlobalExclusionsDesc: 'Diese Inhalte kommen in keiner Geschichte vor.',
+    parentSettingsSaved: 'Einstellungen gespeichert!',
+    parentSettingsSaveError: 'Fehler beim Speichern',
+    noKidProfileSelected: 'Bitte wähle zuerst ein Kinderprofil',
   },
   
   en: {
@@ -515,6 +581,38 @@ const translations: Record<Language, Translations> = {
     vocabDeleteError: 'Error deleting',
     vocabWordRemoved: 'Word removed',
     vocabAllWords: 'All words',
+
+    parentSettingsTab: 'Education',
+    learningThemesTitle: 'Learning Themes',
+    learningThemesDescription: 'Which values should appear in stories? Choose up to 3 themes.',
+    learningThemesMax3: 'Maximum 3 themes',
+    learningThemesLimitReached: 'Limit reached – please deselect a theme first',
+    learningFrequency: 'Frequency',
+    frequencyOccasional: 'Occasionally',
+    frequencyRegular: 'Regularly',
+    frequencyFrequent: 'Frequently',
+    categorySocial: 'Social',
+    categoryEmotional: 'Emotional',
+    categoryCharacter: 'Character',
+    categoryCognitive: 'Cognitive',
+
+    contentGuardrailsTitle: 'Content Guardrails',
+    contentGuardrailsDescription: 'Which emotional topics are allowed in stories?',
+    guardrailLevel1: 'Positive Only',
+    guardrailLevel1Desc: 'Only cheerful, conflict-free stories without fear or sadness.',
+    guardrailLevel2: 'Light Conflicts',
+    guardrailLevel2Desc: 'Minor everyday conflicts with positive outcomes.',
+    guardrailLevel3: 'Moderate Topics',
+    guardrailLevel3Desc: 'More realistic topics such as separation, bullying, or moving.',
+    guardrailLevel4: 'Open Topics',
+    guardrailLevel4Desc: 'Also more difficult topics like death or war, presented age-appropriately.',
+    guardrailAllowed: 'Allowed',
+    guardrailNotAllowed: 'Not allowed',
+    guardrailGlobalExclusions: 'Always excluded',
+    guardrailGlobalExclusionsDesc: 'This content will never appear in any story.',
+    parentSettingsSaved: 'Settings saved!',
+    parentSettingsSaveError: 'Error saving settings',
+    noKidProfileSelected: 'Please select a child profile first',
   },
   
   fr: {
@@ -679,6 +777,38 @@ const translations: Record<Language, Translations> = {
     vocabDeleteError: 'Erreur lors de la suppression',
     vocabWordRemoved: 'Mot supprimé',
     vocabAllWords: 'Tous les mots',
+
+    parentSettingsTab: 'Éducation',
+    learningThemesTitle: 'Thèmes d\'apprentissage',
+    learningThemesDescription: 'Quelles valeurs doivent apparaître dans les histoires ? Choisissez jusqu\'à 3 thèmes.',
+    learningThemesMax3: 'Maximum 3 thèmes',
+    learningThemesLimitReached: 'Limite atteinte – veuillez d\'abord désélectionner un thème',
+    learningFrequency: 'Fréquence',
+    frequencyOccasional: 'Occasionnellement',
+    frequencyRegular: 'Régulièrement',
+    frequencyFrequent: 'Fréquemment',
+    categorySocial: 'Social',
+    categoryEmotional: 'Émotionnel',
+    categoryCharacter: 'Caractère',
+    categoryCognitive: 'Cognitif',
+
+    contentGuardrailsTitle: 'Limites de contenu',
+    contentGuardrailsDescription: 'Quels sujets émotionnels sont autorisés dans les histoires ?',
+    guardrailLevel1: 'Positif uniquement',
+    guardrailLevel1Desc: 'Uniquement des histoires joyeuses et sans conflit.',
+    guardrailLevel2: 'Conflits légers',
+    guardrailLevel2Desc: 'Petits conflits du quotidien avec une issue positive.',
+    guardrailLevel3: 'Sujets modérés',
+    guardrailLevel3Desc: 'Sujets plus réalistes comme la séparation, le harcèlement ou le déménagement.',
+    guardrailLevel4: 'Sujets ouverts',
+    guardrailLevel4Desc: 'Également des sujets plus difficiles comme la mort ou la guerre, adaptés aux enfants.',
+    guardrailAllowed: 'Autorisé',
+    guardrailNotAllowed: 'Non autorisé',
+    guardrailGlobalExclusions: 'Toujours exclu',
+    guardrailGlobalExclusionsDesc: 'Ce contenu n\'apparaîtra jamais dans aucune histoire.',
+    parentSettingsSaved: 'Paramètres sauvegardés !',
+    parentSettingsSaveError: 'Erreur lors de la sauvegarde',
+    noKidProfileSelected: 'Veuillez d\'abord sélectionner un profil enfant',
   },
   
   es: {
@@ -843,6 +973,38 @@ const translations: Record<Language, Translations> = {
     vocabDeleteError: 'Error al eliminar',
     vocabWordRemoved: 'Palabra eliminada',
     vocabAllWords: 'Todas las palabras',
+
+    parentSettingsTab: 'Educación',
+    learningThemesTitle: 'Temas de aprendizaje',
+    learningThemesDescription: '¿Qué valores deben aparecer en las historias? Elige hasta 3 temas.',
+    learningThemesMax3: 'Máximo 3 temas',
+    learningThemesLimitReached: 'Límite alcanzado – primero deselecciona un tema',
+    learningFrequency: 'Frecuencia',
+    frequencyOccasional: 'Ocasionalmente',
+    frequencyRegular: 'Regularmente',
+    frequencyFrequent: 'Frecuentemente',
+    categorySocial: 'Social',
+    categoryEmotional: 'Emocional',
+    categoryCharacter: 'Carácter',
+    categoryCognitive: 'Cognitivo',
+
+    contentGuardrailsTitle: 'Límites de contenido',
+    contentGuardrailsDescription: '¿Qué temas emocionales están permitidos en las historias?',
+    guardrailLevel1: 'Solo positivo',
+    guardrailLevel1Desc: 'Solo historias alegres y sin conflictos.',
+    guardrailLevel2: 'Conflictos leves',
+    guardrailLevel2Desc: 'Pequeños conflictos cotidianos con resultados positivos.',
+    guardrailLevel3: 'Temas moderados',
+    guardrailLevel3Desc: 'Temas más realistas como separación, acoso o mudanza.',
+    guardrailLevel4: 'Temas abiertos',
+    guardrailLevel4Desc: 'También temas más difíciles como muerte o guerra, adaptados a niños.',
+    guardrailAllowed: 'Permitido',
+    guardrailNotAllowed: 'No permitido',
+    guardrailGlobalExclusions: 'Siempre excluido',
+    guardrailGlobalExclusionsDesc: 'Este contenido nunca aparecerá en ninguna historia.',
+    parentSettingsSaved: '¡Configuración guardada!',
+    parentSettingsSaveError: 'Error al guardar',
+    noKidProfileSelected: 'Primero selecciona un perfil de niño',
   },
   
   nl: {
@@ -1007,6 +1169,38 @@ const translations: Record<Language, Translations> = {
     vocabDeleteError: 'Fout bij verwijderen',
     vocabWordRemoved: 'Woord verwijderd',
     vocabAllWords: 'Alle woorden',
+
+    parentSettingsTab: 'Opvoeding',
+    learningThemesTitle: 'Leeronderwerpen',
+    learningThemesDescription: 'Welke waarden moeten in de verhalen voorkomen? Kies maximaal 3 thema\'s.',
+    learningThemesMax3: 'Maximaal 3 thema\'s',
+    learningThemesLimitReached: 'Limiet bereikt – deselecteer eerst een thema',
+    learningFrequency: 'Frequentie',
+    frequencyOccasional: 'Af en toe',
+    frequencyRegular: 'Regelmatig',
+    frequencyFrequent: 'Vaak',
+    categorySocial: 'Sociaal',
+    categoryEmotional: 'Emotioneel',
+    categoryCharacter: 'Karakter',
+    categoryCognitive: 'Cognitief',
+
+    contentGuardrailsTitle: 'Inhoudsgrenzen',
+    contentGuardrailsDescription: 'Welke emotionele onderwerpen zijn toegestaan in verhalen?',
+    guardrailLevel1: 'Alleen positief',
+    guardrailLevel1Desc: 'Alleen vrolijke verhalen zonder conflicten.',
+    guardrailLevel2: 'Lichte conflicten',
+    guardrailLevel2Desc: 'Kleine alledaagse conflicten met een positieve uitkomst.',
+    guardrailLevel3: 'Gematigde onderwerpen',
+    guardrailLevel3Desc: 'Realistischere onderwerpen zoals scheiding, pesten of verhuizen.',
+    guardrailLevel4: 'Open onderwerpen',
+    guardrailLevel4Desc: 'Ook moeilijkere onderwerpen zoals dood of oorlog, kindvriendelijk gepresenteerd.',
+    guardrailAllowed: 'Toegestaan',
+    guardrailNotAllowed: 'Niet toegestaan',
+    guardrailGlobalExclusions: 'Altijd uitgesloten',
+    guardrailGlobalExclusionsDesc: 'Deze inhoud verschijnt nooit in een verhaal.',
+    parentSettingsSaved: 'Instellingen opgeslagen!',
+    parentSettingsSaveError: 'Fout bij opslaan',
+    noKidProfileSelected: 'Selecteer eerst een kindprofiel',
   },
   
   it: {
@@ -1171,6 +1365,38 @@ const translations: Record<Language, Translations> = {
     vocabDeleteError: 'Errore nella cancellazione',
     vocabWordRemoved: 'Parola rimossa',
     vocabAllWords: 'Tutte le parole',
+
+    parentSettingsTab: 'Educazione',
+    learningThemesTitle: 'Temi di apprendimento',
+    learningThemesDescription: 'Quali valori devono apparire nelle storie? Scegli fino a 3 temi.',
+    learningThemesMax3: 'Massimo 3 temi',
+    learningThemesLimitReached: 'Limite raggiunto – deseleziona prima un tema',
+    learningFrequency: 'Frequenza',
+    frequencyOccasional: 'Occasionalmente',
+    frequencyRegular: 'Regolarmente',
+    frequencyFrequent: 'Frequentemente',
+    categorySocial: 'Sociale',
+    categoryEmotional: 'Emotivo',
+    categoryCharacter: 'Carattere',
+    categoryCognitive: 'Cognitivo',
+
+    contentGuardrailsTitle: 'Limiti di contenuto',
+    contentGuardrailsDescription: 'Quali temi emotivi sono consentiti nelle storie?',
+    guardrailLevel1: 'Solo positivo',
+    guardrailLevel1Desc: 'Solo storie allegre e senza conflitti.',
+    guardrailLevel2: 'Conflitti leggeri',
+    guardrailLevel2Desc: 'Piccoli conflitti quotidiani con esiti positivi.',
+    guardrailLevel3: 'Temi moderati',
+    guardrailLevel3Desc: 'Temi più realistici come separazione, bullismo o trasloco.',
+    guardrailLevel4: 'Temi aperti',
+    guardrailLevel4Desc: 'Anche temi più difficili come morte o guerra, adattati ai bambini.',
+    guardrailAllowed: 'Consentito',
+    guardrailNotAllowed: 'Non consentito',
+    guardrailGlobalExclusions: 'Sempre escluso',
+    guardrailGlobalExclusionsDesc: 'Questo contenuto non apparirà mai in nessuna storia.',
+    parentSettingsSaved: 'Impostazioni salvate!',
+    parentSettingsSaveError: 'Errore durante il salvataggio',
+    noKidProfileSelected: 'Seleziona prima un profilo bambino',
   },
   
   bs: {
@@ -1335,6 +1561,38 @@ const translations: Record<Language, Translations> = {
     vocabDeleteError: 'Greška pri brisanju',
     vocabWordRemoved: 'Riječ uklonjena',
     vocabAllWords: 'Sve riječi',
+
+    parentSettingsTab: 'Odgoj',
+    learningThemesTitle: 'Teme za učenje',
+    learningThemesDescription: 'Koje vrijednosti trebaju biti u pričama? Odaberite do 3 teme.',
+    learningThemesMax3: 'Maksimalno 3 teme',
+    learningThemesLimitReached: 'Limit dostignut – prvo odznačite temu',
+    learningFrequency: 'Učestalost',
+    frequencyOccasional: 'Povremeno',
+    frequencyRegular: 'Redovno',
+    frequencyFrequent: 'Često',
+    categorySocial: 'Socijalno',
+    categoryEmotional: 'Emocionalno',
+    categoryCharacter: 'Karakter',
+    categoryCognitive: 'Kognitivno',
+
+    contentGuardrailsTitle: 'Granice sadržaja',
+    contentGuardrailsDescription: 'Koje emocionalne teme su dozvoljene u pričama?',
+    guardrailLevel1: 'Samo pozitivno',
+    guardrailLevel1Desc: 'Samo vesele priče bez konflikata.',
+    guardrailLevel2: 'Lagani konflikti',
+    guardrailLevel2Desc: 'Mali svakodnevni konflikti s pozitivnim ishodom.',
+    guardrailLevel3: 'Umjerene teme',
+    guardrailLevel3Desc: 'Realističnije teme poput razvoda, maltretiranja ili selidbe.',
+    guardrailLevel4: 'Otvorene teme',
+    guardrailLevel4Desc: 'I teže teme poput smrti ili rata, prilagođene djeci.',
+    guardrailAllowed: 'Dozvoljeno',
+    guardrailNotAllowed: 'Nije dozvoljeno',
+    guardrailGlobalExclusions: 'Uvijek isključeno',
+    guardrailGlobalExclusionsDesc: 'Ovaj sadržaj se nikada neće pojaviti ni u jednoj priči.',
+    parentSettingsSaved: 'Postavke sačuvane!',
+    parentSettingsSaveError: 'Greška pri čuvanju',
+    noKidProfileSelected: 'Prvo odaberite profil djeteta',
   },
 };
 

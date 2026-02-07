@@ -52,6 +52,7 @@ kinder-wort-trainer/
 │   │   ├── ComprehensionQuiz.tsx  # Story comprehension quiz
 │   │   ├── SeriesGrid.tsx         # Series display grid (uses central translations)
 │   │   ├── KidProfileSection.tsx  # Kid profile editor (saves multilingual fields)
+│   │   ├── ParentSettingsPanel.tsx # Learning themes & content guardrails (Block 2.1)
 │   │   ├── ProtectedRoute.tsx     # Route guard
 │   │   ├── ReadingSettings.tsx    # Font size, line spacing, syllable mode
 │   │   ├── StoryAudioPlayer.tsx   # Audio player for TTS narration
@@ -87,7 +88,7 @@ kinder-wort-trainer/
 │   │   ├── VocabularyManagePage.tsx # Manage saved words
 │   │   ├── ResultsPage.tsx        # Progress dashboard
 │   │   ├── CollectionPage.tsx     # Collectibles
-│   │   ├── AdminPage.tsx          # Admin dashboard
+│   │   ├── AdminPage.tsx          # Admin dashboard (tabs: Profile, Erziehung, Stories, Settings, Account, System)
 │   │   ├── FeedbackStatsPage.tsx  # Story quality stats
 │   │   ├── InstallPage.tsx        # PWA install prompt
 │   │   ├── ShareRedirectPage.tsx  # Handle shared story links
@@ -96,7 +97,7 @@ kinder-wort-trainer/
 │       └── speech-recognition.d.ts
 ├── supabase/
 │   ├── functions/                 # 15 Edge Functions (see below)
-│   └── migrations/                # 33 SQL migrations (incl. multilingual fields)
+│   └── migrations/                # 34 SQL migrations (incl. multilingual fields + Block 2.1 learning/guardrails)
 ├── package.json
 ├── vite.config.ts
 ├── tailwind.config.ts
@@ -137,7 +138,7 @@ kinder-wort-trainer/
 │  Supabase Database   │
 │  (PostgreSQL)        │
 │                      │
-│  20 tables           │
+│  23 tables           │
 │  3 enums             │
 │  RLS policies        │
 └──────────────────────┘
@@ -346,6 +347,7 @@ Data stored in:
 user_profiles (1) ──── (N) kid_profiles
       │                       │
       │                       ├── (N) stories
+      │                       ├── (1) parent_learning_config   ← Block 2.1
       │                       ├── (N) user_progress (1:1 per kid)
       │                       ├── (N) point_transactions
       │                       ├── (N) collected_items
@@ -361,6 +363,9 @@ user_profiles (1) ──── (N) kid_profiles
               ├── (N) shared_stories
               ├── (N) consistency_check_results
               └── (N) stories (self-ref via series_id)
+
+learning_themes              ← Block 2.1 (standalone reference table, 15 entries)
+content_themes_by_level      ← Block 2.1 (standalone reference table, ~19 entries)
 ```
 
 ### Tables
@@ -370,9 +375,9 @@ user_profiles (1) ──── (N) kid_profiles
 | Table | Purpose | Key Columns |
 |-------|---------|-------------|
 | `user_profiles` | User accounts | username, password_hash, display_name, admin_language, app_language, text_language |
-| `kid_profiles` | Child profiles (multi per user) | name, hobbies, school_system, school_class, color_palette, image_style, gender, age, **ui_language**, **reading_language**, **explanation_language**, **home_languages[]** |
+| `kid_profiles` | Child profiles (multi per user) | name, hobbies, school_system, school_class, color_palette, image_style, gender, age, **ui_language**, **reading_language**, **explanation_language**, **home_languages[]**, **content_safety_level** (1-4, default 2) |
 | `user_roles` | Role assignments | user_id, role (admin/standard) |
-| `stories` | Story content and metadata | title, content, cover_image_url, story_images[], difficulty, text_type, **text_language** (NOT NULL, default 'fr'), generation_status, series_id, episode_number, ending_type, structure ratings |
+| `stories` | Story content and metadata | title, content, cover_image_url, story_images[], difficulty, text_type, **text_language** (NOT NULL, default 'fr'), generation_status, series_id, episode_number, ending_type, structure ratings, **learning_theme_applied**, **parent_prompt_text** |
 | `marked_words` | Vocabulary words with explanations | word, explanation, story_id, quiz_history[], is_learned, difficulty, **word_language**, **explanation_language** |
 | `comprehension_questions` | Story comprehension questions | question, expected_answer, options[], story_id, **question_language** |
 
@@ -388,6 +393,14 @@ user_profiles (1) ──── (N) kid_profiles
 | `collected_items` | Items collected by kids |
 | `collectible_pool` | Available collectible items (creature/place/object/star) |
 | `user_results` | Activity results (quiz scores, reading completions) |
+
+#### Learning & Guardrails Tables (Block 2.1 – Migration `20260207`)
+
+| Table | Purpose | Key Columns |
+|-------|---------|-------------|
+| `learning_themes` | Reference table: 15 educational themes in 4 categories (social, emotional, character, cognitive) | theme_key (UNIQUE), category, labels (JSONB, 7 langs), descriptions (JSONB, 7 langs), sort_order |
+| `content_themes_by_level` | Reference table: emotional content themes with safety levels (0=never, 1-4=allowed from level) | theme_key (UNIQUE), labels (JSONB), min_safety_level, min_age, example_texts (JSONB) |
+| `parent_learning_config` | Per-kid learning preferences (1:1 with kid_profiles) | kid_profile_id (UNIQUE FK), active_themes text[] (max 3), frequency (1-3) |
 
 #### System Tables
 
@@ -441,6 +454,25 @@ useKidProfile.tsx → getKidLanguage(school_system)
 ```
 
 **Note:** `school_system` is the primary source for `kidAppLanguage` and `kidReadingLanguage`. The `ui_language`/`reading_language` DB fields are kept in sync when saving but `school_system` takes priority at runtime for robustness (the migration may not have been deployed yet on all environments).
+
+### Learning Themes & Content Guardrails (Block 2.1 – Migration `20260207`)
+
+Added parental controls for story content: learning themes and emotional content safety levels.
+
+| Table / Column | Type | Purpose |
+|-------|------|---------|
+| `learning_themes` (new table) | 15 rows, 4 categories | Reference data for educational themes (sharing, empathy, honesty, etc.) with JSONB labels/descriptions in 7 languages |
+| `content_themes_by_level` (new table) | ~19 rows | Emotional content themes (friend_conflict, divorce, death, etc.) mapped to safety levels. Level 0 = globally excluded (violence, sexual content, etc.) |
+| `parent_learning_config` (new table) | 1:1 per kid_profile | Stores parent's selected learning themes (max 3) and frequency (1=occasional, 2=regular, 3=frequent) |
+| `kid_profiles.content_safety_level` | integer NOT NULL DEFAULT 2 | Safety level 1-4 controlling which emotional themes are allowed. Default set by age at migration time. |
+| `stories.learning_theme_applied` | text, nullable | Records which learning theme was woven into the story (for future use by story generator) |
+| `stories.parent_prompt_text` | text, nullable | Stores parent's custom story prompt (for future use) |
+
+**UI:** `ParentSettingsPanel.tsx` component, accessible as "Erziehung" tab in AdminPage. Two sections:
+1. **Learning Themes** – Toggle up to 3 themes across 4 categories, frequency slider
+2. **Content Guardrails** – Select safety level (1-4), see allowed/not-allowed emotional themes, global exclusions
+
+**RLS:** `learning_themes` and `content_themes_by_level` are read-only for all users. `parent_learning_config` is CRUD-scoped to the user who owns the kid profile.
 
 ---
 
@@ -531,4 +563,4 @@ useKidProfile.tsx → getKidLanguage(school_system)
 
 ---
 
-*Generated on 2026-02-06 by codebase analysis. Updated 2026-02-07 with Block 1 (multilingual DB model) and translation consolidation.*
+*Generated on 2026-02-06 by codebase analysis. Updated 2026-02-07 with Block 1 (multilingual DB model), translation consolidation, and Block 2.1 (learning themes + content guardrails).*

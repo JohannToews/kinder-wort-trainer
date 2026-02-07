@@ -8,11 +8,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { ArrowLeft, Save, Image, BookOpen, Trash2, Upload, LogOut, User, Settings, Sparkles, Library, FileEdit, Star, TrendingUp, CreditCard, Mail, Lock, UserX, Receipt, Crown, Wrench, Users } from "lucide-react";
+import { ArrowLeft, Save, Image, BookOpen, Trash2, Upload, LogOut, User, Settings, Sparkles, Library, FileEdit, Star, TrendingUp, CreditCard, Mail, Lock, UserX, Receipt, Crown, Wrench, Users, BookHeart } from "lucide-react";
 import StoryGenerator from "@/components/StoryGenerator";
 import PointsConfigSection from "@/components/PointsConfigSection";
 import LevelConfigSection from "@/components/LevelConfigSection";
 import KidProfileSection from "@/components/KidProfileSection";
+import ParentSettingsPanel from "@/components/ParentSettingsPanel";
 import UserManagementSection from "@/components/UserManagementSection";
 import SystemPromptSection from "@/components/SystemPromptSection";
 import { useAuth } from "@/hooks/useAuth";
@@ -400,10 +401,14 @@ const AdminPage = () => {
 
       {/* Tab Navigation - Native App Style */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
-        <TabsList className={`flex-none grid mx-4 mt-3 h-12 bg-muted/50 ${user?.role === 'admin' ? 'grid-cols-5' : 'grid-cols-3'}`}>
+        <TabsList className={`flex-none grid mx-4 mt-3 h-12 bg-muted/50 ${user?.role === 'admin' ? 'grid-cols-6' : 'grid-cols-4'}`}>
           <TabsTrigger value="profile" className="flex items-center gap-2 text-sm font-medium">
             <User className="h-4 w-4" />
             <span className="hidden sm:inline">{t.kidProfile}</span>
+          </TabsTrigger>
+          <TabsTrigger value="parenting" className="flex items-center gap-2 text-sm font-medium">
+            <BookHeart className="h-4 w-4" />
+            <span className="hidden sm:inline">{t.parentSettingsTab}</span>
           </TabsTrigger>
           <TabsTrigger value="stories" className="flex items-center gap-2 text-sm font-medium">
             <Sparkles className="h-4 w-4" />
@@ -438,6 +443,13 @@ const AdminPage = () => {
                   userId={user.id}
                 />
               )}
+            </div>
+          </TabsContent>
+
+          {/* Parenting / Education Tab */}
+          <TabsContent value="parenting" className="h-full overflow-y-auto m-0 pr-2">
+            <div className="max-w-3xl mx-auto">
+              <ParentSettingsPanel language={adminLang} />
             </div>
           </TabsContent>
 
