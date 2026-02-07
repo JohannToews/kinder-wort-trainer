@@ -295,6 +295,23 @@ export type EducationalTopic =
 export type StoryLength = "short" | "medium" | "long";
 export type StoryDifficulty = "easy" | "medium" | "hard";
 
+// Language picker helpers
+export const LANGUAGE_FLAGS: Record<string, string> = {
+  fr: '\u{1F1EB}\u{1F1F7}', de: '\u{1F1E9}\u{1F1EA}', en: '\u{1F1EC}\u{1F1E7}',
+  es: '\u{1F1EA}\u{1F1F8}', it: '\u{1F1EE}\u{1F1F9}', bs: '\u{1F1E7}\u{1F1E6}',
+  nl: '\u{1F1F3}\u{1F1F1}',
+};
+
+export const LANGUAGE_LABELS: Record<string, Record<string, string>> = {
+  fr: { fr: 'Fran\u00e7ais', de: 'Franz\u00f6sisch', en: 'French', es: 'Franc\u00e9s', it: 'Francese', bs: 'Francuski', nl: 'Frans' },
+  de: { fr: 'Allemand', de: 'Deutsch', en: 'German', es: 'Alem\u00e1n', it: 'Tedesco', bs: 'Njema\u010dki', nl: 'Duits' },
+  en: { fr: 'Anglais', de: 'Englisch', en: 'English', es: 'Ingl\u00e9s', it: 'Inglese', bs: 'Engleski', nl: 'Engels' },
+  es: { fr: 'Espagnol', de: 'Spanisch', en: 'Spanish', es: 'Espa\u00f1ol', it: 'Spagnolo', bs: '\u0160panski', nl: 'Spaans' },
+  it: { fr: 'Italien', de: 'Italienisch', en: 'Italian', es: 'Italiano', it: 'Italiano', bs: 'Italijanski', nl: 'Italiaans' },
+  bs: { fr: 'Bosnien', de: 'Bosnisch', en: 'Bosnian', es: 'Bosnio', it: 'Bosniaco', bs: 'Bosanski', nl: 'Bosnisch' },
+  nl: { fr: 'N\u00e9erlandais', de: 'Niederl\u00e4ndisch', en: 'Dutch', es: 'Holand\u00e9s', it: 'Olandese', bs: 'Holandski', nl: 'Nederlands' },
+};
+
 export interface StoryTypeSelectionTranslations {
   header: string;
   // Story settings (length, difficulty, series)
@@ -310,6 +327,7 @@ export interface StoryTypeSelectionTranslations {
   seriesLabel: string;
   seriesYes: string;
   seriesNo: string;
+  storyLanguageLabel: string;
   // Main categories
   fantasy: string;
   action: string;
@@ -399,6 +417,7 @@ export const storyTypeSelectionTranslations: Record<Language, StoryTypeSelection
     seriesLabel: "Serie",
     seriesYes: "Ja",
     seriesNo: "Nein",
+    storyLanguageLabel: "Sprache",
     // Main categories
     fantasy: "Märchen & Fantasie",
     action: "Abenteuer & Action",
@@ -486,6 +505,7 @@ export const storyTypeSelectionTranslations: Record<Language, StoryTypeSelection
     seriesLabel: "Série",
     seriesYes: "Oui",
     seriesNo: "Non",
+    storyLanguageLabel: "Langue",
     fantasy: "Contes & Fantaisie",
     action: "Aventure & Action",
     animals: "Histoires d'animaux",
@@ -564,6 +584,7 @@ export const storyTypeSelectionTranslations: Record<Language, StoryTypeSelection
     seriesLabel: "Series",
     seriesYes: "Yes",
     seriesNo: "No",
+    storyLanguageLabel: "Language",
     fantasy: "Fairy Tales & Fantasy",
     action: "Adventure & Action",
     animals: "Animal Stories",
@@ -642,6 +663,7 @@ export const storyTypeSelectionTranslations: Record<Language, StoryTypeSelection
     seriesLabel: "Serie",
     seriesYes: "Sí",
     seriesNo: "No",
+    storyLanguageLabel: "Idioma",
     fantasy: "Cuentos & Fantasía",
     action: "Aventura & Acción",
     animals: "Historias de animales",
@@ -720,6 +742,7 @@ export const storyTypeSelectionTranslations: Record<Language, StoryTypeSelection
     seriesLabel: "Serie",
     seriesYes: "Ja",
     seriesNo: "Nee",
+    storyLanguageLabel: "Taal",
     fantasy: "Sprookjes & Fantasie",
     action: "Avontuur & Actie",
     animals: "Dierenverhalen",
@@ -798,6 +821,7 @@ export const storyTypeSelectionTranslations: Record<Language, StoryTypeSelection
     seriesLabel: "Serie",
     seriesYes: "Sì",
     seriesNo: "No",
+    storyLanguageLabel: "Lingua",
     fantasy: "Fiabe & Fantasia",
     action: "Avventura & Azione",
     animals: "Storie di animali",
@@ -876,6 +900,7 @@ export const storyTypeSelectionTranslations: Record<Language, StoryTypeSelection
     seriesLabel: "Serija",
     seriesYes: "Da",
     seriesNo: "Ne",
+    storyLanguageLabel: "Jezik",
     fantasy: "Bajke & Fantazija",
     action: "Avantura & Akcija",
     animals: "Priče o životinjama",
@@ -954,6 +979,7 @@ export interface SelectedCharacter {
 export interface CharacterSelectionTranslations {
   header: string;
   me: string;
+  meDescription: string;
   family: string;
   siblings: string;
   friends: string;
@@ -986,12 +1012,25 @@ export interface CharacterSelectionTranslations {
   selectOrName: string;
   useDefaultName: string;
   enterCustomName: string;
+  // Block 2.3d: Saved characters
+  savedCharactersLabel: string;
+  addCharacter: string;
+  characterName: string;
+  characterRole: string;
+  characterAge: string;
+  characterRelation: string;
+  characterDescription: string;
+  roleSibling: string;
+  roleFriend: string;
+  roleKnownFigure: string;
+  roleCustom: string;
 }
 
 export const characterSelectionTranslations: Record<Language, CharacterSelectionTranslations> = {
   de: {
     header: "Wer sind die Hauptpersonen in deiner Geschichte?",
     me: "Ich",
+    meDescription: "Ich bin die Hauptfigur!",
     family: "Meine Familie",
     siblings: "Meine Geschwister",
     friends: "Meine Freunde",
@@ -1024,10 +1063,22 @@ export const characterSelectionTranslations: Record<Language, CharacterSelection
     selectOrName: "Auswählen oder Name eingeben",
     useDefaultName: "Als",
     enterCustomName: "Eigener Name",
+    savedCharactersLabel: "Gespeicherte Figuren",
+    addCharacter: "Figur speichern",
+    characterName: "Name",
+    characterRole: "Rolle",
+    characterAge: "Alter",
+    characterRelation: "Beziehung",
+    characterDescription: "Beschreibung",
+    roleSibling: "Geschwister",
+    roleFriend: "Freund/in",
+    roleKnownFigure: "Bekannte Figur",
+    roleCustom: "Andere",
   },
   fr: {
     header: "Qui sont les personnages principaux de ton histoire?",
     me: "Moi",
+    meDescription: "Je suis le personnage principal !",
     family: "Ma famille",
     siblings: "Mes frères et sœurs",
     friends: "Mes amis",
@@ -1060,10 +1111,22 @@ export const characterSelectionTranslations: Record<Language, CharacterSelection
     selectOrName: "Sélectionner ou entrer un nom",
     useDefaultName: "Comme",
     enterCustomName: "Nom personnalisé",
+    savedCharactersLabel: "Personnages enregistrés",
+    addCharacter: "Enregistrer un personnage",
+    characterName: "Nom",
+    characterRole: "Rôle",
+    characterAge: "Âge",
+    characterRelation: "Relation",
+    characterDescription: "Description",
+    roleSibling: "Frère/Sœur",
+    roleFriend: "Ami(e)",
+    roleKnownFigure: "Personnage connu",
+    roleCustom: "Autre",
   },
   en: {
     header: "Who are the main characters in your story?",
     me: "Me",
+    meDescription: "I'm the main character!",
     family: "My Family",
     siblings: "My Siblings",
     friends: "My Friends",
@@ -1096,10 +1159,22 @@ export const characterSelectionTranslations: Record<Language, CharacterSelection
     selectOrName: "Select or enter a name",
     useDefaultName: "As",
     enterCustomName: "Custom name",
+    savedCharactersLabel: "Saved characters",
+    addCharacter: "Save character",
+    characterName: "Name",
+    characterRole: "Role",
+    characterAge: "Age",
+    characterRelation: "Relation",
+    characterDescription: "Description",
+    roleSibling: "Sibling",
+    roleFriend: "Friend",
+    roleKnownFigure: "Known character",
+    roleCustom: "Other",
   },
   es: {
     header: "¿Quiénes son los personajes principales de tu historia?",
     me: "Yo",
+    meDescription: "¡Soy el personaje principal!",
     family: "Mi familia",
     siblings: "Mis hermanos",
     friends: "Mis amigos",
@@ -1132,10 +1207,22 @@ export const characterSelectionTranslations: Record<Language, CharacterSelection
     selectOrName: "Seleccionar o ingresar nombre",
     useDefaultName: "Como",
     enterCustomName: "Nombre personalizado",
+    savedCharactersLabel: "Personajes guardados",
+    addCharacter: "Guardar personaje",
+    characterName: "Nombre",
+    characterRole: "Rol",
+    characterAge: "Edad",
+    characterRelation: "Relación",
+    characterDescription: "Descripción",
+    roleSibling: "Hermano/a",
+    roleFriend: "Amigo/a",
+    roleKnownFigure: "Personaje conocido",
+    roleCustom: "Otro",
   },
   nl: {
     header: "Wie zijn de hoofdpersonen in je verhaal?",
     me: "Ik",
+    meDescription: "Ik ben het hoofdpersonage!",
     family: "Mijn familie",
     siblings: "Mijn broers en zussen",
     friends: "Mijn vrienden",
@@ -1168,10 +1255,22 @@ export const characterSelectionTranslations: Record<Language, CharacterSelection
     selectOrName: "Selecteer of voer naam in",
     useDefaultName: "Als",
     enterCustomName: "Eigen naam",
+    savedCharactersLabel: "Opgeslagen personages",
+    addCharacter: "Personage opslaan",
+    characterName: "Naam",
+    characterRole: "Rol",
+    characterAge: "Leeftijd",
+    characterRelation: "Relatie",
+    characterDescription: "Beschrijving",
+    roleSibling: "Broer/Zus",
+    roleFriend: "Vriend(in)",
+    roleKnownFigure: "Bekend personage",
+    roleCustom: "Andere",
   },
   it: {
     header: "Chi sono i personaggi principali della tua storia?",
     me: "Io",
+    meDescription: "Sono il protagonista!",
     family: "La mia famiglia",
     siblings: "I miei fratelli",
     friends: "I miei amici",
@@ -1204,10 +1303,22 @@ export const characterSelectionTranslations: Record<Language, CharacterSelection
     selectOrName: "Seleziona o inserisci nome",
     useDefaultName: "Come",
     enterCustomName: "Nome personalizzato",
+    savedCharactersLabel: "Personaggi salvati",
+    addCharacter: "Salva personaggio",
+    characterName: "Nome",
+    characterRole: "Ruolo",
+    characterAge: "Età",
+    characterRelation: "Relazione",
+    characterDescription: "Descrizione",
+    roleSibling: "Fratello/Sorella",
+    roleFriend: "Amico/a",
+    roleKnownFigure: "Personaggio noto",
+    roleCustom: "Altro",
   },
   bs: {
     header: "Ko su glavni likovi u tvojoj priči?",
     me: "Ja",
+    meDescription: "Ja sam glavni lik!",
     family: "Moja porodica",
     siblings: "Moja braća i sestre",
     friends: "Moji prijatelji",
@@ -1240,5 +1351,16 @@ export const characterSelectionTranslations: Record<Language, CharacterSelection
     selectOrName: "Odaberi ili unesi ime",
     useDefaultName: "Kao",
     enterCustomName: "Vlastito ime",
+    savedCharactersLabel: "Sačuvani likovi",
+    addCharacter: "Sačuvaj lik",
+    characterName: "Ime",
+    characterRole: "Uloga",
+    characterAge: "Dob",
+    characterRelation: "Odnos",
+    characterDescription: "Opis",
+    roleSibling: "Brat/Sestra",
+    roleFriend: "Prijatelj/ica",
+    roleKnownFigure: "Poznati lik",
+    roleCustom: "Ostalo",
   },
 };

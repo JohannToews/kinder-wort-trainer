@@ -19,6 +19,9 @@ export interface KidProfile {
   explanation_language?: string;
   home_languages?: string[];
   content_safety_level?: number;
+  difficulty_level?: number;
+  age?: number | null;
+  gender?: string | null;
 }
 
 // Derive app language from school_system (legacy fallback)
@@ -100,6 +103,9 @@ export const KidProfileProvider = ({ children }: { children: ReactNode }) => {
         explanation_language: (d as any).explanation_language || 'de',
         home_languages: (d as any).home_languages || ['de'],
         content_safety_level: (d as any).content_safety_level ?? 2,
+        difficulty_level: (d as any).difficulty_level ?? 2,
+        age: (d as any).age ?? null,
+        gender: (d as any).gender ?? null,
       }));
       setKidProfiles(mappedProfiles);
       

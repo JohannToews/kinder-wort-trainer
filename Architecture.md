@@ -97,7 +97,12 @@ kinder-wort-trainer/
 │       └── speech-recognition.d.ts
 ├── supabase/
 │   ├── functions/                 # 15 Edge Functions (see below)
-│   └── migrations/                # 37 SQL migrations (incl. multilingual fields, Block 2.1 learning/guardrails, Block 2.2 rule tables + difficulty_rules, Block 2.3a story classifications + kid_characters)
+│   │   ├── generate-story/        # Main story generation (~1409 lines)
+│   │   ├── _shared/               # Shared modules for Edge Functions
+│   │   │   ├── promptBuilder.ts   # Block 2.3c: Dynamic prompt builder (queries rule tables)
+│   │   │   └── learningThemeRotation.ts  # Block 2.3c: Learning theme rotation logic
+│   │   └── …                      # 14 more Edge Functions
+│   └── migrations/                # 39 SQL migrations (incl. multilingual fields, Block 2.1 learning/guardrails, Block 2.2 rule tables + difficulty_rules, Block 2.3a story classifications + kid_characters, Block 2.3c core slim prompt)
 ├── package.json
 ├── vite.config.ts
 ├── tailwind.config.ts
@@ -138,7 +143,7 @@ kinder-wort-trainer/
 │  Supabase Database   │
 │  (PostgreSQL)        │
 │                      │
-│  29 tables           │
+│  28 tables           │
 │  3 enums             │
 │  RLS policies        │
 └──────────────────────┘
@@ -200,30 +205,48 @@ ProtectedRoute checks isAuthenticated
 ### 1. Story Creation Flow
 
 ```
-CreateStoryPage.tsx (Wizard)
+CreateStoryPage.tsx (Wizard – 4 screens)
   Screen 1: Story Type Selection (adventure, fantasy, educational…)
-  Screen 2: Character Selection (boy, girl, family…)
-  Screen 3: Special Effects (humor, attributes…)
+           + Length toggle (short/medium/long)
+           + Difficulty toggle (easy/medium/hard)
+           + Series toggle (yes/no)
+           + Language picker (Block 2.3d – only if >1 language available)
+  Screen 2: Character Selection
+           + "Ich" tile with kid name + age (Block 2.3d)
+           + Family, siblings, friends, famous, surprise
+           + Saved kid_characters from DB (Block 2.3d)
+           + "Save character" dialog → kid_characters table (Block 2.3d)
+  Screen 3: Special Effects (attributes) + Optional free text
+  Screen 4: Generation progress animation
         │
         ▼
 supabase.functions.invoke('generate-story')
         │
         ▼
 generate-story/index.ts:
-  1. Load modular prompts from app_settings:
-     • CORE prompt (system_prompt_{lang})
-     • ELTERN-MODUL or KINDER-MODUL (based on source)
-     • SERIEN-MODUL (if series continuation)
-  2. Build composite system prompt
-  3. Call Lovable AI Gateway (Gemini 3 Flash Preview)
-     → Generates: title, content, questions, vocabulary, structure ratings
-  4. Word count validation (retry if below minimum)
-  5. Consistency check (parallel)
-  6. Image generation (parallel):
+  1. NEW PATH (Block 2.3c): Dynamic prompt building
+     a. Load CORE Slim Prompt v2 from app_settings
+     b. Build StoryRequest from request parameters
+     c. promptBuilder.ts queries rule tables (age_rules, difficulty_rules,
+        theme_rules, emotion_rules, content_themes_by_level)
+     d. Builds dynamic user message with word counts, guardrails, characters
+     e. learningThemeRotation.ts checks parent_learning_config for themes
+     f. Falls back to OLD PATH on any error
+  1b. OLD PATH (Fallback):
+     • Load modular prompts from app_settings (CORE, ELTERN/KINDER, SERIEN)
+     • Build composite system prompt inline
+  2. Call Lovable AI Gateway (Gemini 3 Flash Preview)
+     → Generates: title, content, questions, vocabulary, structure ratings,
+        emotional classifications (humor_level, emotional_depth, moral_topic, etc.)
+  3. Word count validation (retry if below minimum)
+  4. Consistency check (parallel)
+  5. Image generation (parallel):
      • Cover image (Google Gemini 2.5 Flash, cached via image_cache)
      • Story images (1-3 based on story length)
      • Fallback: Lovable Gateway image models
-  7. Return everything to frontend
+  6. Parse LLM response: extract classifications (structure, emotion, humor, theme)
+  7. Save to DB (stories + comprehension_questions + marked_words + classifications)
+  8. Return everything to frontend
         │
         ▼
 CreateStoryPage.tsx saves to DB:
@@ -504,7 +527,7 @@ Added structured rule tables to replace monolithic 30k-token system prompts with
 
 **RLS:** All 5 tables are SELECT-only for all users (read-only reference data). `updated_at` auto-trigger on all tables.
 
-**Note:** These tables are NOT yet consumed by `generate-story`. Integration happens in Block 2.3c (promptBuilder).
+**Note:** These tables are consumed by `generate-story` via `_shared/promptBuilder.ts` (Block 2.3c). The promptBuilder queries these tables at runtime to build dynamic, language-specific prompts.
 
 ### Story Classifications & Kid Characters (Block 2.3a – Migration `20260207_block2_3a`)
 
@@ -535,6 +558,122 @@ Added story classification columns for variety tracking and a kid_characters tab
 
 **RLS:** kid_characters is fully CRUD-scoped per user (same pattern as parent_learning_config – SELECT/INSERT/UPDATE/DELETE only for characters belonging to the user's kid profiles). Index on `kid_profile_id`.
 
+### Dynamic Prompt Engine & Story Classifications (Block 2.3c)
+
+Replaced the monolithic 30k-token system prompt with a modular, database-driven prompt builder. The Edge Function `generate-story` now uses a **two-path architecture** with automatic fallback.
+
+#### Shared Modules (`supabase/functions/_shared/`)
+
+| Module | Purpose | Key Functions |
+|--------|---------|---------------|
+| `promptBuilder.ts` | Builds dynamic user message by querying rule tables | `buildStoryPrompt(request, supabase)` – fetches age_rules, difficulty_rules, theme_rules, emotion_rules, content_themes_by_level; calculates word counts; builds character, guardrail, and variety sections. `injectLearningTheme(prompt, label, lang)` – appends learning theme instruction |
+| `learningThemeRotation.ts` | Determines if a learning theme should be applied | `shouldApplyLearningTheme(kidProfileId, lang, supabase)` – checks parent_learning_config frequency, rotates through active_themes round-robin based on past stories |
+
+#### Prompt Architecture
+
+```
+NEW PATH (Block 2.3c):
+  System Prompt = CORE Slim v2 (from app_settings, ~500 tokens)
+  User Message  = Dynamic context built by promptBuilder.ts
+                  (age rules + difficulty rules + theme rules + emotion rules
+                   + word counts + characters + guardrails + variety hints
+                   + optional learning theme)
+
+OLD PATH (Fallback – used if NEW PATH throws):
+  System Prompt = Composite of 4 modular prompts from app_settings
+                  (CORE + ELTERN/KINDER + SERIEN modules, ~30k tokens)
+  User Message  = Inline dynamic context
+```
+
+#### New Story Classification Fields (populated by LLM)
+
+| Column | Type | Source | Purpose |
+|--------|------|--------|---------|
+| `structure_beginning` | integer (1-3) | LLM self-rating | Beginning quality (Block 2.3a) |
+| `structure_middle` | integer (1-3) | LLM self-rating | Middle quality (Block 2.3a) |
+| `structure_ending` | integer (1-3) | LLM self-rating | Ending quality (Block 2.3a) |
+| `emotional_secondary` | text | LLM classification | Secondary emotional coloring code (e.g. EM-C) |
+| `humor_level` | integer (1-5) | LLM classification | 1=barely, 3=charming, 5=absurd |
+| `emotional_depth` | integer (1-3) | LLM classification | 1=entertainment, 2=light message, 3=genuine depth |
+| `moral_topic` | text | LLM classification | E.g. "Friendship", "Honesty" – or NULL |
+| `concrete_theme` | text | LLM classification | Specific theme (e.g. "Pirates", "Detective") |
+| `learning_theme_applied` | text | learningThemeRotation | Which learning theme was woven in (or NULL) |
+| `parent_prompt_text` | text | promptBuilder | The dynamic prompt sent to the LLM |
+
+#### Data Flow
+
+```
+CreateStoryPage.tsx → generate-story Edge Function
+  │
+  ├── promptBuilder.ts
+  │     ├── SELECT * FROM age_rules WHERE language = ? AND min_age <= ? AND max_age >= ?
+  │     ├── SELECT * FROM difficulty_rules WHERE language = ? AND difficulty_level = ?
+  │     ├── SELECT * FROM theme_rules WHERE language = ? AND theme_key = ?
+  │     ├── SELECT * FROM emotion_rules WHERE language = ?  (random selection)
+  │     ├── SELECT * FROM content_themes_by_level WHERE min_safety_level <= ?
+  │     └── SELECT concrete_theme FROM stories WHERE kid_profile_id = ? ORDER BY created_at DESC LIMIT 10
+  │
+  ├── learningThemeRotation.ts
+  │     ├── SELECT * FROM parent_learning_config WHERE kid_profile_id = ?
+  │     ├── SELECT learning_theme_applied FROM stories WHERE kid_profile_id = ? ORDER BY created_at DESC
+  │     └── SELECT labels FROM learning_themes WHERE theme_key = ?
+  │
+  └── LLM Response parsing
+        ├── JSON.parse(content.match(/\{[\s\S]*\}/))
+        ├── Extract: title, content, questions, vocabulary, structure ratings
+        └── Extract: emotional_secondary, humor_level, emotional_depth, moral_topic, concrete_theme
+```
+
+### Story Wizard Extensions (Block 2.3d)
+
+Extended the story creation wizard (`CreateStoryPage.tsx` + `src/components/story-creation/`) to expose the new Block 2.3c parameters to the user.
+
+#### Screen 1 Additions
+
+| Feature | Component | State | Notes |
+|---------|-----------|-------|-------|
+| Length toggle | `StoryTypeSelectionScreen` | `storyLength: 'short' \| 'medium' \| 'long'` | Already existed pre-2.3d; default "medium" |
+| Difficulty toggle | `StoryTypeSelectionScreen` | `storyDifficulty: 'easy' \| 'medium' \| 'hard'` | Already existed pre-2.3d |
+| Series toggle | `StoryTypeSelectionScreen` | `isSeries: boolean` | Already existed pre-2.3d |
+| **Language picker** | `StoryTypeSelectionScreen` | `storyLanguage: string` | New. Shows flags + labels. Only rendered when >1 language available (reading_language + home_languages). Default = `kidReadingLanguage`. Passed as `storyLanguage` to Edge Function. |
+
+#### Screen 2 Additions
+
+| Feature | Component | Details |
+|---------|-----------|---------|
+| **"Ich" tile with kid data** | `CharacterSelectionScreen` | Shows actual kid name + age (e.g. "Emma (8)") instead of generic "Ich". Star badge. Sets `includeSelf = true` in Edge Function request. |
+| **Saved kid_characters** | `CharacterSelectionScreen` | Loads `kid_characters` from DB for active kid profile. Displays as toggle buttons grouped by name/age/relation. |
+| **"Save character" dialog** | `CharacterSelectionScreen` | Modal form: name (required), role (sibling/friend/known_figure/custom), age, relation, description. Inserts into `kid_characters` table. Immediate refetch after save. |
+
+#### Screen 3 Additions
+
+| Feature | Details |
+|---------|---------|
+| "Optional" label | Free text header now prefixed with "Optional:" in all 7 languages |
+| Updated placeholders | Example prompts updated (e.g. "A story about pirates on the moon") |
+
+#### New Parameters Sent to Edge Function
+
+| Parameter | Source | Edge Function Field |
+|-----------|--------|-------------------|
+| `storyLanguage` | Language picker (Screen 1) | `storyLanguageParam` → `effectiveStoryLanguage` |
+| `includeSelf` | "Ich" tile (Screen 2) | `includeSelf` → `StoryRequest.protagonists.include_self` |
+| `kidProfileId` | `selectedProfile.id` | `kidProfileId` → `StoryRequest.kid_profile.id` |
+| `kidAge` | `selectedProfile.age` | `kidAge` → `StoryRequest.kid_profile.age` |
+| `difficultyLevel` | `selectedProfile.difficulty_level` | `difficultyLevel` → `StoryRequest.kid_profile.difficulty_level` |
+| `contentSafetyLevel` | `selectedProfile.content_safety_level` | `contentSafetyLevel` → `StoryRequest.kid_profile.content_safety_level` |
+
+#### KidProfile Interface Extended
+
+Added `difficulty_level`, `age`, and `gender` to the `KidProfile` interface in `useKidProfile.tsx` (with fallback defaults in the DB mapping).
+
+#### Translation Additions
+
+- `StoryTypeSelectionTranslations`: added `storyLanguageLabel` (7 languages)
+- `CharacterSelectionTranslations`: added `meDescription`, `savedCharactersLabel`, `addCharacter`, `characterName`, `characterRole`, `characterAge`, `characterRelation`, `characterDescription`, `roleSibling`, `roleFriend`, `roleKnownFigure`, `roleCustom` (7 languages)
+- `LANGUAGE_FLAGS` and `LANGUAGE_LABELS` maps added to `types.ts` for the language picker
+- `SpecialEffectsScreen`: updated `descriptionHeader` and `descriptionPlaceholder` in all 7 languages
+
 ---
 
 ## Services & Hooks
@@ -556,7 +695,7 @@ Added story classification columns for variety tracking and a kid_characters tab
 
 | Function | External API | DB Tables |
 |----------|-------------|-----------|
-| `generate-story` | Gemini 3 Flash (text), Gemini 2.5 Flash (images), Lovable Gateway | reads: app_settings, image_cache; writes: image_cache, consistency_check_results |
+| `generate-story` | Gemini 3 Flash (text), Gemini 2.5 Flash (images), Lovable Gateway | reads: app_settings, image_cache, age_rules, difficulty_rules, theme_rules, emotion_rules, content_themes_by_level, parent_learning_config, learning_themes, stories (variety check); writes: stories, image_cache, consistency_check_results. Uses `_shared/promptBuilder.ts` + `_shared/learningThemeRotation.ts` (Block 2.3c) |
 | `explain-word` | Gemini 2.0 Flash, Lovable Gateway (fallback) | reads: app_settings. Accepts optional `explanationLanguage` param for multilingual explanations |
 | `generate-quiz` | Gemini 2.0 Flash | — |
 | `evaluate-answer` | Gemini 2.0 Flash | — |
@@ -591,7 +730,7 @@ Added story classification columns for variety tracking and a kid_characters tab
 
 | Issue | Location | Impact |
 |-------|----------|--------|
-| **Oversized components** | `ReadingPage.tsx` (1465 lines), `VocabularyQuizPage.tsx` (882 lines), `generate-story/index.ts` (1335 lines) | Hard to maintain, test, and review. Should be split. |
+| **Oversized components** | `ReadingPage.tsx` (1465 lines), `VocabularyQuizPage.tsx` (882 lines), `generate-story/index.ts` (1409 lines) | Hard to maintain, test, and review. Should be split. Note: generate-story now uses shared modules (_shared/promptBuilder.ts, _shared/learningThemeRotation.ts) which helps, but the main file is still large. |
 | **100+ console.log/error statements** | Throughout codebase | Debug logs in production. Should use proper logging. |
 | **Remaining inline translations** | `ReadingPage.tsx`, `VocabularyQuizPage.tsx`, `ResultsPage.tsx`, `Index.tsx`, and others | Page-specific translation objects (homeTranslations, readingLabels, etc.) still inline. Shared labels (status, difficulty, tabs, series, toasts, vocab) have been consolidated into `lib/translations.ts`. |
 | **Many `any` types** | Various files | `supabase: any`, `data: any` etc. Reduces type safety. |
@@ -624,4 +763,4 @@ Added story classification columns for variety tracking and a kid_characters tab
 
 ---
 
-*Generated on 2026-02-06 by codebase analysis. Updated 2026-02-07 with Block 1 (multilingual DB model), translation consolidation, Block 2.1 (learning themes + content guardrails), Block 2.2 (story generation rule tables), Block 2.2b (difficulty_rules + age group adjustments), and Block 2.3a (story classifications + kid_characters).*
+*Generated on 2026-02-06 by codebase analysis. Updated 2026-02-07 with Block 1 (multilingual DB model), translation consolidation, Block 2.1 (learning themes + content guardrails), Block 2.2 (story generation rule tables), Block 2.2b (difficulty_rules + age group adjustments), Block 2.3a (story classifications + kid_characters), Block 2.3c (dynamic prompt engine + CORE Slim v2 + story classifications + shared modules promptBuilder.ts + learningThemeRotation.ts), and Block 2.3d (Story Wizard extensions: language picker, "Ich" tile with kid data, saved kid_characters, "Save character" dialog, extended parameter passing to Edge Function).*

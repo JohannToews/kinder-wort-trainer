@@ -12,6 +12,8 @@ import {
   StoryTypeSelectionTranslations, 
   StoryLength, 
   StoryDifficulty,
+  LANGUAGE_FLAGS,
+  LANGUAGE_LABELS,
 } from "./types";
 import { cn } from "@/lib/utils";
 import { useColorPalette } from "@/hooks/useColorPalette";
@@ -37,10 +39,14 @@ export interface StorySettings {
   length: StoryLength;
   difficulty: StoryDifficulty;
   isSeries: boolean;
+  storyLanguage: string;
 }
 
 interface StoryTypeSelectionScreenProps {
   translations: StoryTypeSelectionTranslations;
+  availableLanguages: string[];
+  defaultLanguage: string;
+  uiLanguage: string;
   onComplete: (
     storyType: StoryType,
     settings: StorySettings,
@@ -56,6 +62,9 @@ type ViewState = "main" | "educational";
 
 const StoryTypeSelectionScreen = ({
   translations,
+  availableLanguages,
+  defaultLanguage,
+  uiLanguage,
   onComplete,
   onBack,
 }: StoryTypeSelectionScreenProps) => {
@@ -69,6 +78,7 @@ const StoryTypeSelectionScreen = ({
   const [storyLength, setStoryLength] = useState<StoryLength>("medium");
   const [storyDifficulty, setStoryDifficulty] = useState<StoryDifficulty>("medium");
   const [isSeries, setIsSeries] = useState(false);
+  const [storyLanguage, setStoryLanguage] = useState<string>(defaultLanguage);
 
   const mainCategoryTiles = [
     { type: "fantasy" as StoryType, image: fantasyImg, label: translations.fantasy },
@@ -98,6 +108,7 @@ const StoryTypeSelectionScreen = ({
         length: storyLength,
         difficulty: storyDifficulty,
         isSeries,
+        storyLanguage,
       };
       onComplete(type, settings, undefined, undefined, undefined, []);
     }
@@ -112,6 +123,7 @@ const StoryTypeSelectionScreen = ({
       length: storyLength,
       difficulty: storyDifficulty,
       isSeries,
+      storyLanguage,
     };
     
     // Go directly to character selection with random category
@@ -143,6 +155,7 @@ const StoryTypeSelectionScreen = ({
       length: storyLength,
       difficulty: storyDifficulty,
       isSeries,
+      storyLanguage,
     };
     
     onComplete(selectedType, settings, undefined, selectedTopic, customTopic.trim() || undefined);
@@ -243,6 +256,29 @@ const StoryTypeSelectionScreen = ({
                 <span className={cn("text-xs md:text-sm", isSeries && "font-semibold text-foreground")}>{translations.seriesYes}</span>
               </div>
             </div>
+
+            {/* Language Picker – only show if more than 1 language available */}
+            {availableLanguages.length > 1 && (
+              <div className="flex items-center gap-3">
+                <Label className="text-xs md:text-sm font-medium text-muted-foreground whitespace-nowrap min-w-fit">{translations.storyLanguageLabel}</Label>
+                <div className="flex gap-1.5 md:gap-2 flex-1 flex-wrap">
+                  {availableLanguages.map((lang) => (
+                    <Button
+                      key={lang}
+                      variant={storyLanguage === lang ? "default" : "outline"}
+                      size="sm"
+                      className={cn(
+                        "h-8 md:h-9 rounded-lg md:rounded-xl font-medium text-xs md:text-sm px-2.5 md:px-3",
+                        storyLanguage === lang && "bg-primary text-primary-foreground"
+                      )}
+                      onClick={() => setStoryLanguage(lang)}
+                    >
+                      {LANGUAGE_FLAGS[lang] || ''} {LANGUAGE_LABELS[lang]?.[uiLanguage] || lang.toUpperCase()}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
 

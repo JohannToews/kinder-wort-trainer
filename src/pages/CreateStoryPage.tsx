@@ -82,7 +82,7 @@ const getEducationalDescription = (
 const CreateStoryPage = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { kidAppLanguage, kidReadingLanguage, kidExplanationLanguage, selectedProfile } = useKidProfile();
+  const { kidAppLanguage, kidReadingLanguage, kidExplanationLanguage, kidHomeLanguages, selectedProfile } = useKidProfile();
   const { colors: paletteColors } = useColorPalette();
 
   // Wizard state
@@ -103,6 +103,12 @@ const CreateStoryPage = () => {
   const storyTypeTranslations = storyTypeSelectionTranslations[kidAppLanguage] || storyTypeSelectionTranslations.de;
   const characterTranslations = characterSelectionTranslations[kidAppLanguage] || characterSelectionTranslations.de;
 
+  // Compute available languages for story generation (reading_language + home_languages, deduplicated)
+  const availableLanguages = Array.from(new Set([
+    kidReadingLanguage,
+    ...(kidHomeLanguages || []),
+  ]));
+
   // Generate educational story directly
   const generateEducationalStory = async (
     topic: EducationalTopic,
@@ -119,8 +125,9 @@ const CreateStoryPage = () => {
 
     const description = getEducationalDescription(topic, customTopicText, kidAppLanguage);
     const difficulty = getDifficultyFromSchoolClass(selectedProfile?.school_class || "3");
-    // Use reading_language from kid profile for story generation
-    const textLanguage = kidReadingLanguage.toUpperCase();
+    // Use storyLanguage from wizard settings if available, fallback to reading_language
+    const effectiveLanguage = storySettings?.storyLanguage || kidReadingLanguage;
+    const textLanguage = effectiveLanguage.toUpperCase();
 
     toast.info(t.toastGeneratingStory);
 
@@ -144,6 +151,12 @@ const CreateStoryPage = () => {
           storyType: "educational",
           kidName: selectedProfile?.name,
           kidHobbies: selectedProfile?.hobbies,
+          // Block 2.3d: New wizard parameters (camelCase to match Edge Function)
+          storyLanguage: effectiveLanguage,
+          kidProfileId: selectedProfile?.id,
+          kidAge: selectedProfile?.age,
+          difficultyLevel: selectedProfile?.difficulty_level,
+          contentSafetyLevel: selectedProfile?.content_safety_level,
         },
       });
 
@@ -336,8 +349,9 @@ const CreateStoryPage = () => {
     if (userDescription) description += `. Zusätzliche Wünsche: ${userDescription}`;
 
     const difficulty = getDifficultyFromSchoolClass(selectedProfile?.school_class || "3");
-    // Use reading_language from kid profile for story generation
-    const textLanguage = kidReadingLanguage.toUpperCase();
+    // Use storyLanguage from wizard settings if available, fallback to reading_language
+    const effectiveLanguage = storySettings?.storyLanguage || kidReadingLanguage;
+    const textLanguage = effectiveLanguage.toUpperCase();
 
     toast.info(t.toastGeneratingStory);
 
@@ -345,6 +359,9 @@ const CreateStoryPage = () => {
       const storyLength = storySettings?.length || "medium";
       const storyDifficulty = storySettings?.difficulty || difficulty;
       const isSeries = storySettings?.isSeries || false;
+
+      // Determine include_self from character selection
+      const includeSelf = selectedCharacters.some(c => c.type === "me");
       
       const { data, error } = await supabase.functions.invoke("generate-story", {
         body: {
@@ -375,6 +392,13 @@ const CreateStoryPage = () => {
           kidHobbies: selectedProfile?.hobbies,
           // Series settings
           endingType: isSeries ? 'C' : 'A', // Cliffhanger for series, closed for standalone
+          // Block 2.3d: New wizard parameters (camelCase to match Edge Function)
+          storyLanguage: effectiveLanguage,
+          includeSelf,
+          kidProfileId: selectedProfile?.id,
+          kidAge: selectedProfile?.age,
+          difficultyLevel: selectedProfile?.difficulty_level,
+          contentSafetyLevel: selectedProfile?.content_safety_level,
         },
       });
 
@@ -507,6 +531,9 @@ const CreateStoryPage = () => {
       {currentScreen === "story-type" && (
         <StoryTypeSelectionScreen
           translations={storyTypeTranslations}
+          availableLanguages={availableLanguages}
+          defaultLanguage={kidReadingLanguage}
+          uiLanguage={kidAppLanguage}
           onComplete={handleStoryTypeComplete}
           onBack={handleBack}
         />
@@ -515,6 +542,9 @@ const CreateStoryPage = () => {
       {currentScreen === "characters" && (
         <CharacterSelectionScreen
           translations={characterTranslations}
+          kidProfileId={selectedProfile?.id}
+          kidName={selectedProfile?.name}
+          kidAge={selectedProfile?.age}
           onComplete={handleCharactersComplete}
           onBack={handleBack}
         />
