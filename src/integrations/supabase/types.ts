@@ -140,6 +140,7 @@ export type Database = {
           options: string[] | null
           order_index: number
           question: string
+          question_language: string
           story_id: string
         }
         Insert: {
@@ -149,6 +150,7 @@ export type Database = {
           options?: string[] | null
           order_index?: number
           question: string
+          question_language?: string
           story_id: string
         }
         Update: {
@@ -158,6 +160,7 @@ export type Database = {
           options?: string[] | null
           order_index?: number
           question?: string
+          question_language?: string
           story_id?: string
         }
         Relationships: [
@@ -260,13 +263,17 @@ export type Database = {
           color_palette: string
           cover_image_url: string | null
           created_at: string
+          explanation_language: string
           gender: string | null
           hobbies: string
+          home_languages: string[]
           id: string
           image_style: string | null
           name: string
+          reading_language: string
           school_class: string
           school_system: string
+          ui_language: string
           updated_at: string
           user_id: string
         }
@@ -275,13 +282,17 @@ export type Database = {
           color_palette?: string
           cover_image_url?: string | null
           created_at?: string
+          explanation_language?: string
           gender?: string | null
           hobbies?: string
+          home_languages?: string[]
           id?: string
           image_style?: string | null
           name?: string
+          reading_language?: string
           school_class?: string
           school_system?: string
+          ui_language?: string
           updated_at?: string
           user_id: string
         }
@@ -290,13 +301,17 @@ export type Database = {
           color_palette?: string
           cover_image_url?: string | null
           created_at?: string
+          explanation_language?: string
           gender?: string | null
           hobbies?: string
+          home_languages?: string[]
           id?: string
           image_style?: string | null
           name?: string
+          reading_language?: string
           school_class?: string
           school_system?: string
+          ui_language?: string
           updated_at?: string
           user_id?: string
         }
@@ -345,31 +360,37 @@ export type Database = {
           created_at: string
           difficulty: string | null
           explanation: string | null
+          explanation_language: string
           id: string
           is_learned: boolean | null
           quiz_history: string[] | null
           story_id: string
           word: string
+          word_language: string
         }
         Insert: {
           created_at?: string
           difficulty?: string | null
           explanation?: string | null
+          explanation_language?: string
           id?: string
           is_learned?: boolean | null
           quiz_history?: string[] | null
           story_id: string
           word: string
+          word_language?: string
         }
         Update: {
           created_at?: string
           difficulty?: string | null
           explanation?: string | null
+          explanation_language?: string
           id?: string
           is_learned?: boolean | null
           quiz_history?: string[] | null
           story_id?: string
           word?: string
+          word_language?: string
         }
         Relationships: [
           {
@@ -520,7 +541,7 @@ export type Database = {
           structure_beginning: number | null
           structure_ending: number | null
           structure_middle: number | null
-          text_language: string | null
+          text_language: string
           text_type: string | null
           title: string
           updated_at: string
@@ -547,7 +568,7 @@ export type Database = {
           structure_beginning?: number | null
           structure_ending?: number | null
           structure_middle?: number | null
-          text_language?: string | null
+          text_language?: string
           text_type?: string | null
           title: string
           updated_at?: string
@@ -574,7 +595,7 @@ export type Database = {
           structure_beginning?: number | null
           structure_ending?: number | null
           structure_middle?: number | null
-          text_language?: string | null
+          text_language?: string
           text_type?: string | null
           title?: string
           updated_at?: string

@@ -84,6 +84,21 @@ export const DEFAULT_SCHOOL_SYSTEMS: SchoolSystems = {
       "Grade 10",
     ] 
   },
+  it: { 
+    name: "Italiano", 
+    classes: [
+      "1ª Primaria",
+      "2ª Primaria",
+      "3ª Primaria",
+      "4ª Primaria",
+      "5ª Primaria",
+      "1ª Media",
+      "2ª Media",
+      "3ª Media",
+      "1ª Superiore",
+      "2ª Superiore",
+    ] 
+  },
   bs: { 
     name: "Bosanski", 
     classes: [

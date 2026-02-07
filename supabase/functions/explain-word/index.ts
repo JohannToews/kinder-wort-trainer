@@ -278,7 +278,11 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { word, context, language = 'fr' } = await req.json();
+    const { word, context, language = 'fr', explanationLanguage } = await req.json();
+    
+    // If explanationLanguage is provided, use it for the prompt language
+    // This allows word explanations to be in a different language than the story text
+    const promptLanguage = explanationLanguage || language;
     
     if (!word || typeof word !== 'string') {
       return new Response(
@@ -300,10 +304,11 @@ Deno.serve(async (req) => {
     }
 
     // Try to get custom prompt from database first
+    // Use promptLanguage (which prefers explanationLanguage if provided)
     let prompt: string;
     try {
       const supabase = createClient(supabaseUrl, supabaseServiceKey);
-      const promptKey = `system_prompt_word_explanation_${language}`;
+      const promptKey = `system_prompt_word_explanation_${promptLanguage}`;
       const { data: customPrompt } = await supabase
         .from('app_settings')
         .select('value')
@@ -315,12 +320,12 @@ Deno.serve(async (req) => {
         prompt = buildPromptFromTemplate(customPrompt.value, word, context);
       } else {
         // Fallback to built-in prompts
-        const promptFn = PROMPTS[language] || PROMPTS.fr;
+        const promptFn = PROMPTS[promptLanguage] || PROMPTS.fr;
         prompt = promptFn(word, context);
       }
     } catch (dbError) {
       console.log('Could not fetch custom prompt, using fallback:', dbError);
-      const promptFn = PROMPTS[language] || PROMPTS.fr;
+      const promptFn = PROMPTS[promptLanguage] || PROMPTS.fr;
       prompt = promptFn(word, context);
     }
 

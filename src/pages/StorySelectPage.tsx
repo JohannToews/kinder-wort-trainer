@@ -8,7 +8,7 @@ import { BookOpen, BookText, GraduationCap, CheckCircle2, Users, Layers } from "
 import { useAuth } from "@/hooks/useAuth";
 import { useColorPalette } from "@/hooks/useColorPalette";
 import { useKidProfile } from "@/hooks/useKidProfile";
-import { useTranslations } from "@/lib/translations";
+import { useTranslations, type Translations } from "@/lib/translations";
 import { toast } from "sonner";
 import PageHeader from "@/components/PageHeader";
 import SeriesGrid from "@/components/SeriesGrid";
@@ -26,34 +26,13 @@ interface Story {
   ending_type: string | null;
 }
 
-// Difficulty labels in different languages
-const difficultyLabels: Record<string, Record<string, string>> = {
-  de: { easy: "Leicht", medium: "Mittel", difficult: "Schwer" },
-  fr: { easy: "Facile", medium: "Moyen", difficult: "Difficile" },
-  en: { easy: "Easy", medium: "Medium", difficult: "Hard" },
-  es: { easy: "Fácil", medium: "Medio", difficult: "Difícil" },
-  nl: { easy: "Makkelijk", medium: "Gemiddeld", difficult: "Moeilijk" },
-  bs: { easy: "Lako", medium: "Srednje", difficult: "Teško" },
-};
-
-// Tab labels in different languages
-const tabLabels: Record<string, { fiction: string; nonFiction: string; series: string }> = {
-  de: { fiction: "Geschichten", nonFiction: "Sachgeschichten", series: "Serien" },
-  fr: { fiction: "Histoires", nonFiction: "Documentaires", series: "Séries" },
-  en: { fiction: "Stories", nonFiction: "Non-Fiction", series: "Series" },
-  es: { fiction: "Historias", nonFiction: "No Ficción", series: "Series" },
-  nl: { fiction: "Verhalen", nonFiction: "Non-Fictie", series: "Series" },
-  bs: { fiction: "Priče", nonFiction: "Poučni tekstovi", series: "Serije" },
-};
-
-// Status labels in different languages
-const statusLabels: Record<string, { toRead: string; completed: string }> = {
-  de: { toRead: "Noch zu lesen", completed: "Abgeschlossen" },
-  fr: { toRead: "À lire", completed: "Terminée" },
-  en: { toRead: "To read", completed: "Completed" },
-  es: { toRead: "Por leer", completed: "Completada" },
-  nl: { toRead: "Te lezen", completed: "Voltooid" },
-  bs: { toRead: "Za čitanje", completed: "Završeno" },
+// Difficulty, tab, and status labels are now in lib/translations.ts
+// Helper to map difficulty key to translated label
+const getDifficultyLabel = (t: ReturnType<typeof useTranslations>, difficulty: string): string => {
+  if (difficulty === 'easy') return t.difficultyEasy;
+  if (difficulty === 'medium') return t.difficultyMedium;
+  if (difficulty === 'hard' || difficulty === 'difficult') return t.difficultyHard;
+  return difficulty;
 };
 
 const StorySelectPage = () => {
@@ -87,9 +66,9 @@ const StorySelectPage = () => {
       .eq("is_deleted", false)
       .order("created_at", { ascending: false });
     
-    // Filter strictly by selected kid profile
+    // Filter by selected kid profile, but also include legacy stories (kid_profile_id = null)
     if (selectedProfileId) {
-      query = query.eq("kid_profile_id", selectedProfileId);
+      query = query.or(`kid_profile_id.eq.${selectedProfileId},kid_profile_id.is.null`);
     }
     
     const { data: storiesData } = await query;
@@ -358,22 +337,14 @@ const StorySelectPage = () => {
           <div className="text-center py-20">
             <BookOpen className="h-16 w-16 text-muted-foreground/30 mx-auto mb-6" />
             <p className="text-xl text-muted-foreground mb-4">
-              {appLang === 'de' ? 'Noch keine Geschichten' :
-               appLang === 'fr' ? "Pas encore d'histoires" :
-               appLang === 'es' ? 'Aún no hay historias' :
-               appLang === 'nl' ? 'Nog geen verhalen' :
-               'No stories yet'}
+              {t.noStoriesForProfile}
               {selectedProfile && ` ${appLang === 'fr' ? 'pour' : appLang === 'de' ? 'für' : 'for'} ${selectedProfile.name}`}
             </p>
             <Button
               onClick={() => navigate("/admin")}
               className="btn-primary-kid"
             >
-              {appLang === 'de' ? 'Geschichte hinzufügen' :
-               appLang === 'fr' ? 'Ajouter une histoire' :
-               appLang === 'es' ? 'Añadir historia' :
-               appLang === 'nl' ? 'Verhaal toevoegen' :
-               'Add a story'}
+              {t.addStory}
             </Button>
           </div>
         ) : (
@@ -384,7 +355,7 @@ const StorySelectPage = () => {
                 className="flex items-center gap-2 text-base font-baloo rounded-xl data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
               >
                 <Layers className="h-5 w-5" />
-                {tabLabels[appLang]?.series || tabLabels.de.series}
+                {t.tabSeries}
                 {seriesStories.length > 0 && (
                   <span className="ml-1 bg-background/30 text-xs px-2 py-0.5 rounded-full">
                     {new Set(seriesStories.map(s => s.series_id)).size}
@@ -396,7 +367,7 @@ const StorySelectPage = () => {
                 className="flex items-center gap-2 text-base font-baloo rounded-xl data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
               >
                 <BookText className="h-5 w-5" />
-                {tabLabels[appLang]?.fiction || tabLabels.de.fiction}
+                {t.tabFiction}
                 {fictionStories.length > 0 && (
                   <span className="ml-1 bg-background/30 text-xs px-2 py-0.5 rounded-full">
                     {fictionStories.length}
@@ -408,7 +379,7 @@ const StorySelectPage = () => {
                 className="flex items-center gap-2 text-base font-baloo rounded-xl data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
               >
                 <GraduationCap className="h-5 w-5" />
-                {tabLabels[appLang]?.nonFiction || tabLabels.de.nonFiction}
+                {t.tabNonFiction}
                 {nonFictionStories.length > 0 && (
                   <span className="ml-1 bg-background/30 text-xs px-2 py-0.5 rounded-full">
                     {nonFictionStories.length}
@@ -429,11 +400,11 @@ const StorySelectPage = () => {
             </TabsContent>
 
             <TabsContent value="fiction">
-              <StoryGrid stories={fictionStories} appLang={appLang} navigate={navigate} storyStatuses={storyStatuses} />
+              <StoryGrid stories={fictionStories} t={t} navigate={navigate} storyStatuses={storyStatuses} />
             </TabsContent>
 
             <TabsContent value="non-fiction">
-              <StoryGrid stories={nonFictionStories} appLang={appLang} navigate={navigate} storyStatuses={storyStatuses} />
+              <StoryGrid stories={nonFictionStories} t={t} navigate={navigate} storyStatuses={storyStatuses} />
             </TabsContent>
           </Tabs>
         )}
@@ -442,29 +413,20 @@ const StorySelectPage = () => {
   );
 };
 
-// Sub-tab labels for read/unread
-const subTabLabels: Record<string, { toRead: string; completed: string }> = {
-  de: { toRead: "Noch zu lesen", completed: "Bereits gelesen" },
-  fr: { toRead: "À lire", completed: "Déjà lues" },
-  en: { toRead: "To read", completed: "Already read" },
-  es: { toRead: "Por leer", completed: "Ya leídas" },
-  nl: { toRead: "Te lezen", completed: "Al gelezen" },
-  bs: { toRead: "Za čitanje", completed: "Već pročitano" },
-};
+// Sub-tab labels now come from central translations.ts
 
 // Single story card component
 const StoryCard = ({ 
   story, 
-  appLang, 
+  t, 
   navigate, 
   isCompleted 
 }: { 
   story: Story; 
-  appLang: string; 
+  t: Translations; 
   navigate: (path: string) => void; 
   isCompleted: boolean;
 }) => {
-  const statusLabel = statusLabels[appLang] || statusLabels.de;
   
   return (
     <div
@@ -492,7 +454,7 @@ const StoryCard = ({
           }`}
         >
           {isCompleted && <CheckCircle2 className="h-3 w-3" />}
-          {isCompleted ? statusLabel.completed : statusLabel.toRead}
+          {isCompleted ? t.statusCompleted : t.statusToRead}
         </Badge>
         {/* Difficulty badge */}
         {story.difficulty && (
@@ -505,7 +467,7 @@ const StoryCard = ({
                   : 'bg-red-500 hover:bg-red-600'
             } text-white`}
           >
-            {difficultyLabels[appLang]?.[story.difficulty] || difficultyLabels.de[story.difficulty] || story.difficulty}
+            {getDifficultyLabel(t, story.difficulty)}
           </Badge>
         )}
       </div>
@@ -519,16 +481,15 @@ const StoryCard = ({
 // Extracted StoryGrid component with sub-tabs for read/unread
 const StoryGrid = ({ 
   stories, 
-  appLang, 
+  t, 
   navigate,
   storyStatuses,
 }: { 
   stories: Story[]; 
-  appLang: string; 
+  t: Translations; 
   navigate: (path: string) => void;
   storyStatuses: Map<string, boolean>;
 }) => {
-  const labels = subTabLabels[appLang] || subTabLabels.de;
   
   // Separate stories into unread and completed
   const unreadStories = stories.filter(s => !storyStatuses.get(s.id));
@@ -539,11 +500,7 @@ const StoryGrid = ({
       <div className="text-center py-12">
         <BookOpen className="h-12 w-12 text-muted-foreground/50 mx-auto mb-4" />
         <p className="text-lg text-muted-foreground">
-          {appLang === 'de' ? 'Keine Geschichten in dieser Kategorie' :
-           appLang === 'fr' ? 'Aucune histoire dans cette catégorie' :
-           appLang === 'es' ? 'No hay historias en esta categoría' :
-           appLang === 'nl' ? 'Geen verhalen in deze categorie' :
-           'No stories in this category'}
+          {t.noCategoryStories}
         </p>
       </div>
     );
@@ -557,7 +514,7 @@ const StoryGrid = ({
           className="flex items-center gap-2 text-sm font-medium rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm"
         >
           <BookOpen className="h-4 w-4" />
-          {labels.toRead}
+          {t.statusToRead}
           <span className="bg-amber-500 text-white text-xs px-1.5 py-0.5 rounded-full">
             {unreadStories.length}
           </span>
@@ -567,7 +524,7 @@ const StoryGrid = ({
           className="flex items-center gap-2 text-sm font-medium rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm"
         >
           <CheckCircle2 className="h-4 w-4" />
-          {labels.completed}
+          {t.statusAlreadyRead}
           <span className="bg-green-500 text-white text-xs px-1.5 py-0.5 rounded-full">
             {completedStories.length}
           </span>
@@ -579,11 +536,7 @@ const StoryGrid = ({
           <div className="text-center py-12 bg-card/50 rounded-xl">
             <CheckCircle2 className="h-12 w-12 text-green-500 mx-auto mb-3" />
             <p className="text-lg text-muted-foreground">
-              {appLang === 'de' ? 'Alle Geschichten gelesen! 🎉' :
-               appLang === 'fr' ? 'Toutes les histoires lues! 🎉' :
-               appLang === 'es' ? '¡Todas las historias leídas! 🎉' :
-               appLang === 'nl' ? 'Alle verhalen gelezen! 🎉' :
-               'All stories read! 🎉'}
+              {t.allStoriesRead}
             </p>
           </div>
         ) : (
@@ -592,7 +545,7 @@ const StoryGrid = ({
               <StoryCard 
                 key={story.id} 
                 story={story} 
-                appLang={appLang} 
+                t={t} 
                 navigate={navigate} 
                 isCompleted={false} 
               />
@@ -606,11 +559,7 @@ const StoryGrid = ({
           <div className="text-center py-12 bg-card/50 rounded-xl">
             <BookOpen className="h-12 w-12 text-muted-foreground/30 mx-auto mb-3" />
             <p className="text-lg text-muted-foreground">
-              {appLang === 'de' ? 'Noch keine Geschichten gelesen' :
-               appLang === 'fr' ? 'Aucune histoire lue' :
-               appLang === 'es' ? 'Ninguna historia leída' :
-               appLang === 'nl' ? 'Nog geen verhalen gelezen' :
-               'No stories read yet'}
+              {t.noStoriesRead}
             </p>
           </div>
         ) : (
@@ -619,7 +568,7 @@ const StoryGrid = ({
               <StoryCard 
                 key={story.id} 
                 story={story} 
-                appLang={appLang} 
+                t={t} 
                 navigate={navigate} 
                 isCompleted={true} 
               />

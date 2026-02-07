@@ -331,6 +331,7 @@ const SystemPromptSection = ({ language }: SystemPromptSectionProps) => {
       fr: "Français",
       es: "Español",
       nl: "Nederlands",
+      it: "Italiano",
       bs: "Bosanski",
     };
     return labels[language] || language;

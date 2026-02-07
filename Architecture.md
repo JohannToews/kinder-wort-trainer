@@ -50,6 +50,8 @@ kinder-wort-trainer/
 │   │   ├── story-creation/        # Multi-step story creation wizard
 │   │   ├── story-sharing/         # QR code sharing, import/export
 │   │   ├── ComprehensionQuiz.tsx  # Story comprehension quiz
+│   │   ├── SeriesGrid.tsx         # Series display grid (uses central translations)
+│   │   ├── KidProfileSection.tsx  # Kid profile editor (saves multilingual fields)
 │   │   ├── ProtectedRoute.tsx     # Route guard
 │   │   ├── ReadingSettings.tsx    # Font size, line spacing, syllable mode
 │   │   ├── StoryAudioPlayer.tsx   # Audio player for TTS narration
@@ -71,9 +73,9 @@ kinder-wort-trainer/
 │   │       ├── client.ts          # Supabase client init
 │   │       └── types.ts           # Generated DB types
 │   ├── lib/
-│   │   ├── translations.ts        # i18n (7 languages: DE, FR, EN, ES, NL, IT, BS)
+│   │   ├── translations.ts        # i18n (7 languages: DE, FR, EN, ES, NL, IT, BS) – central translation hub
 │   │   ├── levelTranslations.ts   # Level name translations
-│   │   ├── schoolSystems.ts       # School systems (FR, DE, ES, NL, EN, BS)
+│   │   ├── schoolSystems.ts       # School systems (FR, DE, ES, NL, EN, IT, BS)
 │   │   └── utils.ts               # cn() utility
 │   ├── pages/
 │   │   ├── Index.tsx              # Home page (navigation cards)
@@ -94,7 +96,7 @@ kinder-wort-trainer/
 │       └── speech-recognition.d.ts
 ├── supabase/
 │   ├── functions/                 # 15 Edge Functions (see below)
-│   └── migrations/                # 32 SQL migrations
+│   └── migrations/                # 33 SQL migrations (incl. multilingual fields)
 ├── package.json
 ├── vite.config.ts
 ├── tailwind.config.ts
@@ -224,9 +226,9 @@ generate-story/index.ts:
         │
         ▼
 CreateStoryPage.tsx saves to DB:
-  • stories table (content, images, metadata)
-  • comprehension_questions table
-  • marked_words table (vocabulary)
+  • stories table (content, images, metadata, text_language)
+  • comprehension_questions table (question_language from kidReadingLanguage)
+  • marked_words table (word_language, explanation_language from kid profile)
   • Navigate to /read/{storyId}
 ```
 
@@ -240,8 +242,9 @@ ReadingPage.tsx loads story by ID
         ├── Word tap → explain-word function
         │     • Checks cache (cachedExplanations Map)
         │     • Calls Gemini 2.0 Flash (Lovable Gateway fallback)
+        │     • Uses kidExplanationLanguage for response language
         │     • Returns child-friendly explanation (max 8 words)
-        │     • User can save → inserts into marked_words
+        │     • User can save → inserts into marked_words (with word_language, explanation_language)
         │
         ├── Audio playback (StoryAudioPlayer)
         │     • Calls text-to-speech function
@@ -367,11 +370,11 @@ user_profiles (1) ──── (N) kid_profiles
 | Table | Purpose | Key Columns |
 |-------|---------|-------------|
 | `user_profiles` | User accounts | username, password_hash, display_name, admin_language, app_language, text_language |
-| `kid_profiles` | Child profiles (multi per user) | name, hobbies, school_system, school_class, color_palette, image_style, gender, age |
+| `kid_profiles` | Child profiles (multi per user) | name, hobbies, school_system, school_class, color_palette, image_style, gender, age, **ui_language**, **reading_language**, **explanation_language**, **home_languages[]** |
 | `user_roles` | Role assignments | user_id, role (admin/standard) |
-| `stories` | Story content and metadata | title, content, cover_image_url, story_images[], difficulty, text_type, text_language, generation_status, series_id, episode_number, ending_type, structure ratings |
-| `marked_words` | Vocabulary words with explanations | word, explanation, story_id, quiz_history[], is_learned, difficulty |
-| `comprehension_questions` | Story comprehension questions | question, expected_answer, options[], story_id |
+| `stories` | Story content and metadata | title, content, cover_image_url, story_images[], difficulty, text_type, **text_language** (NOT NULL, default 'fr'), generation_status, series_id, episode_number, ending_type, structure ratings |
+| `marked_words` | Vocabulary words with explanations | word, explanation, story_id, quiz_history[], is_learned, difficulty, **word_language**, **explanation_language** |
+| `comprehension_questions` | Story comprehension questions | question, expected_answer, options[], story_id, **question_language** |
 
 #### Gamification Tables
 
@@ -409,6 +412,36 @@ user_profiles (1) ──── (N) kid_profiles
 - `update_updated_at_column()` – Auto-updates `updated_at` on 7 tables
 - `update_word_learned_status()` – Marks word as learned after 3 consecutive correct answers
 
+### Multilingual Fields (Block 1 – Migration `20260206150000`)
+
+Added per-profile language separation to support families where the child reads in one language but gets explanations in another.
+
+| Table | New Column | Type | Default | Purpose |
+|-------|-----------|------|---------|---------|
+| `kid_profiles` | `ui_language` | text NOT NULL | `'fr'` | App interface language |
+| `kid_profiles` | `reading_language` | text NOT NULL | `'fr'` | Story generation language |
+| `kid_profiles` | `explanation_language` | text NOT NULL | `'de'` | Word explanation language |
+| `kid_profiles` | `home_languages` | text[] NOT NULL | `'{"de"}'` | Languages spoken at home |
+| `marked_words` | `word_language` | text NOT NULL | `'fr'` | Language of the word |
+| `marked_words` | `explanation_language` | text NOT NULL | `'de'` | Language of the explanation |
+| `comprehension_questions` | `question_language` | text NOT NULL | `'fr'` | Language of the question |
+| `stories` | `text_language` | (altered) NOT NULL | `'fr'` | Was nullable, now NOT NULL |
+
+**Language derivation chain:**
+
+```
+kid_profiles.school_system  (set by user via "Schule / App-Sprache" dropdown)
+        │
+        ▼
+useKidProfile.tsx → getKidLanguage(school_system)
+        │
+        ├── kidAppLanguage      → UI translations (lib/translations.ts)
+        ├── kidReadingLanguage   → Story generation language
+        └── kidExplanationLanguage → Word explanations (from explanation_language field)
+```
+
+**Note:** `school_system` is the primary source for `kidAppLanguage` and `kidReadingLanguage`. The `ui_language`/`reading_language` DB fields are kept in sync when saving but `school_system` takes priority at runtime for robustness (the migration may not have been deployed yet on all environments).
+
 ---
 
 ## Services & Hooks
@@ -418,7 +451,7 @@ user_profiles (1) ──── (N) kid_profiles
 | Hook | Purpose | State Stored |
 |------|---------|-------------|
 | `useAuth` | Authentication context | sessionStorage (token + user) |
-| `useKidProfile` | Kid profile selection & management | React Context |
+| `useKidProfile` | Kid profile selection, language derivation (app, reading, explanation) | React Context – derives `kidAppLanguage`, `kidReadingLanguage`, `kidExplanationLanguage` from `school_system` |
 | `useGamification` | Points, levels, streaks | Supabase DB (user_progress, point_transactions) |
 | `useCollection` | Collectible items | Supabase DB (collected_items) |
 | `useColorPalette` | Color theme per kid profile | Derived from kid_profiles.color_palette |
@@ -431,7 +464,7 @@ user_profiles (1) ──── (N) kid_profiles
 | Function | External API | DB Tables |
 |----------|-------------|-----------|
 | `generate-story` | Gemini 3 Flash (text), Gemini 2.5 Flash (images), Lovable Gateway | reads: app_settings, image_cache; writes: image_cache, consistency_check_results |
-| `explain-word` | Gemini 2.0 Flash, Lovable Gateway (fallback) | reads: app_settings |
+| `explain-word` | Gemini 2.0 Flash, Lovable Gateway (fallback) | reads: app_settings. Accepts optional `explanationLanguage` param for multilingual explanations |
 | `generate-quiz` | Gemini 2.0 Flash | — |
 | `evaluate-answer` | Gemini 2.0 Flash | — |
 | `generate-comprehension-questions` | Gemini 2.0 Flash | — |
@@ -467,7 +500,7 @@ user_profiles (1) ──── (N) kid_profiles
 |-------|----------|--------|
 | **Oversized components** | `ReadingPage.tsx` (1465 lines), `VocabularyQuizPage.tsx` (882 lines), `generate-story/index.ts` (1335 lines) | Hard to maintain, test, and review. Should be split. |
 | **100+ console.log/error statements** | Throughout codebase | Debug logs in production. Should use proper logging. |
-| **Duplicated translation logic** | `VocabularyQuizPage.tsx`, `ReadingPage.tsx`, `lib/translations.ts` | Translation objects duplicated inline instead of using central translations. |
+| **Remaining inline translations** | `ReadingPage.tsx`, `VocabularyQuizPage.tsx`, `ResultsPage.tsx`, `Index.tsx`, and others | Page-specific translation objects (homeTranslations, readingLabels, etc.) still inline. Shared labels (status, difficulty, tabs, series, toasts, vocab) have been consolidated into `lib/translations.ts`. |
 | **Many `any` types** | Various files | `supabase: any`, `data: any` etc. Reduces type safety. |
 | **No error boundaries** | React app | API failures can crash the entire app. |
 | **No automated tests** | `src/test/` contains only example test | Zero test coverage for business logic. |
@@ -489,7 +522,7 @@ user_profiles (1) ──── (N) kid_profiles
 2. **Security**: Tighten RLS policies to scope data per user/kid profile
 3. **Security**: Restrict CORS origins, add rate limiting
 4. **Architecture**: Split large components (ReadingPage, VocabularyQuizPage) into smaller, testable units
-5. **Architecture**: Extract shared logic (translations, image uploads, error handling) into utilities
+5. **Architecture**: Extract remaining inline translations (page-specific objects) into `lib/translations.ts`; extract image upload logic into shared utility
 6. **Quality**: Add error boundaries and proper error handling throughout
 7. **Quality**: Remove console.log statements, add structured logging
 8. **Quality**: Add TypeScript strict mode, eliminate `any` types
@@ -498,4 +531,4 @@ user_profiles (1) ──── (N) kid_profiles
 
 ---
 
-*Generated on 2026-02-06 by codebase analysis.*
+*Generated on 2026-02-06 by codebase analysis. Updated 2026-02-07 with Block 1 (multilingual DB model) and translation consolidation.*

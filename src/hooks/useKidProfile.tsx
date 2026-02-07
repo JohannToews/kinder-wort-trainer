@@ -13,14 +13,28 @@ export interface KidProfile {
   school_system: string;
   hobbies: string;
   image_style: string | null;
+  ui_language: string;
+  reading_language: string;
+  explanation_language: string;
+  home_languages: string[];
 }
 
-// Derive app language from school_system
+// Derive app language from school_system (legacy fallback)
 export const getKidLanguage = (schoolSystem: string | undefined): KidLanguage => {
   if (!schoolSystem) return 'fr';
   const lang = schoolSystem.toLowerCase();
   if (['de', 'fr', 'en', 'es', 'nl', 'it', 'bs'].includes(lang)) {
     return lang as KidLanguage;
+  }
+  return 'fr';
+};
+
+// Get language as KidLanguage from string (with validation)
+const toKidLanguage = (lang: string | undefined): KidLanguage => {
+  if (!lang) return 'fr';
+  const lower = lang.toLowerCase();
+  if (['de', 'fr', 'en', 'es', 'nl', 'it', 'bs'].includes(lower)) {
+    return lower as KidLanguage;
   }
   return 'fr';
 };
@@ -34,6 +48,12 @@ interface KidProfileContextType {
   isLoading: boolean;
   refreshProfiles: () => Promise<void>;
   kidAppLanguage: KidLanguage;
+  /** The language stories should be generated/read in */
+  kidReadingLanguage: KidLanguage;
+  /** The language word explanations should be given in */
+  kidExplanationLanguage: KidLanguage;
+  /** Languages spoken at home */
+  kidHomeLanguages: string[];
 }
 
 const KidProfileContext = createContext<KidProfileContextType | undefined>(undefined);
@@ -97,7 +117,21 @@ export const KidProfileProvider = ({ children }: { children: ReactNode }) => {
 
   const selectedProfile = kidProfiles.find(p => p.id === selectedProfileId) || null;
   const hasMultipleProfiles = kidProfiles.length > 1;
+  
+  // Derive app language: school_system is the primary source (set via the UI dropdown).
+  // ui_language/reading_language in DB are kept in sync but school_system is what the user
+  // actually changes, so it must take priority.
   const kidAppLanguage = getKidLanguage(selectedProfile?.school_system);
+  const kidReadingLanguage = getKidLanguage(selectedProfile?.school_system);
+
+  
+  // Use explicit explanation_language if available, default to 'de'
+  const kidExplanationLanguage = selectedProfile?.explanation_language
+    ? toKidLanguage(selectedProfile.explanation_language)
+    : 'de' as KidLanguage;
+  
+  // Home languages from profile, default to ['de']
+  const kidHomeLanguages = selectedProfile?.home_languages || ['de'];
 
   return (
     <KidProfileContext.Provider value={{
@@ -109,6 +143,9 @@ export const KidProfileProvider = ({ children }: { children: ReactNode }) => {
       isLoading,
       refreshProfiles: loadKidProfiles,
       kidAppLanguage,
+      kidReadingLanguage,
+      kidExplanationLanguage,
+      kidHomeLanguages,
     }}>
       {children}
     </KidProfileContext.Provider>

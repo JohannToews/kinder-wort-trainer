@@ -126,6 +126,66 @@ export interface Translations {
   paletteCocoa: string;
   paletteRose: string;
   paletteMidnight: string;
+  
+  // Story status (shared by StorySelectPage, SeriesGrid)
+  statusToRead: string;
+  statusCompleted: string;
+  statusAlreadyRead: string;
+  
+  // Story difficulty (shared)
+  difficultyEasy: string;
+  difficultyMedium: string;
+  difficultyHard: string;
+  
+  // Story tabs
+  tabFiction: string;
+  tabNonFiction: string;
+  tabSeries: string;
+  
+  // Series
+  seriesEpisode: string;
+  seriesNextEpisode: string;
+  seriesNoSeries: string;
+  seriesGenerating: string;
+  seriesReadFirst: string;
+  
+  // Shared page labels
+  noStoriesForProfile: string;
+  addStory: string;
+  chooseStory: string;
+  noCategoryStories: string;
+  allStoriesRead: string;
+  noStoriesRead: string;
+  
+  // Toast messages (shared by CreateStoryPage, StorySelectPage)
+  toastGeneratingStory: string;
+  toastGenerationError: string;
+  toastSaveError: string;
+  toastStoryCreated: string;
+  
+  // Vocabulary manage
+  vocabManageTitle: string;
+  vocabManageAdd: string;
+  vocabManageAddPlaceholder: string;
+  vocabManageAdding: string;
+  vocabManageEmpty: string;
+  vocabManageDelete: string;
+  vocabManageDeleteConfirm: string;
+  vocabManageLearned: string;
+  vocabManageNotLearned: string;
+  vocabManageWords: string;
+  vocabWord: string;
+  vocabExplanation: string;
+  vocabQuizLast3: string;
+  vocabAddButton: string;
+  vocabCreateStoryFirst: string;
+  vocabEnterWord: string;
+  vocabSaveError: string;
+  vocabWordAdded: string;
+  vocabWordAddedCorrected: string;
+  vocabDeleteError: string;
+  vocabWordRemoved: string;
+  vocabAllWords: string;
 }
 
 const translations: Record<Language, Translations> = {
@@ -244,6 +304,53 @@ const translations: Record<Language, Translations> = {
     paletteCocoa: 'Kakao',
     paletteRose: 'Rosa',
     paletteMidnight: 'Mitternacht',
+    
+    statusToRead: 'Noch zu lesen',
+    statusCompleted: 'Abgeschlossen',
+    statusAlreadyRead: 'Bereits gelesen',
+    difficultyEasy: 'Leicht',
+    difficultyMedium: 'Mittel',
+    difficultyHard: 'Schwer',
+    tabFiction: 'Geschichten',
+    tabNonFiction: 'Sachgeschichten',
+    tabSeries: 'Serien',
+    seriesEpisode: 'Episode',
+    seriesNextEpisode: 'Nächste Episode',
+    seriesNoSeries: 'Noch keine Serien',
+    seriesGenerating: 'Wird erstellt...',
+    seriesReadFirst: 'Erst lesen',
+    noStoriesForProfile: 'Noch keine Geschichten',
+    addStory: 'Geschichte hinzufügen',
+    chooseStory: 'Wähle eine Geschichte',
+    noCategoryStories: 'Keine Geschichten in dieser Kategorie',
+    allStoriesRead: 'Alle Geschichten gelesen! 🎉',
+    noStoriesRead: 'Noch keine Geschichten gelesen',
+    toastGeneratingStory: 'Geschichte wird erstellt... 📚',
+    toastGenerationError: 'Fehler bei der Generierung',
+    toastSaveError: 'Geschichte erstellt, aber Speicherfehler',
+    toastStoryCreated: 'Geschichte erstellt! 🎉',
+    vocabManageTitle: 'Wörter verwalten',
+    vocabManageAdd: 'Wort hinzufügen',
+    vocabManageAddPlaceholder: 'Neues Wort eingeben...',
+    vocabManageAdding: 'Wird hinzugefügt...',
+    vocabManageEmpty: 'Noch keine Wörter gespeichert',
+    vocabManageDelete: 'Löschen',
+    vocabManageDeleteConfirm: 'Wort wirklich löschen?',
+    vocabManageLearned: 'Gelernt',
+    vocabManageNotLearned: 'Noch nicht gelernt',
+    vocabManageWords: 'Wörter',
+    vocabWord: 'Wort',
+    vocabExplanation: 'Erklärung',
+    vocabQuizLast3: 'Quiz (letzte 3)',
+    vocabAddButton: 'Hinzufügen',
+    vocabCreateStoryFirst: 'Bitte zuerst eine Geschichte erstellen',
+    vocabEnterWord: 'Bitte Wort eingeben',
+    vocabSaveError: 'Fehler beim Speichern',
+    vocabWordAdded: 'Wort hinzugefügt',
+    vocabWordAddedCorrected: 'hinzugefügt (korrigiert)',
+    vocabDeleteError: 'Fehler beim Löschen',
+    vocabWordRemoved: 'Wort entfernt',
+    vocabAllWords: 'Alle Wörter',
   },
   
   en: {
@@ -361,6 +468,53 @@ const translations: Record<Language, Translations> = {
     paletteCocoa: 'Cocoa',
     paletteRose: 'Rose',
     paletteMidnight: 'Midnight',
+    
+    statusToRead: 'To read',
+    statusCompleted: 'Completed',
+    statusAlreadyRead: 'Already read',
+    difficultyEasy: 'Easy',
+    difficultyMedium: 'Medium',
+    difficultyHard: 'Hard',
+    tabFiction: 'Stories',
+    tabNonFiction: 'Non-Fiction',
+    tabSeries: 'Series',
+    seriesEpisode: 'Episode',
+    seriesNextEpisode: 'Next Episode',
+    seriesNoSeries: 'No series yet',
+    seriesGenerating: 'Creating...',
+    seriesReadFirst: 'Read first',
+    noStoriesForProfile: 'No stories yet',
+    addStory: 'Add a story',
+    chooseStory: 'Choose a story',
+    noCategoryStories: 'No stories in this category',
+    allStoriesRead: 'All stories read! 🎉',
+    noStoriesRead: 'No stories read yet',
+    toastGeneratingStory: 'Creating story... 📚',
+    toastGenerationError: 'Error generating story',
+    toastSaveError: 'Story created, but save error',
+    toastStoryCreated: 'Story created! 🎉',
+    vocabManageTitle: 'Manage words',
+    vocabManageAdd: 'Add word',
+    vocabManageAddPlaceholder: 'Enter new word...',
+    vocabManageAdding: 'Adding...',
+    vocabManageEmpty: 'No words saved yet',
+    vocabManageDelete: 'Delete',
+    vocabManageDeleteConfirm: 'Really delete word?',
+    vocabManageLearned: 'Learned',
+    vocabManageNotLearned: 'Not learned yet',
+    vocabManageWords: 'Words',
+    vocabWord: 'Word',
+    vocabExplanation: 'Explanation',
+    vocabQuizLast3: 'Quiz (last 3)',
+    vocabAddButton: 'Add',
+    vocabCreateStoryFirst: 'Please create a story first',
+    vocabEnterWord: 'Please enter a word',
+    vocabSaveError: 'Error saving',
+    vocabWordAdded: 'Word added',
+    vocabWordAddedCorrected: 'added (corrected)',
+    vocabDeleteError: 'Error deleting',
+    vocabWordRemoved: 'Word removed',
+    vocabAllWords: 'All words',
   },
   
   fr: {
@@ -478,6 +632,53 @@ const translations: Record<Language, Translations> = {
     paletteCocoa: 'Cacao',
     paletteRose: 'Rose',
     paletteMidnight: 'Minuit',
+    
+    statusToRead: 'À lire',
+    statusCompleted: 'Terminée',
+    statusAlreadyRead: 'Déjà lues',
+    difficultyEasy: 'Facile',
+    difficultyMedium: 'Moyen',
+    difficultyHard: 'Difficile',
+    tabFiction: 'Histoires',
+    tabNonFiction: 'Documentaires',
+    tabSeries: 'Séries',
+    seriesEpisode: 'Épisode',
+    seriesNextEpisode: 'Prochain épisode',
+    seriesNoSeries: 'Pas encore de séries',
+    seriesGenerating: 'Création...',
+    seriesReadFirst: "Lire d'abord",
+    noStoriesForProfile: "Pas encore d'histoires",
+    addStory: 'Ajouter une histoire',
+    chooseStory: 'Choisis une histoire',
+    noCategoryStories: 'Aucune histoire dans cette catégorie',
+    allStoriesRead: 'Toutes les histoires lues! 🎉',
+    noStoriesRead: 'Aucune histoire lue',
+    toastGeneratingStory: "Création de l'histoire... 📚",
+    toastGenerationError: 'Erreur lors de la génération',
+    toastSaveError: 'Histoire créée, mais erreur de sauvegarde',
+    toastStoryCreated: 'Histoire créée! 🎉',
+    vocabManageTitle: 'Gérer les mots',
+    vocabManageAdd: 'Ajouter un mot',
+    vocabManageAddPlaceholder: 'Entrer un nouveau mot...',
+    vocabManageAdding: 'Ajout...',
+    vocabManageEmpty: 'Aucun mot enregistré',
+    vocabManageDelete: 'Supprimer',
+    vocabManageDeleteConfirm: 'Vraiment supprimer le mot?',
+    vocabManageLearned: 'Appris',
+    vocabManageNotLearned: 'Pas encore appris',
+    vocabManageWords: 'Mots',
+    vocabWord: 'Mot',
+    vocabExplanation: 'Explication',
+    vocabQuizLast3: 'Quiz (3 derniers)',
+    vocabAddButton: 'Ajouter',
+    vocabCreateStoryFirst: "Veuillez d'abord créer une histoire",
+    vocabEnterWord: 'Veuillez entrer un mot',
+    vocabSaveError: "Erreur lors de l'enregistrement",
+    vocabWordAdded: 'Mot ajouté',
+    vocabWordAddedCorrected: 'ajouté (corrigé)',
+    vocabDeleteError: 'Erreur lors de la suppression',
+    vocabWordRemoved: 'Mot supprimé',
+    vocabAllWords: 'Tous les mots',
   },
   
   es: {
@@ -595,6 +796,53 @@ const translations: Record<Language, Translations> = {
     paletteCocoa: 'Cacao',
     paletteRose: 'Rosa',
     paletteMidnight: 'Medianoche',
+    
+    statusToRead: 'Por leer',
+    statusCompleted: 'Completada',
+    statusAlreadyRead: 'Ya leídas',
+    difficultyEasy: 'Fácil',
+    difficultyMedium: 'Medio',
+    difficultyHard: 'Difícil',
+    tabFiction: 'Historias',
+    tabNonFiction: 'No Ficción',
+    tabSeries: 'Series',
+    seriesEpisode: 'Episodio',
+    seriesNextEpisode: 'Siguiente episodio',
+    seriesNoSeries: 'Aún no hay series',
+    seriesGenerating: 'Creando...',
+    seriesReadFirst: 'Leer primero',
+    noStoriesForProfile: 'Aún no hay historias',
+    addStory: 'Añadir historia',
+    chooseStory: 'Elige una historia',
+    noCategoryStories: 'No hay historias en esta categoría',
+    allStoriesRead: '¡Todas las historias leídas! 🎉',
+    noStoriesRead: 'Ninguna historia leída',
+    toastGeneratingStory: 'Creando historia... 📚',
+    toastGenerationError: 'Error al generar la historia',
+    toastSaveError: 'Historia creada, pero error al guardar',
+    toastStoryCreated: '¡Historia creada! 🎉',
+    vocabManageTitle: 'Gestionar palabras',
+    vocabManageAdd: 'Añadir palabra',
+    vocabManageAddPlaceholder: 'Introducir nueva palabra...',
+    vocabManageAdding: 'Añadiendo...',
+    vocabManageEmpty: 'Aún no hay palabras guardadas',
+    vocabManageDelete: 'Eliminar',
+    vocabManageDeleteConfirm: '¿Realmente eliminar la palabra?',
+    vocabManageLearned: 'Aprendida',
+    vocabManageNotLearned: 'Aún no aprendida',
+    vocabManageWords: 'Palabras',
+    vocabWord: 'Palabra',
+    vocabExplanation: 'Explicación',
+    vocabQuizLast3: 'Quiz (últimos 3)',
+    vocabAddButton: 'Añadir',
+    vocabCreateStoryFirst: 'Primero crea una historia',
+    vocabEnterWord: 'Introduce una palabra',
+    vocabSaveError: 'Error al guardar',
+    vocabWordAdded: 'Palabra añadida',
+    vocabWordAddedCorrected: 'añadida (corregida)',
+    vocabDeleteError: 'Error al eliminar',
+    vocabWordRemoved: 'Palabra eliminada',
+    vocabAllWords: 'Todas las palabras',
   },
   
   nl: {
@@ -712,6 +960,53 @@ const translations: Record<Language, Translations> = {
     paletteCocoa: 'Cacao',
     paletteRose: 'Roze',
     paletteMidnight: 'Middernacht',
+    
+    statusToRead: 'Te lezen',
+    statusCompleted: 'Voltooid',
+    statusAlreadyRead: 'Al gelezen',
+    difficultyEasy: 'Makkelijk',
+    difficultyMedium: 'Gemiddeld',
+    difficultyHard: 'Moeilijk',
+    tabFiction: 'Verhalen',
+    tabNonFiction: 'Non-Fictie',
+    tabSeries: 'Series',
+    seriesEpisode: 'Aflevering',
+    seriesNextEpisode: 'Volgende aflevering',
+    seriesNoSeries: 'Nog geen series',
+    seriesGenerating: 'Maken...',
+    seriesReadFirst: 'Eerst lezen',
+    noStoriesForProfile: 'Nog geen verhalen',
+    addStory: 'Verhaal toevoegen',
+    chooseStory: 'Kies een verhaal',
+    noCategoryStories: 'Geen verhalen in deze categorie',
+    allStoriesRead: 'Alle verhalen gelezen! 🎉',
+    noStoriesRead: 'Nog geen verhalen gelezen',
+    toastGeneratingStory: 'Verhaal maken... 📚',
+    toastGenerationError: 'Fout bij genereren',
+    toastSaveError: 'Verhaal gemaakt, maar opslagfout',
+    toastStoryCreated: 'Verhaal gemaakt! 🎉',
+    vocabManageTitle: 'Woorden beheren',
+    vocabManageAdd: 'Woord toevoegen',
+    vocabManageAddPlaceholder: 'Nieuw woord invoeren...',
+    vocabManageAdding: 'Toevoegen...',
+    vocabManageEmpty: 'Nog geen woorden opgeslagen',
+    vocabManageDelete: 'Verwijderen',
+    vocabManageDeleteConfirm: 'Woord echt verwijderen?',
+    vocabManageLearned: 'Geleerd',
+    vocabManageNotLearned: 'Nog niet geleerd',
+    vocabManageWords: 'Woorden',
+    vocabWord: 'Woord',
+    vocabExplanation: 'Uitleg',
+    vocabQuizLast3: 'Quiz (laatste 3)',
+    vocabAddButton: 'Toevoegen',
+    vocabCreateStoryFirst: 'Maak eerst een verhaal aan',
+    vocabEnterWord: 'Voer een woord in',
+    vocabSaveError: 'Fout bij opslaan',
+    vocabWordAdded: 'Woord toegevoegd',
+    vocabWordAddedCorrected: 'toegevoegd (gecorrigeerd)',
+    vocabDeleteError: 'Fout bij verwijderen',
+    vocabWordRemoved: 'Woord verwijderd',
+    vocabAllWords: 'Alle woorden',
   },
   
   it: {
@@ -829,6 +1124,53 @@ const translations: Record<Language, Translations> = {
     paletteCocoa: 'Cacao',
     paletteRose: 'Rosa',
     paletteMidnight: 'Mezzanotte',
+    
+    statusToRead: 'Da leggere',
+    statusCompleted: 'Completata',
+    statusAlreadyRead: 'Già lette',
+    difficultyEasy: 'Facile',
+    difficultyMedium: 'Medio',
+    difficultyHard: 'Difficile',
+    tabFiction: 'Storie',
+    tabNonFiction: 'Non-fiction',
+    tabSeries: 'Serie',
+    seriesEpisode: 'Episodio',
+    seriesNextEpisode: 'Prossimo episodio',
+    seriesNoSeries: 'Nessuna serie ancora',
+    seriesGenerating: 'Creazione...',
+    seriesReadFirst: 'Leggere prima',
+    noStoriesForProfile: 'Nessuna storia ancora',
+    addStory: 'Aggiungi storia',
+    chooseStory: 'Scegli una storia',
+    noCategoryStories: 'Nessuna storia in questa categoria',
+    allStoriesRead: 'Tutte le storie lette! 🎉',
+    noStoriesRead: 'Nessuna storia letta',
+    toastGeneratingStory: 'Creazione storia... 📚',
+    toastGenerationError: 'Errore nella generazione',
+    toastSaveError: 'Storia creata, ma errore di salvataggio',
+    toastStoryCreated: 'Storia creata! 🎉',
+    vocabManageTitle: 'Gestisci parole',
+    vocabManageAdd: 'Aggiungi parola',
+    vocabManageAddPlaceholder: 'Inserisci nuova parola...',
+    vocabManageAdding: 'Aggiungendo...',
+    vocabManageEmpty: 'Nessuna parola salvata',
+    vocabManageDelete: 'Elimina',
+    vocabManageDeleteConfirm: 'Eliminare davvero la parola?',
+    vocabManageLearned: 'Imparata',
+    vocabManageNotLearned: 'Non ancora imparata',
+    vocabManageWords: 'Parole',
+    vocabWord: 'Parola',
+    vocabExplanation: 'Spiegazione',
+    vocabQuizLast3: 'Quiz (ultimi 3)',
+    vocabAddButton: 'Aggiungi',
+    vocabCreateStoryFirst: 'Prima crea una storia',
+    vocabEnterWord: 'Inserisci una parola',
+    vocabSaveError: 'Errore nel salvataggio',
+    vocabWordAdded: 'Parola aggiunta',
+    vocabWordAddedCorrected: 'aggiunta (corretta)',
+    vocabDeleteError: 'Errore nella cancellazione',
+    vocabWordRemoved: 'Parola rimossa',
+    vocabAllWords: 'Tutte le parole',
   },
   
   bs: {
@@ -946,6 +1288,53 @@ const translations: Record<Language, Translations> = {
     paletteCocoa: 'Kakao',
     paletteRose: 'Roze',
     paletteMidnight: 'Ponoć',
+    
+    statusToRead: 'Za čitanje',
+    statusCompleted: 'Završeno',
+    statusAlreadyRead: 'Već pročitano',
+    difficultyEasy: 'Lako',
+    difficultyMedium: 'Srednje',
+    difficultyHard: 'Teško',
+    tabFiction: 'Priče',
+    tabNonFiction: 'Poučni tekstovi',
+    tabSeries: 'Serije',
+    seriesEpisode: 'Epizoda',
+    seriesNextEpisode: 'Sljedeća epizoda',
+    seriesNoSeries: 'Još nema serija',
+    seriesGenerating: 'Kreiranje...',
+    seriesReadFirst: 'Prvo pročitaj',
+    noStoriesForProfile: 'Još nema priča',
+    addStory: 'Dodaj priču',
+    chooseStory: 'Odaberi priču',
+    noCategoryStories: 'Nema priča u ovoj kategoriji',
+    allStoriesRead: 'Sve priče pročitane! 🎉',
+    noStoriesRead: 'Još nijedna priča pročitana',
+    toastGeneratingStory: 'Kreiranje priče... 📚',
+    toastGenerationError: 'Greška pri generisanju',
+    toastSaveError: 'Priča kreirana, ali greška pri čuvanju',
+    toastStoryCreated: 'Priča kreirana! 🎉',
+    vocabManageTitle: 'Upravljaj riječima',
+    vocabManageAdd: 'Dodaj riječ',
+    vocabManageAddPlaceholder: 'Unesite novu riječ...',
+    vocabManageAdding: 'Dodavanje...',
+    vocabManageEmpty: 'Još nema sačuvanih riječi',
+    vocabManageDelete: 'Obriši',
+    vocabManageDeleteConfirm: 'Zaista obrisati riječ?',
+    vocabManageLearned: 'Naučeno',
+    vocabManageNotLearned: 'Još nije naučeno',
+    vocabManageWords: 'Riječi',
+    vocabWord: 'Riječ',
+    vocabExplanation: 'Objašnjenje',
+    vocabQuizLast3: 'Kviz (posljednja 3)',
+    vocabAddButton: 'Dodaj',
+    vocabCreateStoryFirst: 'Prvo kreirajte priču',
+    vocabEnterWord: 'Unesite riječ',
+    vocabSaveError: 'Greška pri čuvanju',
+    vocabWordAdded: 'Riječ dodana',
+    vocabWordAddedCorrected: 'dodana (ispravljena)',
+    vocabDeleteError: 'Greška pri brisanju',
+    vocabWordRemoved: 'Riječ uklonjena',
+    vocabAllWords: 'Sve riječi',
   },
 };
 

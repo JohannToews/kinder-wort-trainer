@@ -103,7 +103,7 @@ const VocabularyManagePage = () => {
 
   const addWord = async () => {
     if (!newWord.trim() || !defaultStoryId) {
-      toast.error(adminLang === 'de' ? "Bitte Wort eingeben" : "Please enter a word");
+      toast.error(t.vocabEnterWord);
       return;
     }
 
@@ -126,18 +126,18 @@ const VocabularyManagePage = () => {
       });
 
       if (insertError) {
-        toast.error(adminLang === 'de' ? "Fehler beim Speichern" : "Error saving");
+        toast.error(t.vocabSaveError);
       } else {
         const message = correctedWord !== newWord.trim().toLowerCase() 
-          ? (adminLang === 'de' ? `"${correctedWord}" hinzugefügt (korrigiert)` : `"${correctedWord}" added (corrected)`)
-          : (adminLang === 'de' ? "Wort hinzugefügt" : "Word added");
+          ? `"${correctedWord}" ${t.vocabWordAddedCorrected}`
+          : t.vocabWordAdded;
         toast.success(message);
         setNewWord("");
         loadData();
       }
     } catch (err) {
       console.error("Error adding word:", err);
-      toast.error(adminLang === 'de' ? "Fehler beim Speichern" : "Error saving");
+      toast.error(t.vocabSaveError);
     }
     
     setIsSaving(false);
@@ -147,9 +147,9 @@ const VocabularyManagePage = () => {
     const { error } = await supabase.from("marked_words").delete().eq("id", id);
     
     if (error) {
-      toast.error(adminLang === 'de' ? "Fehler beim Löschen" : "Error deleting");
+      toast.error(t.vocabDeleteError);
     } else {
-      toast.success(adminLang === 'de' ? "Wort entfernt" : "Word removed");
+      toast.success(t.vocabWordRemoved);
       setWords(words.filter(w => w.id !== id));
     }
   };
@@ -201,7 +201,7 @@ const VocabularyManagePage = () => {
             <ArrowLeft className="h-6 w-6" />
           </Button>
           <h1 className="text-2xl md:text-3xl font-baloo text-foreground">
-            {adminLang === 'de' ? 'Wörter verwalten' : adminLang === 'fr' ? 'Gérer les mots' : 'Manage Words'}
+            {t.vocabManageTitle}
           </h1>
         </div>
       </div>
@@ -241,20 +241,20 @@ const VocabularyManagePage = () => {
         <div className="bg-card rounded-2xl p-6 shadow-card mb-8 border-2 border-primary/20">
           <h2 className="text-xl font-baloo mb-4 flex items-center gap-2">
             <Plus className="h-5 w-5 text-primary" />
-            {adminLang === 'de' ? 'Neues Wort hinzufügen' : adminLang === 'fr' ? 'Ajouter un nouveau mot' : 'Add new word'}
+            {t.vocabManageAdd}
             {selectedProfile && <span className="text-sm text-muted-foreground ml-2">({selectedProfile.name})</span>}
           </h2>
           
           <div className="flex gap-4 items-end">
             <div className="flex-1">
               <label className="block text-sm font-medium mb-1">
-                {adminLang === 'de' ? 'Wort' : adminLang === 'fr' ? 'Mot' : 'Word'}
+                {t.vocabWord}
               </label>
               <Input
                 value={newWord}
                 onChange={(e) => setNewWord(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && addWord()}
-                placeholder={adminLang === 'de' ? 'z.B. château' : 'e.g. château'}
+                placeholder={t.vocabManageAddPlaceholder}
                 className="text-lg"
               />
             </div>
@@ -268,14 +268,14 @@ const VocabularyManagePage = () => {
               ) : (
                 <Plus className="h-5 w-5 mr-2" />
               )}
-              {adminLang === 'de' ? 'Hinzufügen' : adminLang === 'fr' ? 'Ajouter' : 'Add'}
+              {t.vocabAddButton}
             </Button>
           </div>
           
           {!defaultStoryId && (
             <p className="text-sm text-muted-foreground mt-2">
-              {adminLang === 'de' ? 'Bitte zuerst eine Geschichte erstellen' : 'Please create a story first'}
-              {selectedProfile && ` ${adminLang === 'de' ? 'für' : 'for'} ${selectedProfile.name}`}
+              {t.vocabCreateStoryFirst}
+              {selectedProfile && ` ${adminLang === 'de' ? 'für' : adminLang === 'fr' ? 'pour' : 'for'} ${selectedProfile.name}`}
             </p>
           )}
         </div>
@@ -283,13 +283,13 @@ const VocabularyManagePage = () => {
         {/* Words table */}
         <div className="bg-card rounded-2xl p-6 shadow-card">
           <h2 className="text-xl font-baloo mb-4">
-            {adminLang === 'de' ? `Alle Wörter (${words.length})` : adminLang === 'fr' ? `Tous les mots (${words.length})` : `All words (${words.length})`}
+            {`${t.vocabAllWords} (${words.length})`}
             {selectedProfile && <span className="text-sm text-muted-foreground ml-2">- {selectedProfile.name}</span>}
           </h2>
 
           {words.length === 0 ? (
             <p className="text-muted-foreground text-center py-8">
-              {adminLang === 'de' ? 'Noch keine Wörter vorhanden' : adminLang === 'fr' ? 'Pas encore de mots' : 'No words yet'}
+              {t.vocabManageEmpty}
               {selectedProfile && ` ${adminLang === 'de' ? 'für' : adminLang === 'fr' ? 'pour' : 'for'} ${selectedProfile.name}`}
             </p>
           ) : (
@@ -298,16 +298,16 @@ const VocabularyManagePage = () => {
                 <TableHeader>
                   <TableRow>
                     <TableHead className="font-baloo">
-                      {adminLang === 'de' ? 'Wort' : adminLang === 'fr' ? 'Mot' : 'Word'}
+                      {t.vocabWord}
                     </TableHead>
                     <TableHead className="font-baloo">
-                      {adminLang === 'de' ? 'Erklärung' : adminLang === 'fr' ? 'Explication' : 'Explanation'}
+                      {t.vocabExplanation}
                     </TableHead>
                     <TableHead className="font-baloo text-center">
-                      {adminLang === 'de' ? 'Quiz (letzte 3)' : adminLang === 'fr' ? 'Quiz (3 derniers)' : 'Quiz (last 3)'}
+                      {t.vocabQuizLast3}
                     </TableHead>
                     <TableHead className="font-baloo text-center">
-                      {adminLang === 'de' ? 'Gelernt' : adminLang === 'fr' ? 'Appris' : 'Learned'}
+                      {t.vocabManageLearned}
                     </TableHead>
                     <TableHead className="w-16"></TableHead>
                   </TableRow>

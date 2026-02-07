@@ -198,7 +198,7 @@ const isStopWord = (word: string): boolean => {
 const ReadingPage = () => {
   const { user } = useAuth();
   const { colors: paletteColors } = useColorPalette();
-  const { selectedProfile, kidAppLanguage } = useKidProfile();
+  const { selectedProfile, kidAppLanguage, kidExplanationLanguage } = useKidProfile();
   const { awardStoryPoints, awardQuizPoints } = useGamification();
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
@@ -626,10 +626,10 @@ const ReadingPage = () => {
 
   const fetchExplanation = async (text: string): Promise<string | null> => {
     try {
-      // Use story's text_language for the explanation
+      // Use story's text_language for word context, and kid's explanation_language for the explanation
       const textLang = story?.text_language || 'fr';
       const { data, error } = await supabase.functions.invoke("explain-word", {
-        body: { word: text, language: textLang },
+        body: { word: text, language: textLang, explanationLanguage: kidExplanationLanguage },
       });
 
       if (error) {

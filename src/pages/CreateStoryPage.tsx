@@ -20,6 +20,7 @@ import {
 } from "@/components/story-creation/types";
 import { StorySettings } from "@/components/story-creation/StoryTypeSelectionScreen";
 import { toast } from "sonner";
+import { useTranslations } from "@/lib/translations";
 import StoryGenerationProgress from "@/components/story-creation/StoryGenerationProgress";
 
 // Screen states for the wizard
@@ -81,7 +82,7 @@ const getEducationalDescription = (
 const CreateStoryPage = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { kidAppLanguage, selectedProfile } = useKidProfile();
+  const { kidAppLanguage, kidReadingLanguage, kidExplanationLanguage, selectedProfile } = useKidProfile();
   const { colors: paletteColors } = useColorPalette();
 
   // Wizard state
@@ -98,6 +99,7 @@ const CreateStoryPage = () => {
   const [isGenerating, setIsGenerating] = useState(false);
 
   // Translations
+  const t = useTranslations(kidAppLanguage);
   const storyTypeTranslations = storyTypeSelectionTranslations[kidAppLanguage] || storyTypeSelectionTranslations.de;
   const characterTranslations = characterSelectionTranslations[kidAppLanguage] || characterSelectionTranslations.de;
 
@@ -117,13 +119,10 @@ const CreateStoryPage = () => {
 
     const description = getEducationalDescription(topic, customTopicText, kidAppLanguage);
     const difficulty = getDifficultyFromSchoolClass(selectedProfile?.school_class || "3");
-    const textLanguage = kidAppLanguage.toUpperCase();
+    // Use reading_language from kid profile for story generation
+    const textLanguage = kidReadingLanguage.toUpperCase();
 
-    toast.info(
-      kidAppLanguage === "de" ? "Geschichte wird erstellt... 📚" :
-      kidAppLanguage === "fr" ? "Création de l'histoire... 📚" :
-      "Creating story... 📚"
-    );
+    toast.info(t.toastGeneratingStory);
 
     try {
       // Use story settings from wizard if available, otherwise defaults
@@ -137,6 +136,7 @@ const CreateStoryPage = () => {
           description,
           textType: "non-fiction",
           textLanguage,
+          globalLanguage: kidAppLanguage,
           userId: user.id,
           // Modular prompt system: CORE + KINDER-MODUL
           source: 'kid',
@@ -149,11 +149,7 @@ const CreateStoryPage = () => {
 
       if (error) {
         console.error("Generation error:", error);
-        toast.error(
-          kidAppLanguage === "de" ? "Fehler bei der Generierung" :
-          kidAppLanguage === "fr" ? "Erreur lors de la génération" :
-          "Error generating story"
-        );
+        toast.error(t.toastGenerationError);
         setIsGenerating(false);
         setCurrentScreen("story-type");
         return;
@@ -197,11 +193,7 @@ const CreateStoryPage = () => {
 
         if (saveError) {
           console.error("Save error:", saveError);
-          toast.error(
-            kidAppLanguage === "de" ? "Geschichte erstellt, aber Speicherfehler" :
-            kidAppLanguage === "fr" ? "Histoire créée, mais erreur de sauvegarde" :
-            "Story created, but save error"
-          );
+          toast.error(t.toastSaveError);
           setIsGenerating(false);
           setCurrentScreen("story-type");
           return;
@@ -215,6 +207,7 @@ const CreateStoryPage = () => {
             expected_answer: q.correctAnswer || q.expectedAnswer || '',
             options: q.options || [],
             order_index: idx,
+            question_language: kidReadingLanguage,
           }));
           await supabase.from("comprehension_questions").insert(questionsToInsert);
         }
@@ -226,34 +219,24 @@ const CreateStoryPage = () => {
             word: v.word,
             explanation: v.explanation,
             difficulty: "medium",
+            word_language: kidReadingLanguage,
+            explanation_language: kidExplanationLanguage,
           }));
           await supabase.from("marked_words").insert(wordsToInsert);
         }
 
-        toast.success(
-          kidAppLanguage === "de" ? "Geschichte erstellt! 🎉" :
-          kidAppLanguage === "fr" ? "Histoire créée! 🎉" :
-          "Story created! 🎉"
-        );
+        toast.success(t.toastStoryCreated);
 
         // Navigate to reading page
         navigate(`/read/${savedStory.id}`);
       } else {
-        toast.error(
-          kidAppLanguage === "de" ? "Fehler bei der Generierung" :
-          kidAppLanguage === "fr" ? "Erreur lors de la génération" :
-          "Error generating story"
-        );
+        toast.error(t.toastGenerationError);
         setIsGenerating(false);
         setCurrentScreen("story-type");
       }
     } catch (err) {
       console.error("Error:", err);
-      toast.error(
-        kidAppLanguage === "de" ? "Fehler bei der Generierung" :
-        kidAppLanguage === "fr" ? "Erreur lors de la génération" :
-        "Error generating story"
-      );
+      toast.error(t.toastGenerationError);
       setIsGenerating(false);
       setCurrentScreen("story-type");
     }
@@ -341,13 +324,10 @@ const CreateStoryPage = () => {
     if (userDescription) description += `. Zusätzliche Wünsche: ${userDescription}`;
 
     const difficulty = getDifficultyFromSchoolClass(selectedProfile?.school_class || "3");
-    const textLanguage = kidAppLanguage.toUpperCase();
+    // Use reading_language from kid profile for story generation
+    const textLanguage = kidReadingLanguage.toUpperCase();
 
-    toast.info(
-      kidAppLanguage === "de" ? "Geschichte wird erstellt... 📚" :
-      kidAppLanguage === "fr" ? "Création de l'histoire... 📚" :
-      "Creating story... 📚"
-    );
+    toast.info(t.toastGeneratingStory);
 
     try {
       const storyLength = storySettings?.length || "medium";
@@ -361,6 +341,7 @@ const CreateStoryPage = () => {
           description,
           textType: "fiction",
           textLanguage,
+          globalLanguage: kidAppLanguage,
           userId: user.id,
           // Modular prompt system: CORE + KINDER-MODUL (+ SERIEN-MODUL if series)
           source: 'kid',
@@ -387,11 +368,7 @@ const CreateStoryPage = () => {
 
       if (error) {
         console.error("Generation error:", error);
-        toast.error(
-          kidAppLanguage === "de" ? "Fehler bei der Generierung" :
-          kidAppLanguage === "fr" ? "Erreur lors de la génération" :
-          "Error generating story"
-        );
+        toast.error(t.toastGenerationError);
         setIsGenerating(false);
         setCurrentScreen("story-type");
         return;
@@ -432,11 +409,7 @@ const CreateStoryPage = () => {
 
         if (saveError) {
           console.error("Save error:", saveError);
-          toast.error(
-            kidAppLanguage === "de" ? "Geschichte erstellt, aber Speicherfehler" :
-            kidAppLanguage === "fr" ? "Histoire créée, mais erreur de sauvegarde" :
-            "Story created, but save error"
-          );
+          toast.error(t.toastSaveError);
           setIsGenerating(false);
           setCurrentScreen("story-type");
           return;
@@ -450,6 +423,7 @@ const CreateStoryPage = () => {
             expected_answer: q.correctAnswer || q.expectedAnswer || '',
             options: q.options || [],
             order_index: idx,
+            question_language: kidReadingLanguage,
           }));
           await supabase.from("comprehension_questions").insert(questionsToInsert);
         }
@@ -461,34 +435,24 @@ const CreateStoryPage = () => {
             word: v.word,
             explanation: v.explanation,
             difficulty: "medium",
+            word_language: kidReadingLanguage,
+            explanation_language: kidExplanationLanguage,
           }));
           await supabase.from("marked_words").insert(wordsToInsert);
         }
 
-        toast.success(
-          kidAppLanguage === "de" ? "Geschichte erstellt! 🎉" :
-          kidAppLanguage === "fr" ? "Histoire créée! 🎉" :
-          "Story created! 🎉"
-        );
+        toast.success(t.toastStoryCreated);
 
         // Navigate to reading page
         navigate(`/read/${savedStory.id}`);
       } else {
-        toast.error(
-          kidAppLanguage === "de" ? "Fehler bei der Generierung" :
-          kidAppLanguage === "fr" ? "Erreur lors de la génération" :
-          "Error generating story"
-        );
+        toast.error(t.toastGenerationError);
         setIsGenerating(false);
         setCurrentScreen("story-type");
       }
     } catch (err) {
       console.error("Error:", err);
-      toast.error(
-        kidAppLanguage === "de" ? "Fehler bei der Generierung" :
-        kidAppLanguage === "fr" ? "Erreur lors de la génération" :
-        "Error generating story"
-      );
+      toast.error(t.toastGenerationError);
       setIsGenerating(false);
       setCurrentScreen("story-type");
     }

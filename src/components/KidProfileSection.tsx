@@ -23,6 +23,10 @@ interface KidProfile {
   cover_image_url: string | null;
   gender?: string;
   age?: number;
+  ui_language?: string;
+  reading_language?: string;
+  explanation_language?: string;
+  home_languages?: string[];
 }
 
 interface KidProfileSectionProps {
@@ -89,7 +93,9 @@ const KidProfileSection = ({ language, userId, onProfileUpdate }: KidProfileSect
 
     if (data?.value) {
       try {
-        setSchoolSystems(JSON.parse(data.value));
+        const dbSystems = JSON.parse(data.value) as SchoolSystems;
+        // Merge: DB values take priority, but add any new defaults (e.g. new languages)
+        setSchoolSystems({ ...DEFAULT_SCHOOL_SYSTEMS, ...dbSystems });
       } catch (e) {
         console.error("Error parsing school systems:", e);
       }
@@ -115,6 +121,10 @@ const KidProfileSection = ({ language, userId, onProfileUpdate }: KidProfileSect
         cover_image_url: d.cover_image_url,
         gender: (d as any).gender || '',
         age: (d as any).age || undefined,
+        ui_language: d.ui_language || d.school_system,
+        reading_language: d.reading_language || d.school_system,
+        explanation_language: d.explanation_language || 'de',
+        home_languages: d.home_languages || ['de'],
       }));
       setProfiles(mappedProfiles);
       if (mappedProfiles[0]?.cover_image_url) {
@@ -148,6 +158,9 @@ const KidProfileSection = ({ language, userId, onProfileUpdate }: KidProfileSect
     updateCurrentProfile({
       school_system: value,
       school_class: classes[0] || '',
+      // Sync language fields when school system changes
+      ui_language: value,
+      reading_language: value,
     });
   };
 
@@ -282,7 +295,7 @@ const KidProfileSection = ({ language, userId, onProfileUpdate }: KidProfileSect
         }
       }
 
-      const profileData = {
+      const baseProfileData = {
         user_id: userId,
         name: currentProfile.name,
         school_system: currentProfile.school_system,
@@ -295,29 +308,48 @@ const KidProfileSection = ({ language, userId, onProfileUpdate }: KidProfileSect
         age: currentProfile.age || null,
       };
 
+      // Multilingual fields (added by migration 20260206150000)
+      const langFields = {
+        ui_language: currentProfile.ui_language || currentProfile.school_system,
+        reading_language: currentProfile.reading_language || currentProfile.school_system,
+        explanation_language: currentProfile.explanation_language || 'de',
+        home_languages: currentProfile.home_languages || ['de'],
+      };
+
       let savedData;
-      if (currentProfile.id) {
-        // Update existing
-        const { data, error } = await supabase
-          .from("kid_profiles")
-          .update(profileData)
-          .eq("id", currentProfile.id)
-          .select()
-          .single();
-        
-        if (error) throw error;
-        savedData = data;
-      } else {
-        // Insert new
-        const { data, error } = await supabase
-          .from("kid_profiles")
-          .insert(profileData)
-          .select()
-          .single();
-        
-        if (error) throw error;
-        savedData = data;
+      
+      // Helper: try save with lang fields first, fall back to base-only if columns don't exist
+      const trySave = async (profileData: Record<string, unknown>) => {
+        if (currentProfile.id) {
+          return await supabase
+            .from("kid_profiles")
+            .update(profileData)
+            .eq("id", currentProfile.id)
+            .select()
+            .single();
+        } else {
+          return await supabase
+            .from("kid_profiles")
+            .insert(profileData)
+            .select()
+            .single();
+        }
+      };
+
+      // Try with all fields first
+      let result = await trySave({ ...baseProfileData, ...langFields });
+      
+      if (result.error) {
+        // If error mentions unknown columns, retry without lang fields
+        const errMsg = result.error.message || '';
+        if (errMsg.includes('column') || errMsg.includes('ui_language') || errMsg.includes('reading_language')) {
+          console.warn('Multilingual columns not yet in DB, saving without them');
+          result = await trySave(baseProfileData);
+        }
       }
+      
+      if (result.error) throw result.error;
+      savedData = result.data;
 
       // Update local state
       const updatedProfile: KidProfile = {
@@ -331,6 +363,10 @@ const KidProfileSection = ({ language, userId, onProfileUpdate }: KidProfileSect
         cover_image_url: savedData.cover_image_url,
         gender: (savedData as any).gender || '',
         age: (savedData as any).age || undefined,
+        ui_language: savedData.ui_language,
+        reading_language: savedData.reading_language,
+        explanation_language: savedData.explanation_language,
+        home_languages: savedData.home_languages,
       };
 
       setProfiles(prev => {

@@ -1,6 +1,6 @@
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { BookOpen, Plus, CheckCircle2, Loader2 } from "lucide-react";
+import { useTranslations, type Language } from "@/lib/translations";
 
 interface Story {
   id: string;
@@ -29,30 +29,7 @@ interface SeriesGridProps {
   isGeneratingForSeries: string | null;
 }
 
-// Translations
-const seriesLabels: Record<string, { 
-  episode: string; 
-  nextEpisode: string; 
-  noSeries: string;
-  generating: string;
-  readFirst: string;
-}> = {
-  de: { episode: "Episode", nextEpisode: "Nächste Episode", noSeries: "Noch keine Serien", generating: "Wird erstellt...", readFirst: "Erst lesen" },
-  fr: { episode: "Épisode", nextEpisode: "Prochain épisode", noSeries: "Pas encore de séries", generating: "Création...", readFirst: "Lire d'abord" },
-  en: { episode: "Episode", nextEpisode: "Next Episode", noSeries: "No series yet", generating: "Creating...", readFirst: "Read first" },
-  es: { episode: "Episodio", nextEpisode: "Siguiente episodio", noSeries: "Aún no hay series", generating: "Creando...", readFirst: "Leer primero" },
-  nl: { episode: "Aflevering", nextEpisode: "Volgende aflevering", noSeries: "Nog geen series", generating: "Maken...", readFirst: "Eerst lezen" },
-  bs: { episode: "Epizoda", nextEpisode: "Sljedeća epizoda", noSeries: "Još nema serija", generating: "Kreiranje...", readFirst: "Prvo pročitaj" },
-};
-
-const statusLabels: Record<string, { toRead: string; completed: string }> = {
-  de: { toRead: "Noch zu lesen", completed: "Abgeschlossen" },
-  fr: { toRead: "À lire", completed: "Terminée" },
-  en: { toRead: "To read", completed: "Completed" },
-  es: { toRead: "Por leer", completed: "Completada" },
-  nl: { toRead: "Te lezen", completed: "Voltooid" },
-  bs: { toRead: "Za čitanje", completed: "Završeno" },
-};
+// Translations now come from central lib/translations.ts
 
 const SeriesGrid = ({ 
   stories, 
@@ -62,8 +39,7 @@ const SeriesGrid = ({
   onGenerateNextEpisode,
   isGeneratingForSeries,
 }: SeriesGridProps) => {
-  const labels = seriesLabels[appLang] || seriesLabels.de;
-  const status = statusLabels[appLang] || statusLabels.de;
+  const t = useTranslations(appLang as Language);
 
   // Group stories by series
   // First episodes: series_id is null but episode_number = 1, use own id as key
@@ -98,7 +74,7 @@ const SeriesGrid = ({
     return (
       <div className="text-center py-12">
         <BookOpen className="h-12 w-12 text-muted-foreground/50 mx-auto mb-4" />
-        <p className="text-lg text-muted-foreground">{labels.noSeries}</p>
+        <p className="text-lg text-muted-foreground">{t.seriesNoSeries}</p>
       </div>
     );
   }
@@ -141,7 +117,7 @@ const SeriesGrid = ({
                   {firstEpisode?.title?.split(' - ')[0] || firstEpisode?.title}
                 </h3>
                 <p className="text-sm text-muted-foreground">
-                  {series.episodes.length} {series.episodes.length === 1 ? labels.episode : `${labels.episode}n`}
+                  {series.episodes.length} {series.episodes.length === 1 ? t.seriesEpisode : `${t.seriesEpisode}n`}
                 </p>
               </div>
             </div>
@@ -179,7 +155,7 @@ const SeriesGrid = ({
                       )}
                     </div>
                     <p className="text-xs text-center mt-1 font-medium text-muted-foreground group-hover:text-foreground transition-colors">
-                      {labels.episode} {episode.episode_number || 1}
+                      {t.seriesEpisode} {episode.episode_number || 1}
                     </p>
                   </div>
                 );
@@ -206,20 +182,20 @@ const SeriesGrid = ({
                     {isGenerating ? (
                       <>
                         <Loader2 className="h-6 w-6 text-primary animate-spin" />
-                        <span className="text-xs text-primary">{labels.generating}</span>
+                        <span className="text-xs text-primary">{t.seriesGenerating}</span>
                       </>
                     ) : !lastEpisodeCompleted ? (
                       <>
                         <Plus className="h-6 w-6 text-muted-foreground/40" />
                         <span className="text-xs text-muted-foreground/60">
-                          {labels.readFirst}
+                          {t.seriesReadFirst}
                         </span>
                       </>
                     ) : (
                       <>
                         <Plus className="h-6 w-6 text-primary/60 group-hover:text-primary" />
                         <span className="text-xs text-primary/60 group-hover:text-primary">
-                          {labels.episode} {(lastEpisode?.episode_number || 1) + 1}
+                          {t.seriesEpisode} {(lastEpisode?.episode_number || 1) + 1}
                         </span>
                       </>
                     )}
