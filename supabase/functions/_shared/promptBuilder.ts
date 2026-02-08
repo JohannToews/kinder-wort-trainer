@@ -32,6 +32,7 @@ export interface StoryRequest {
   user_prompt?: string;
   source: 'parent' | 'kid';
   question_count?: number;
+  surprise_characters?: boolean;  // Block 2.3e: fictional-only characters
 }
 
 // ─── Section Headers (translated) ───────────────────────────────
@@ -433,17 +434,23 @@ export async function buildStoryPrompt(
   if (diffErr) console.error('[promptBuilder] difficulty_rules error:', diffErr.message);
   if (!diffRules) throw new Error(`No difficulty_rules found for language=${lang}, level=${request.kid_profile.difficulty_level}`);
 
-  // ── 3. Load theme_rules ──
-  const { data: themeRules, error: themeErr } = await supabaseClient
-    .from('theme_rules')
-    .select('*')
-    .eq('theme_key', request.theme_key)
-    .eq('language', lang)
-    .limit(1)
-    .maybeSingle();
+  // ── 3. Load theme_rules (skip for 'surprise' theme) ──
+  const isSurpriseTheme = !request.theme_key || request.theme_key === 'surprise';
+  let themeRules: any = null;
+  
+  if (!isSurpriseTheme) {
+    const { data, error: themeErr } = await supabaseClient
+      .from('theme_rules')
+      .select('*')
+      .eq('theme_key', request.theme_key)
+      .eq('language', lang)
+      .limit(1)
+      .maybeSingle();
 
-  if (themeErr) console.error('[promptBuilder] theme_rules error:', themeErr.message);
-  if (!themeRules) throw new Error(`No theme_rules found for key=${request.theme_key}, language=${lang}`);
+    if (themeErr) console.error('[promptBuilder] theme_rules error:', themeErr.message);
+    if (!data) throw new Error(`No theme_rules found for key=${request.theme_key}, language=${lang}`);
+    themeRules = data;
+  }
 
   // ── 4. Load content_themes_by_level (guardrails) ──
   const { data: allowedThemes } = await supabaseClient
@@ -526,29 +533,66 @@ export async function buildStoryPrompt(
   ].filter(Boolean).join('\n');
   sections.push(lengthSection);
 
-  // CATEGORY
-  const themeLabel = label(themeRules.labels, lang);
-  const categorySection = [
-    `## ${headers.category}`,
-    themeLabel,
-    `Plots: ${arrJoin(themeRules.plot_templates)}`,
-    themeRules.typical_conflicts ? `Conflicts: ${arrJoin(themeRules.typical_conflicts)}` : null,
-    themeRules.character_archetypes ? `Archetypes: ${arrJoin(themeRules.character_archetypes)}` : null,
-    themeRules.sensory_details ? `Sensory: ${themeRules.sensory_details}` : null,
-    `→ ${headers.chooseTheme}`,
-  ].filter(Boolean).join('\n');
-  sections.push(categorySection);
+  // CATEGORY (or surprise theme hint)
+  if (isSurpriseTheme) {
+    const surpriseThemeHint: Record<string, string> = {
+      fr: `## ${headers.category}\nChoisis toi-même un thème créatif et surprenant pour cette histoire. Sois original !`,
+      de: `## ${headers.category}\nWähle selbst ein kreatives und überraschendes Thema für diese Geschichte. Sei originell!`,
+      en: `## ${headers.category}\nChoose a creative and surprising theme for this story yourself. Be original!`,
+      es: `## ${headers.category}\nElige tú mismo un tema creativo y sorprendente para esta historia. ¡Sé original!`,
+      it: `## ${headers.category}\nScegli tu un tema creativo e sorprendente per questa storia. Sii originale!`,
+      bs: `## ${headers.category}\nSam/a odaberi kreativnu i iznenađujuću temu za ovu priču. Budi originalan/na!`,
+      nl: `## ${headers.category}\nKies zelf een creatief en verrassend thema voor dit verhaal. Wees origineel!`,
+    };
+    sections.push(surpriseThemeHint[lang] || surpriseThemeHint.en);
+  } else {
+    const themeLabel = label(themeRules.labels, lang);
+    const categorySection = [
+      `## ${headers.category}`,
+      themeLabel,
+      `Plots: ${arrJoin(themeRules.plot_templates)}`,
+      themeRules.typical_conflicts ? `Conflicts: ${arrJoin(themeRules.typical_conflicts)}` : null,
+      themeRules.character_archetypes ? `Archetypes: ${arrJoin(themeRules.character_archetypes)}` : null,
+      themeRules.sensory_details ? `Sensory: ${themeRules.sensory_details}` : null,
+      `→ ${headers.chooseTheme}`,
+    ].filter(Boolean).join('\n');
+    sections.push(categorySection);
+  }
 
-  // CHARACTERS (Block 2.3d: relationship logic)
-  const charactersSection = buildCharactersSection(
-    request.protagonists,
-    request.kid_profile.first_name,
-    request.kid_profile.age,
-    headers,
-    lang
-  );
-  if (charactersSection) {
-    sections.push(charactersSection);
+  // CHARACTERS (Block 2.3d: relationship logic, Block 2.3e: surprise_characters)
+  if (request.surprise_characters) {
+    // Fictional-only characters: no real persons
+    const fictionalHint: Record<string, string> = {
+      fr: `## ${headers.characters}\nInvente des personnages 100% fictifs pour cette histoire.\nUtilise des animaux, des créatures fantastiques, des robots, des fées, ou d'autres êtres imaginaires.\nNE PAS utiliser de prénoms humains réalistes.\nNE PAS inclure d'enfants humains comme personnages principaux.\nLes personnages doivent être originaux et surprenants.`,
+      de: `## ${headers.characters}\nErfinde 100% fiktive Figuren für diese Geschichte.\nNutze Tiere, Fabelwesen, Roboter, Feen oder andere Fantasiewesen.\nKEINE realistischen menschlichen Vornamen.\nKEINE menschlichen Kinder als Hauptfiguren.\nDie Figuren sollen originell und überraschend sein.`,
+      en: `## ${headers.characters}\nInvent 100% fictional characters for this story.\nUse animals, mythical creatures, robots, fairies, or other imaginary beings.\nDo NOT use realistic human first names.\nDo NOT include human children as main characters.\nCharacters should be original and surprising.`,
+      es: `## ${headers.characters}\nInventa personajes 100% ficticios para esta historia.\nUsa animales, criaturas fantásticas, robots, hadas u otros seres imaginarios.\nNO uses nombres humanos realistas.\nNO incluyas niños humanos como personajes principales.\nLos personajes deben ser originales y sorprendentes.`,
+      it: `## ${headers.characters}\nInventa personaggi 100% di fantasia per questa storia.\nUsa animali, creature fantastiche, robot, fate o altri esseri immaginari.\nNON usare nomi umani realistici.\nNON includere bambini umani come personaggi principali.\nI personaggi devono essere originali e sorprendenti.`,
+      bs: `## ${headers.characters}\nIzmisli 100% izmišljene likove za ovu priču.\nKoristi životinje, bajkovita bića, robote, vile ili druga maštovita bića.\nNE koristi realistična ljudska imena.\nNE uključuj ljudsku djecu kao glavne likove.\nLikovi trebaju biti originalni i iznenađujući.`,
+      nl: `## ${headers.characters}\nVerzin 100% fictieve personages voor dit verhaal.\nGebruik dieren, mythische wezens, robots, feeën of andere denkbeeldige wezens.\nGebruik GEEN realistische menselijke voornamen.\nNeem GEEN menselijke kinderen op als hoofdpersonen.\nDe personages moeten origineel en verrassend zijn.`,
+    };
+    sections.push(fictionalHint[lang] || fictionalHint.en);
+  } else {
+    const charactersSection = buildCharactersSection(
+      request.protagonists,
+      request.kid_profile.first_name,
+      request.kid_profile.age,
+      headers,
+      lang
+    );
+    if (charactersSection) {
+      // Add enrichment hint: LLM may add secondary fictional characters
+      const enrichmentHint: Record<string, string> = {
+        fr: "Tu peux enrichir l'histoire avec des personnages secondaires inventés (animaux, créatures, etc.) en plus des personnages listés ci-dessus.",
+        de: 'Du darfst die Geschichte mit erfundenen Nebenfiguren (Tiere, Fabelwesen, etc.) anreichern, zusätzlich zu den oben genannten Figuren.',
+        en: 'You may enrich the story with invented secondary characters (animals, creatures, etc.) in addition to the characters listed above.',
+        es: 'Puedes enriquecer la historia con personajes secundarios inventados (animales, criaturas, etc.) además de los personajes listados arriba.',
+        it: 'Puoi arricchire la storia con personaggi secondari inventati (animali, creature, ecc.) oltre ai personaggi elencati sopra.',
+        bs: 'Možeš obogatiti priču izmišljenim sporednim likovima (životinje, bića, itd.) uz likove navedene iznad.',
+        nl: 'Je mag het verhaal verrijken met verzonnen bijfiguren (dieren, wezens, enz.) naast de hierboven genoemde personages.',
+      };
+      sections.push(`${charactersSection}\n${enrichmentHint[lang] || enrichmentHint.en}`);
+    }
   }
 
   // SPECIAL EFFECTS (only if non-empty)

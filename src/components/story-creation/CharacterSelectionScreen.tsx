@@ -46,7 +46,7 @@ interface CharacterSelectionScreenProps {
   kidProfileId?: string;
   kidName?: string;
   kidAge?: number | null;
-  onComplete: (characters: SelectedCharacter[]) => void;
+  onComplete: (characters: SelectedCharacter[], surpriseCharacters?: boolean) => void;
   onBack: () => void;
 }
 
@@ -66,6 +66,7 @@ const CharacterSelectionScreen = ({
   const [viewState, setViewState] = useState<ViewState>("main");
   const [selectedCharacters, setSelectedCharacters] = useState<SelectedCharacter[]>([]);
   const [expandedCategory, setExpandedCategory] = useState<ExpandedCategory>(null);
+  const [surpriseCharacters, setSurpriseCharacters] = useState(false);
   
   // Modal states
   const [nameModalOpen, setNameModalOpen] = useState(false);
@@ -218,6 +219,11 @@ const CharacterSelectionScreen = ({
   };
 
   const handleMainTileClick = (type: CharacterType) => {
+    // If user clicks any tile other than "surprise", deselect surprise mode
+    if (type !== "surprise" && surpriseCharacters) {
+      setSurpriseCharacters(false);
+    }
+    
     switch (type) {
       case "me": {
         // Toggle "me" selection
@@ -346,15 +352,13 @@ const CharacterSelectionScreen = ({
   };
 
   const handleSurprise = () => {
-    const surpriseCharacter: SelectedCharacter = {
-      id: `surprise-${Date.now()}`,
-      type: "surprise",
-      name: "???",
-      label: translations.surprise,
-    };
-    setSelectedCharacters([surpriseCharacter]);
-    // Go directly to next screen
-    onComplete([surpriseCharacter]);
+    // "Überrasch mich" on Screen 2 = exclusive: no real persons, only fictional characters
+    // Clear all other selections and set surprise flag
+    setSelectedCharacters([]);
+    setSurpriseCharacters(true);
+    setExpandedCategory(null);
+    // Go directly to next screen with empty characters + surprise flag
+    onComplete([], true);
   };
 
   const handleContinue = () => {
@@ -364,7 +368,7 @@ const CharacterSelectionScreen = ({
       return;
     }
     // From main view, proceed directly to next screen
-    onComplete(selectedCharacters);
+    onComplete(selectedCharacters, surpriseCharacters);
   };
 
   const isSelected = (type: CharacterType | FamilyMember) => {
@@ -407,6 +411,10 @@ const CharacterSelectionScreen = ({
                 const isExpandable = tile.type === "family" || tile.type === "friends" || tile.type === "famous";
                 const isExpanded = expandedCategory === tile.type;
                 const hasSelections = isExpandable && hasSavedSelections(tile.type as ExpandedCategory);
+                // "Überrasch mich" tile is selected when surpriseCharacters is true
+                const isTileSelected = tile.type === "surprise"
+                  ? surpriseCharacters
+                  : (isSelected(tile.type) || hasSelections);
                 
                 return (
                   <div key={tile.type} className="relative">
@@ -414,10 +422,16 @@ const CharacterSelectionScreen = ({
                       image={tile.image}
                       label={tile.label}
                       onClick={() => handleMainTileClick(tile.type)}
-                      selected={isSelected(tile.type) || hasSelections}
+                      selected={isTileSelected}
                       badge={tile.badge}
                       size="small"
                     />
+                    {/* Hint text for surprise tile */}
+                    {tile.type === "surprise" && (
+                      <p className="text-[10px] text-muted-foreground text-center mt-0.5 leading-tight">
+                        {translations.surpriseMeCharactersHint}
+                      </p>
+                    )}
                     {/* Expand indicator for categories with saved characters */}
                     {isExpandable && (
                       <div className="absolute bottom-6 right-1 md:bottom-7 md:right-1.5">

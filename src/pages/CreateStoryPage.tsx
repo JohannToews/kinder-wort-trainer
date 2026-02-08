@@ -296,9 +296,13 @@ const CreateStoryPage = () => {
     setCurrentScreen("characters");
   };
 
+  // Track surprise_characters flag (Block 2.3e)
+  const [surpriseCharactersFlag, setSurpriseCharactersFlag] = useState(false);
+
   // Handle character selection complete
-  const handleCharactersComplete = (characters: SelectedCharacter[]) => {
+  const handleCharactersComplete = (characters: SelectedCharacter[], surpriseChars?: boolean) => {
     setSelectedCharacters(characters);
+    setSurpriseCharactersFlag(surpriseChars || false);
     setCurrentScreen("effects");
   };
   
@@ -352,6 +356,7 @@ const CreateStoryPage = () => {
       everyday: { de: "Alltagsgeschichte", fr: "Histoire du quotidien", en: "Everyday story" },
       humor: { de: "Lustige Geschichte", fr: "Histoire drôle", en: "Funny story" },
       educational: { de: "Sachgeschichte", fr: "Histoire éducative", en: "Educational story" },
+      surprise: { de: "Überraschungsgeschichte", fr: "Histoire surprise", en: "Surprise story" },
     };
     
     // For Weg A, storyType may be null – build description accordingly
@@ -418,6 +423,7 @@ const CreateStoryPage = () => {
           // Block 2.3d: New wizard parameters (camelCase to match Edge Function)
           storyLanguage: effectiveLanguage,
           includeSelf,
+          surprise_characters: surpriseCharactersFlag,
           kidProfileId: selectedProfile?.id,
           kidAge: selectedProfile?.age,
           difficultyLevel: selectedProfile?.difficulty_level,

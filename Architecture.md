@@ -205,18 +205,25 @@ ProtectedRoute checks isAuthenticated
 ### 1. Story Creation Flow
 
 ```
-CreateStoryPage.tsx (Wizard – 4 screens)
+CreateStoryPage.tsx (Wizard – Entry + 3-4 screens)
+  Screen 0: Entry Screen (Block 2.3e) – Two path cards:
+           Weg A "Ich erzähle selbst" → jumps directly to Screen 3
+           Weg B "Schritt für Schritt" → normal flow Screen 1 → 2 → 3
   Screen 1: Story Type Selection (adventure, fantasy, educational…)
+           + "Überrasch mich" tile → storyType='surprise', skip to Screen 2
            + Length toggle (short/medium/long)
            + Difficulty toggle (easy/medium/hard)
            + Series toggle (yes/no)
            + Language picker (Block 2.3d – only if >1 language available)
   Screen 2: Character Selection
+           + "Überrasch mich" tile (Block 2.3e) – exclusive, fictional-only
+             → sets surprise_characters=true, clears all other selections
            + "Ich" tile with kid name + age (Block 2.3d) – toggle on/off
-           + Family, siblings, friends, famous, surprise – expandable tiles
+           + Family, siblings, friends, famous – expandable tiles
            + Saved kid_characters as checkboxes behind category tiles (Block 2.3d Phase 3)
            + Characters managed in profile only (no wizard save dialog)
   Screen 3: Special Effects (attributes) + Optional free text
+           + Weg A: Also shows length/difficulty/series/language settings
   Screen 4: Generation progress animation
         │
         ▼
@@ -567,7 +574,7 @@ Replaced the monolithic 30k-token system prompt with a modular, database-driven 
 
 | Module | Purpose | Key Functions |
 |--------|---------|---------------|
-| `promptBuilder.ts` | Builds dynamic user message by querying rule tables | `buildStoryPrompt(request, supabase)` – fetches age_rules, difficulty_rules, theme_rules, emotion_rules, content_themes_by_level; calculates word counts; builds character (with relationship logic), guardrail, and variety sections. `buildCharactersSection()` (Block 2.3d) – intelligent relationship formatting: include_self=true → relations relative to child; include_self=false → parents as couple, siblings grouped, family hint, friends grouped. `injectLearningTheme(prompt, label, lang)` – appends learning theme instruction |
+| `promptBuilder.ts` | Builds dynamic user message by querying rule tables | `buildStoryPrompt(request, supabase)` – fetches age_rules, difficulty_rules, theme_rules, emotion_rules, content_themes_by_level; calculates word counts; builds character (with relationship logic), guardrail, and variety sections. `buildCharactersSection()` (Block 2.3d) – intelligent relationship formatting: include_self=true → relations relative to child; include_self=false → parents as couple, siblings grouped, family hint, friends grouped. Block 2.3e: Handles `theme_key='surprise'` (skips theme_rules, instructs LLM to pick creative theme); `surprise_characters=true` (fictional-only characters section); enrichment hint for normal characters. `injectLearningTheme(prompt, label, lang)` – appends learning theme instruction |
 | `learningThemeRotation.ts` | Determines if a learning theme should be applied | `shouldApplyLearningTheme(kidProfileId, lang, supabase)` – checks parent_learning_config frequency, rotates through active_themes round-robin based on past stories |
 
 #### Prompt Architecture
@@ -625,9 +632,17 @@ CreateStoryPage.tsx → generate-story Edge Function
         └── Extract: emotional_secondary, humor_level, emotional_depth, moral_topic, concrete_theme
 ```
 
-### Story Wizard Extensions (Block 2.3d)
+### Story Wizard Extensions (Block 2.3d + 2.3e)
 
 Extended the story creation wizard (`CreateStoryPage.tsx` + `src/components/story-creation/`) to expose the new Block 2.3c parameters to the user.
+
+#### Entry Screen (Block 2.3e – Screen 0)
+
+| Feature | Component | Details |
+|---------|-----------|---------|
+| **Dual-path entry** | `CreateStoryPage.tsx` | Two large cards: "Ich erzähle selbst" (Weg A) and "Schritt für Schritt" (Weg B). |
+| **Weg A (Free)** | `CreateStoryPage.tsx` | Skips Screen 1+2, jumps directly to Screen 3 (effects). Screen 3 shows settings panel (length, difficulty, series, language). No storyType, no characters → Edge Function handles empty fields gracefully. |
+| **Weg B (Guided)** | `CreateStoryPage.tsx` | Normal flow: Screen 1 → 2 → 3 as before. |
 
 #### Screen 1 Additions
 
@@ -637,30 +652,34 @@ Extended the story creation wizard (`CreateStoryPage.tsx` + `src/components/stor
 | Difficulty toggle | `StoryTypeSelectionScreen` | `storyDifficulty: 'easy' \| 'medium' \| 'hard'` | Already existed pre-2.3d |
 | Series toggle | `StoryTypeSelectionScreen` | `isSeries: boolean` | Already existed pre-2.3d |
 | **Language picker** | `StoryTypeSelectionScreen` | `storyLanguage: string` | New. Shows flags + labels. Only rendered when >1 language available. Source: `kid_profiles.story_languages` (Block 2.3d+). Default = `kidReadingLanguage`. Passed as `storyLanguage` to Edge Function. |
+| **"Überrasch mich" (surprise theme)** | `StoryTypeSelectionScreen` | `storyType='surprise'` | Block 2.3e. Passes `storyType='surprise'` to Edge Function. promptBuilder skips theme_rules and instructs LLM to choose a creative theme. |
 
-#### Screen 2 Additions (Block 2.3d Phase 3)
+#### Screen 2 Additions (Block 2.3d Phase 3 + 2.3e)
 
 | Feature | Component | Details |
 |---------|-----------|---------|
+| **"Überrasch mich" (surprise characters)** | `CharacterSelectionScreen` | Block 2.3e. Exclusive tile: clears all other selections, sets `surprise_characters=true`. LLM invents 100% fictional characters (animals, creatures, etc.). Selecting any other tile deselects surprise. |
 | **"Ich" tile with kid data** | `CharacterSelectionScreen` | Shows actual kid name + age (e.g. "Emma (8)"). Toggle on/off. Sets `includeSelf = true` in Edge Function request. |
 | **Expandable category tiles** | `CharacterSelectionScreen` | Clicking "Familie", "Freunde", or "Bekannte Figuren" expands to show saved kid_characters as **checkboxes** (filtered by role: family/friend/known_figure). Chevron indicator. |
 | **No characters hint** | `CharacterSelectionScreen` | If a category has no saved characters, shows "Noch keine angelegt → Im Profil anlegen" (translated). |
 | **Character management in profile only** | `KidProfileSection` | "Save character" dialog removed from wizard. Characters are managed exclusively in the kid profile editor (Block 2.3d Phase 2: stepped dialog, family sync logic). |
 | **Character data with role** | `CharacterSelectionScreen → CreateStoryPage` | Selected saved characters carry `role`, `relation`, `description` to the Edge Function for intelligent relationship prompting. |
 
-#### Screen 3 Additions
+#### Screen 3 Additions (Block 2.3e)
 
 | Feature | Details |
 |---------|---------|
 | "Optional" label | Free text header now prefixed with "Optional:" in all 7 languages |
 | Updated placeholders | Example prompts updated (e.g. "A story about pirates on the moon") |
+| **Weg A settings panel** | When accessed via Weg A, Screen 3 shows length/difficulty/series/language settings at the top (since Screen 1 was skipped) |
 
 #### New Parameters Sent to Edge Function
 
 | Parameter | Source | Edge Function Field |
 |-----------|--------|-------------------|
-| `storyLanguage` | Language picker (Screen 1) | `storyLanguageParam` → `effectiveStoryLanguage` |
+| `storyLanguage` | Language picker (Screen 1 or Screen 3 via Weg A) | `storyLanguageParam` → `effectiveStoryLanguage` |
 | `includeSelf` | "Ich" tile (Screen 2) | `includeSelf` → `StoryRequest.protagonists.include_self` |
+| `surprise_characters` | "Überrasch mich" tile (Screen 2, Block 2.3e) | `surprise_characters` → `StoryRequest.surprise_characters` |
 | `kidProfileId` | `selectedProfile.id` | `kidProfileId` → `StoryRequest.kid_profile.id` |
 | `kidAge` | `selectedProfile.age` | `kidAge` → `StoryRequest.kid_profile.age` |
 | `difficultyLevel` | `selectedProfile.difficulty_level` | `difficultyLevel` → `StoryRequest.kid_profile.difficulty_level` |
@@ -777,4 +796,4 @@ Added `difficulty_level`, `age`, `gender`, and `story_languages` to the `KidProf
 
 ---
 
-*Generated on 2026-02-06 by codebase analysis. Updated 2026-02-07 with Block 1 (multilingual DB model), translation consolidation, Block 2.1 (learning themes + content guardrails), Block 2.2 (story generation rule tables), Block 2.2b (difficulty_rules + age group adjustments), Block 2.3a (story classifications + kid_characters), Block 2.3c (dynamic prompt engine + CORE Slim v2 + story classifications + shared modules promptBuilder.ts + learningThemeRotation.ts). Updated 2026-02-08 with Block 2.3d full (5 phases): story_languages[] on kid_profiles, kid_characters role constraint migration (sibling/custom → family), character management UI in profile (stepped dialog, family sync), wizard redesign (expandable tiles with checkboxes, no save dialog), character role/relation/description passed to Edge Function, intelligent relationship logic in promptBuilder.ts (include_self vs. group relationships).*
+*Generated on 2026-02-06 by codebase analysis. Updated 2026-02-07 with Block 1 (multilingual DB model), translation consolidation, Block 2.1 (learning themes + content guardrails), Block 2.2 (story generation rule tables), Block 2.2b (difficulty_rules + age group adjustments), Block 2.3a (story classifications + kid_characters), Block 2.3c (dynamic prompt engine + CORE Slim v2 + story classifications + shared modules promptBuilder.ts + learningThemeRotation.ts). Updated 2026-02-08 with Block 2.3d full (5 phases): story_languages[] on kid_profiles, kid_characters role constraint migration (sibling/custom → family), character management UI in profile (stepped dialog, family sync), wizard redesign (expandable tiles with checkboxes, no save dialog), character role/relation/description passed to Edge Function, intelligent relationship logic in promptBuilder.ts (include_self vs. group relationships). Updated 2026-02-08 with Block 2.3e (4 phases): Wizard dual-path entry screen (Weg A: free text / Weg B: guided), "Überrasch mich" on Screen 1 (storyType='surprise' → LLM chooses theme), "Überrasch mich" on Screen 2 (surprise_characters=true → 100% fictional characters), enrichment hint for normal character selection, promptBuilder handles surprise theme + surprise characters.*

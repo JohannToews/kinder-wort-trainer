@@ -252,7 +252,8 @@ export type StoryType =
   | "animals"      // Tiergeschichten
   | "everyday"     // Alltag & Gefühle
   | "humor"        // Humor & Chaos
-  | "educational"; // Wissen & Entdecken
+  | "educational"  // Wissen & Entdecken
+  | "surprise";    // Überrasch mich (Block 2.3e)
 
 // Sub-elements for each category
 export type StorySubElement = 
@@ -1027,6 +1028,7 @@ export interface CharacterSelectionTranslations {
   roleFriend: string;
   roleKnownFigure: string;
   noCharactersSaved: string;
+  surpriseMeCharactersHint: string;
 }
 
 export const characterSelectionTranslations: Record<Language, CharacterSelectionTranslations> = {
@@ -1077,6 +1079,7 @@ export const characterSelectionTranslations: Record<Language, CharacterSelection
     roleFriend: "Freund/in",
     roleKnownFigure: "Bekannte Figur",
     noCharactersSaved: "Noch keine angelegt \u2192 Im Profil anlegen",
+    surpriseMeCharactersHint: "Fiktive Figuren, Tiere & Fabelwesen",
   },
   fr: {
     header: "Qui sont les personnages principaux de ton histoire?",
@@ -1125,6 +1128,7 @@ export const characterSelectionTranslations: Record<Language, CharacterSelection
     roleFriend: "Ami(e)",
     roleKnownFigure: "Personnage connu",
     noCharactersSaved: "Aucun enregistr\u00e9 \u2192 Cr\u00e9er dans le profil",
+    surpriseMeCharactersHint: "Personnages fictifs, animaux & cr\u00e9atures",
   },
   en: {
     header: "Who are the main characters in your story?",
@@ -1173,6 +1177,7 @@ export const characterSelectionTranslations: Record<Language, CharacterSelection
     roleFriend: "Friend",
     roleKnownFigure: "Known character",
     noCharactersSaved: "None saved \u2192 Create in profile",
+    surpriseMeCharactersHint: "Fictional characters, animals & creatures",
   },
   es: {
     header: "¿Quiénes son los personajes principales de tu historia?",
@@ -1221,6 +1226,7 @@ export const characterSelectionTranslations: Record<Language, CharacterSelection
     roleFriend: "Amigo/a",
     roleKnownFigure: "Personaje conocido",
     noCharactersSaved: "Ninguno guardado \u2192 Crear en el perfil",
+    surpriseMeCharactersHint: "Personajes ficticios, animales y criaturas",
   },
   nl: {
     header: "Wie zijn de hoofdpersonen in je verhaal?",
@@ -1269,6 +1275,7 @@ export const characterSelectionTranslations: Record<Language, CharacterSelection
     roleFriend: "Vriend(in)",
     roleKnownFigure: "Bekend personage",
     noCharactersSaved: "Geen opgeslagen \u2192 Aanmaken in profiel",
+    surpriseMeCharactersHint: "Fictieve personages, dieren & wezens",
   },
   it: {
     header: "Chi sono i personaggi principali della tua storia?",
@@ -1317,6 +1324,7 @@ export const characterSelectionTranslations: Record<Language, CharacterSelection
     roleFriend: "Amico/a",
     roleKnownFigure: "Personaggio noto",
     noCharactersSaved: "Nessuno salvato \u2192 Crea nel profilo",
+    surpriseMeCharactersHint: "Personaggi immaginari, animali e creature",
   },
   bs: {
     header: "Ko su glavni likovi u tvojoj priči?",
@@ -1365,5 +1373,6 @@ export const characterSelectionTranslations: Record<Language, CharacterSelection
     roleFriend: "Prijatelj/ica",
     roleKnownFigure: "Poznati lik",
     noCharactersSaved: "Nema sa\u010duvanih \u2192 Kreiraj u profilu",
+    surpriseMeCharactersHint: "Izmi\u0161ljeni likovi, \u017eivotinje i bi\u0107a",
   },
 };

@@ -696,12 +696,16 @@ Deno.serve(async (req) => {
       specialAbilities,                   // string[]
       userPrompt: userPromptParam,        // free text from user
       seriesContext,                       // summary of previous episodes
+      // Block 2.3e: surprise_characters flag
+      surprise_characters: surpriseCharactersParam,
     } = await req.json();
 
-    // Block 2.3d: Debug logging for character data from frontend
+    // Block 2.3d/e: Debug logging for character data from frontend
     console.log('[generate-story] Request body characters:', JSON.stringify(characters, null, 2));
     console.log('[generate-story] Request body selectedCharacters:', JSON.stringify(selectedCharacters, null, 2));
     console.log('[generate-story] include_self:', includeSelf);
+    console.log('[generate-story] surprise_characters:', surpriseCharactersParam);
+    console.log('[generate-story] storyType:', storyType);
 
     // Initialize Supabase client
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -791,6 +795,7 @@ Deno.serve(async (req) => {
         user_prompt: userPromptParam || (source === 'kid' ? description : undefined),
         source: source === 'kid' ? 'kid' : 'parent',
         question_count: 5,
+        surprise_characters: surpriseCharactersParam || false,
       };
 
       // 3. Build dynamic user message

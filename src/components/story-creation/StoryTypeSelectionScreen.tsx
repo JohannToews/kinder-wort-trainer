@@ -115,10 +115,8 @@ const StoryTypeSelectionScreen = ({
   };
 
   const handleSurpriseClick = () => {
-    // Random selection from main categories (excluding educational)
-    const randomCategories = mainCategoryTiles.filter(t => t.type !== "educational");
-    const randomCategory = randomCategories[Math.floor(Math.random() * randomCategories.length)].type;
-    
+    // "Überrasch mich" – don't reveal which theme, pass 'surprise' as storyType
+    // The promptBuilder will instruct the LLM to choose a creative theme
     const settings: StorySettings = {
       length: storyLength,
       difficulty: storyDifficulty,
@@ -126,8 +124,8 @@ const StoryTypeSelectionScreen = ({
       storyLanguage,
     };
     
-    // Go directly to character selection with random category
-    onComplete(randomCategory, settings, undefined, undefined, undefined, []);
+    // Go directly to character selection with 'surprise' storyType
+    onComplete("surprise" as StoryType, settings, undefined, undefined, undefined, []);
   };
 
   const handleTopicClick = (topic: EducationalTopic) => {
