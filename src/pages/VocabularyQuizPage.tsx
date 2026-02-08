@@ -8,6 +8,9 @@ import confetti from "canvas-confetti";
 import { useColorPalette } from "@/hooks/useColorPalette";
 import { useAuth } from "@/hooks/useAuth";
 import { useKidProfile } from "@/hooks/useKidProfile";
+import { useGamification, STAR_REWARDS } from "@/hooks/useGamification";
+import FablinoReaction from "@/components/FablinoReaction";
+import { getTranslations, Language } from "@/lib/translations";
 import PageHeader from "@/components/PageHeader";
 import {
   Select,
@@ -279,6 +282,8 @@ const VocabularyQuizPage = () => {
   const { user } = useAuth();
   const { colors: paletteColors } = useColorPalette();
   const { selectedProfileId, selectedProfile, kidProfiles, hasMultipleProfiles, setSelectedProfileId, kidAppLanguage } = useKidProfile();
+  const { actions, pendingLevelUp, clearPendingLevelUp } = useGamification();
+  const tGlobal = getTranslations(kidAppLanguage as Language);
   const navigate = useNavigate();
   const [allWords, setAllWords] = useState<QuizWord[]>([]);
   const [words, setWords] = useState<QuizWord[]>([]);
@@ -299,6 +304,12 @@ const VocabularyQuizPage = () => {
   const [quizPointValue, setQuizPointValue] = useState(2);
   const [preGeneratedQuestions, setPreGeneratedQuestions] = useState<QuizQuestion[]>([]);
   const [scoreAnimation, setScoreAnimation] = useState(false);
+  const [fablinoReaction, setFablinoReaction] = useState<{
+    type: 'celebrate' | 'encourage' | 'perfect';
+    message: string;
+    stars?: number;
+    autoClose?: number;
+  } | null>(null);
 
   // Get translations based on kid's school system language
   const t = quizTranslations[kidAppLanguage] || quizTranslations.fr;
@@ -531,13 +542,34 @@ const VocabularyQuizPage = () => {
     // Add new result and keep only last 3
     const newHistory = [...currentHistory, isCorrectAnswer ? 'correct' : 'incorrect'].slice(-3);
     
+    // Check if word just became learned (3 consecutive corrects)
+    const justLearned = newHistory.length >= 3 &&
+      newHistory.slice(-3).every(r => r === 'correct') &&
+      !currentWord?.is_learned;
+    
+    const updateData: Record<string, unknown> = { quiz_history: newHistory };
+    if (justLearned) {
+      updateData.is_learned = true;
+    }
+
     const { error } = await supabase
       .from("marked_words")
-      .update({ quiz_history: newHistory } as any)
+      .update(updateData as any)
       .eq("id", wordId);
 
     if (error) {
       console.error("Error updating quiz history:", error);
+    }
+
+    // Fablino feedback for newly learned word
+    if (justLearned) {
+      await actions.markWordLearned();
+      await actions.awardStars(STAR_REWARDS.WORD_LEARNED, 'word_learned');
+      setFablinoReaction({
+        type: 'celebrate',
+        message: tGlobal.fablinoWordLearned,
+        stars: STAR_REWARDS.WORD_LEARNED,
+      });
     }
   };
 
@@ -554,6 +586,13 @@ const VocabularyQuizPage = () => {
       triggerConfetti();
       setScoreAnimation(true);
       setTimeout(() => setScoreAnimation(false), 600);
+    } else {
+      // Fablino encouragement on wrong answer
+      setFablinoReaction({
+        type: 'encourage',
+        message: tGlobal.fablinoEncourage,
+        autoClose: 1500,
+      });
     }
     
     // Update quiz history for this word
@@ -569,8 +608,15 @@ const VocabularyQuizPage = () => {
       setQuizComplete(true);
       // Save result if passed
       if (score >= getPassThreshold()) {
-        const earnedPoints = score * quizPointValue;
+        const isPerfect = score === totalQuestions;
+        const totalStars = score * STAR_REWARDS.QUIZ_CORRECT + (isPerfect ? STAR_REWARDS.QUIZ_PERFECT : 0);
+        const earnedPoints = totalStars;
         setPointsEarned(earnedPoints);
+        
+        // Award stars
+        if (totalStars > 0) {
+          await actions.awardStars(totalStars, isPerfect ? 'quiz_perfect' : 'quiz_passed');
+        }
         
         // Trigger big celebration!
         setTimeout(() => triggerBigConfetti(), 300);
@@ -584,6 +630,23 @@ const VocabularyQuizPage = () => {
           user_id: user?.id,
           kid_profile_id: selectedProfileId || null,
         });
+
+        // Fablino feedback
+        if (isPerfect) {
+          setFablinoReaction({
+            type: 'perfect',
+            message: tGlobal.fablinoQuizPerfect,
+            stars: totalStars,
+          });
+        } else {
+          setFablinoReaction({
+            type: 'celebrate',
+            message: tGlobal.fablinoQuizGood
+              .replace('{correct}', String(score))
+              .replace('{total}', String(totalQuestions)),
+            stars: totalStars,
+          });
+        }
       }
       return;
     }
@@ -874,6 +937,28 @@ const VocabularyQuizPage = () => {
           </div>
         )}
       </div>
+
+      {/* Fablino Feedback Overlay */}
+      {fablinoReaction && (
+        <FablinoReaction
+          type={fablinoReaction.type}
+          message={fablinoReaction.message}
+          stars={fablinoReaction.stars}
+          autoClose={fablinoReaction.autoClose}
+          buttonLabel={tGlobal.continueButton}
+          onClose={() => setFablinoReaction(null)}
+        />
+      )}
+
+      {/* Level Up Overlay */}
+      {pendingLevelUp && (
+        <FablinoReaction
+          type="levelUp"
+          message={tGlobal.fablinoLevelUp.replace('{title}', pendingLevelUp.title)}
+          buttonLabel={tGlobal.continueButton}
+          onClose={clearPendingLevelUp}
+        />
+      )}
     </div>
   );
 };
