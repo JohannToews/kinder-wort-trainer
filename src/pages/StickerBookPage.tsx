@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "@/hooks/useAuth";
 import { useKidProfile } from "@/hooks/useKidProfile";
 import { useGamification } from "@/hooks/useGamification";
 import { useColorPalette } from "@/hooks/useColorPalette";
@@ -21,8 +20,7 @@ interface Story {
 
 const StickerBookPage = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
-  const { selectedProfileId, kidAppLanguage } = useKidProfile();
+  const { selectedProfileId, kidAppLanguage, isLoading: isProfilesLoading } = useKidProfile();
   const { state: gamification } = useGamification();
   const { colors } = useColorPalette();
   const t = getTranslations(kidAppLanguage);
@@ -32,7 +30,17 @@ const StickerBookPage = () => {
 
   useEffect(() => {
     const loadStories = async () => {
-      if (!selectedProfileId) return;
+      // Wait until profiles are loaded; otherwise selectedProfileId can be null
+      // and we'd get stuck on the loading screen.
+      if (isProfilesLoading) return;
+
+      if (!selectedProfileId) {
+        setStories([]);
+        setIsLoading(false);
+        return;
+      }
+
+      setIsLoading(true);
 
       try {
         const { data, error } = await supabase
@@ -53,7 +61,7 @@ const StickerBookPage = () => {
     };
 
     loadStories();
-  }, [selectedProfileId]);
+  }, [selectedProfileId, isProfilesLoading]);
 
   const completedStories = stories.filter(s => s.completed);
   
