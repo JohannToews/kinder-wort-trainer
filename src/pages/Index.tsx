@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
-import { BookOpen, Settings, Sparkles, Star, Users, BarChart3 } from "lucide-react";
+import { BookOpen, Settings, Sparkles, Star, Users, BarChart3, HelpCircle } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useColorPalette } from "@/hooks/useColorPalette";
 import { useKidProfile } from "@/hooks/useKidProfile";
@@ -194,16 +194,16 @@ const Index = () => {
           </div>
         </div>
 
-        {/* ═══ BEREICH 2: Drei Kacheln (grid 3-spaltig) ═══ */}
-        <div className="grid grid-cols-3 gap-3 md:gap-4 w-full">
+        {/* ═══ BEREICH 2: Vier Kacheln (grid 2x2) ═══ */}
+        <div className="grid grid-cols-2 gap-3 md:gap-4 w-full">
           {/* Créer une histoire */}
           <Card
             onClick={() => navigate("/create-story")}
             className="cursor-pointer border-2 border-primary/30 hover:border-primary hover:shadow-lg transition-all group touch-manipulation"
           >
             <CardContent className="flex flex-col items-center justify-center p-4 md:p-6 text-center aspect-square">
-              <div className="h-14 w-14 md:h-16 md:w-16 rounded-full bg-primary/20 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-                <Sparkles className="h-7 w-7 md:h-8 md:w-8 text-primary" />
+              <div className="h-12 w-12 md:h-14 md:w-14 rounded-full bg-primary/20 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
+                <Sparkles className="h-6 w-6 md:h-7 md:w-7 text-primary" />
               </div>
               <h3 className="font-baloo font-bold text-sm md:text-base leading-tight">{t.createStory}</h3>
             </CardContent>
@@ -212,13 +212,26 @@ const Index = () => {
           {/* Lire une histoire */}
           <Card
             onClick={() => navigate("/stories")}
-            className="cursor-pointer border-2 border-blue-200 hover:border-blue-400 hover:shadow-lg transition-all group touch-manipulation"
+            className="cursor-pointer border-2 border-sky-200 hover:border-sky-400 hover:shadow-lg transition-all group touch-manipulation"
           >
             <CardContent className="flex flex-col items-center justify-center p-4 md:p-6 text-center aspect-square">
-              <div className="h-14 w-14 md:h-16 md:w-16 rounded-full bg-blue-100 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-                <BookOpen className="h-7 w-7 md:h-8 md:w-8 text-blue-600" />
+              <div className="h-12 w-12 md:h-14 md:w-14 rounded-full bg-sky-100 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
+                <BookOpen className="h-6 w-6 md:h-7 md:w-7 text-sky-600" />
               </div>
               <h3 className="font-baloo font-bold text-sm md:text-base leading-tight">{t.readStory}</h3>
+            </CardContent>
+          </Card>
+
+          {/* Quiz */}
+          <Card
+            onClick={() => navigate("/quiz")}
+            className="cursor-pointer border-2 border-emerald-200 hover:border-emerald-400 hover:shadow-lg transition-all group touch-manipulation"
+          >
+            <CardContent className="flex flex-col items-center justify-center p-4 md:p-6 text-center aspect-square">
+              <div className="h-12 w-12 md:h-14 md:w-14 rounded-full bg-emerald-100 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
+                <HelpCircle className="h-6 w-6 md:h-7 md:w-7 text-emerald-600" />
+              </div>
+              <h3 className="font-baloo font-bold text-sm md:text-base leading-tight">{t.wordQuiz}</h3>
             </CardContent>
           </Card>
 
@@ -228,8 +241,8 @@ const Index = () => {
             className="cursor-pointer border-2 border-amber-200 hover:border-amber-400 hover:shadow-lg transition-all group touch-manipulation"
           >
             <CardContent className="flex flex-col items-center justify-center p-4 md:p-6 text-center aspect-square">
-              <div className="h-14 w-14 md:h-16 md:w-16 rounded-full bg-amber-100 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-                <span className="text-2xl md:text-3xl">📖</span>
+              <div className="h-12 w-12 md:h-14 md:w-14 rounded-full bg-amber-100 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
+                <span className="text-xl md:text-2xl">📖</span>
               </div>
               <h3 className="font-baloo font-bold text-sm md:text-base leading-tight">{t.stickerBook}</h3>
             </CardContent>
