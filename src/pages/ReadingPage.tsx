@@ -889,8 +889,12 @@ const ReadingPage = () => {
   const renderFormattedText = () => {
     if (!story) return null;
 
-    // Split into paragraphs
-    const paragraphs = story.content.split(/\n\n+/);
+    // Normalize escaped newlines and split into paragraphs
+    // The LLM sometimes returns literal "\n" strings instead of actual newline characters
+    const normalizedContent = story.content
+      .replace(/\\n\\n/g, '\n\n')  // Replace escaped \n\n with actual newlines
+      .replace(/\\n/g, '\n');       // Replace escaped \n with actual newlines
+    const paragraphs = normalizedContent.split(/\n\n+/);
     const storyImages = story.story_images || [];
     const totalParagraphs = paragraphs.length;
     
