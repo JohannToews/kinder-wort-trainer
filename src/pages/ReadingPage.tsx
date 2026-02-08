@@ -886,72 +886,76 @@ const ReadingPage = () => {
     }
   };
 
+  /**
+   * Distribute scene images evenly between paragraphs.
+   * Works for any number of images (1, 2, 3, ...).
+   * Returns a map: paragraphIndex → imageIndex (insert AFTER that paragraph).
+   */
+  const getImageInsertionMap = (totalParagraphs: number, imageCount: number): Map<number, number> => {
+    const map = new Map<number, number>();
+    if (imageCount === 0 || totalParagraphs <= 1) return map;
+
+    // Evenly space images through the text
+    // For N images in P paragraphs, insert after paragraph at positions P/(N+1), 2P/(N+1), ...
+    for (let i = 0; i < imageCount; i++) {
+      const insertAfterParagraph = Math.floor(((i + 1) * totalParagraphs) / (imageCount + 1)) - 1;
+      // Clamp: don't insert after last paragraph (would be at the very end)
+      const clamped = Math.min(Math.max(insertAfterParagraph, 0), totalParagraphs - 2);
+      // Avoid duplicates: if this slot is taken, shift forward
+      let slot = clamped;
+      while (map.has(slot) && slot < totalParagraphs - 1) slot++;
+      if (slot < totalParagraphs - 1) {
+        map.set(slot, i);
+      }
+    }
+    return map;
+  };
+
   const renderFormattedText = () => {
     if (!story) return null;
 
     // Normalize escaped newlines and split into paragraphs
-    // The LLM sometimes returns literal "\n" strings instead of actual newline characters
     const normalizedContent = story.content
-      .replace(/\\n\\n/g, '\n\n')  // Replace escaped \n\n with actual newlines
-      .replace(/\\n/g, '\n');       // Replace escaped \n with actual newlines
-    const paragraphs = normalizedContent.split(/\n\n+/);
+      .replace(/\\n\\n/g, '\n\n')
+      .replace(/\\n/g, '\n');
+    const paragraphs = normalizedContent.split(/\n\n+/).filter(p => p.trim());
     const storyImages = story.story_images || [];
-    const totalParagraphs = paragraphs.length;
-    
-    // Calculate where to insert images (evenly distributed through the text)
-    const getImageInsertionPoints = () => {
-      if (storyImages.length === 0) return [];
-      
-      const insertPoints: number[] = [];
-      if (storyImages.length === 1) {
-        // Insert after roughly 50% of the text
-        insertPoints.push(Math.floor(totalParagraphs / 2));
-      } else if (storyImages.length === 2) {
-        // Insert at 33% and 66%
-        insertPoints.push(Math.floor(totalParagraphs / 3));
-        insertPoints.push(Math.floor((totalParagraphs * 2) / 3));
-      }
-      return insertPoints;
-    };
-    
-    const imageInsertionPoints = getImageInsertionPoints();
-    let imageIndex = 0;
-    
+
+    // Build insertion map: paragraphIndex → imageIndex
+    const imageInsertionMap = getImageInsertionMap(paragraphs.length, storyImages.length);
+
     const elements: React.ReactNode[] = [];
-    
+
     paragraphs.forEach((paragraph, pIndex) => {
       const sentences = paragraph.split(/(?<=[.!?])\s+/);
-      
+
       elements.push(
         <p key={`p-${pIndex}`} className="mb-4 leading-relaxed">
           {sentences.map((sentence, sIndex) => {
             const shouldBold = sIndex === 0 && pIndex === 0;
             const shouldItalic = sentence.includes("«") || sentence.includes("»");
-            
+
             const words = sentence.split(/(\s+)/);
-            
+
             return (
-              <span 
-                key={sIndex} 
+              <span
+                key={sIndex}
                 className={`${shouldBold ? "font-bold" : ""} ${shouldItalic ? "italic text-foreground" : ""}`}
               >
                 {words.map((word, wIndex) => {
-                  const cleanWord = word.replace(/[.,!?;:'"«»]/g, "").toLowerCase();
                   const positionKey = `${pIndex}-${sIndex}-${wIndex}`;
-                  // Check if this specific position is marked as single word or phrase
                   const isSingleWordMarked = singleWordPositions.has(positionKey);
                   const isPhraseMarked = phrasePositions.has(positionKey);
                   const isSpace = /^\s+$/.test(word);
                   const canBeMarked = !isStopWord(word);
 
-                  // For spaces: check if adjacent words are part of same phrase
                   if (isSpace) {
                     const prevKey = `${pIndex}-${sIndex}-${wIndex - 1}`;
                     const nextKey = `${pIndex}-${sIndex}-${wIndex + 1}`;
                     const isInPhrase = phrasePositions.has(prevKey) && phrasePositions.has(nextKey);
                     return (
-                      <span 
-                        key={wIndex} 
+                      <span
+                        key={wIndex}
                         className={isInPhrase ? "phrase-marked" : ""}
                       >
                         {word}
@@ -959,10 +963,8 @@ const ReadingPage = () => {
                     );
                   }
 
-                  // Determine the marking class
                   const markingClass = isSingleWordMarked ? "word-marked" : (isPhraseMarked ? "phrase-marked" : "");
 
-                  // Stop words: no click interaction, but still show as marked if part of a phrase
                   if (!canBeMarked) {
                     return syllableMode ? (
                       <SyllableText
@@ -973,7 +975,7 @@ const ReadingPage = () => {
                         language={textLang}
                       />
                     ) : (
-                      <span 
+                      <span
                         key={wIndex}
                         data-position={positionKey}
                         className={markingClass}
@@ -1008,23 +1010,23 @@ const ReadingPage = () => {
           })}
         </p>
       );
-      
-      // Check if we should insert an image after this paragraph
-      if (imageInsertionPoints.includes(pIndex) && imageIndex < storyImages.length) {
+
+      // Insert scene image after this paragraph if scheduled
+      if (imageInsertionMap.has(pIndex)) {
+        const imgIdx = imageInsertionMap.get(pIndex)!;
         elements.push(
-          <div key={`img-${imageIndex}`} className="my-8 flex justify-center">
-            <img 
-              src={storyImages[imageIndex]} 
-              alt={`Illustration ${imageIndex + 1}`}
-              className="max-w-[70%] h-auto rounded-xl shadow-sm opacity-80 grayscale-[20%]"
-              style={{ filter: 'saturate(0.7) contrast(0.95)' }}
+          <div key={`scene-img-${imgIdx}`} className="my-6 flex justify-center">
+            <img
+              src={storyImages[imgIdx]}
+              alt={`Story illustration ${imgIdx + 1}`}
+              className="rounded-xl shadow-md max-w-full sm:max-w-[80%] max-h-64 object-contain"
+              loading="lazy"
             />
           </div>
         );
-        imageIndex++;
       }
     });
-    
+
     return elements;
   };
 
