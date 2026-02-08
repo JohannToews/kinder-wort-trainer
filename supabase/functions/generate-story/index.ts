@@ -1199,8 +1199,13 @@ IMPORTANT: Create distinctive, memorable character designs that can be recognize
 CRITICAL: The image must contain ABSOLUTELY NO TEXT, NO LETTERS, NO WORDS, NO NUMBERS, NO WRITING of any kind. Pure illustration only.`;
 
     // Prepare progress image prompts
-    const storyParts = story.content.split('\n\n').filter((p: string) => p.trim().length > 0);
+    // Normalize escaped newlines (LLM sometimes returns literal "\n" strings)
+    const normalizedContent = story.content
+      .replace(/\\n\\n/g, '\n\n')
+      .replace(/\\n/g, '\n');
+    const storyParts = normalizedContent.split('\n\n').filter((p: string) => p.trim().length > 0);
     const partCount = storyParts.length;
+    console.log(`[generate-story] Story has ${partCount} paragraphs, totalImageCount=${totalImageCount}, will generate ${Math.min(totalImageCount - 1, partCount > 1 ? 1 : 0)} progress images`);
     
     const styleReference = `
 CRITICAL - VISUAL CONSISTENCY REQUIREMENTS:
