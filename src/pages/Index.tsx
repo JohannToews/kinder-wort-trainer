@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
-import { BookOpen, Settings, Sparkles, Star, Brain, Users, BarChart3, Hand } from "lucide-react";
+import { BookOpen, Settings, Sparkles, Star, Users, BarChart3 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useColorPalette } from "@/hooks/useColorPalette";
 import { useKidProfile } from "@/hooks/useKidProfile";
@@ -33,40 +33,19 @@ const Index = () => {
   const t = getTranslations(kidAppLanguage);
   const childName = selectedProfile?.name || '';
 
-  // ═══ Fablino greeting logic ═══
+  // ═══ Fablino greeting (contextual) ═══
 
   const getFablinoGreeting = (): string => {
     if (!gamification || !childName) {
       return t.fablinoWelcome.replace('{name}', childName);
     }
-
-    // Already read today
     if (gamification.isStreakDay) {
       return t.fablinoAlreadyRead;
     }
-
-    // Returning after a break (streak lost but has read before)
     if (gamification.currentStreak === 0 && gamification.storiesCompleted > 0) {
       return t.fablinoWelcomeBack.replace('{name}', childName);
     }
-
-    // Active streak
     if (gamification.currentStreak > 0) {
-      return t.fablinoStreak
-        .replace('{days}', String(gamification.currentStreak))
-        .replace('{name}', childName);
-    }
-
-    return t.fablinoWelcome.replace('{name}', childName);
-  };
-
-  const fablinoGreetingMessage = getFablinoGreeting();
-
-  // ═══ Heading logic ═══
-
-  const getHeading = (): string => {
-    if (!childName) return 'Fablino';
-    if (gamification?.currentStreak && gamification.currentStreak > 0 && !gamification.isStreakDay) {
       return t.fablinoStreak
         .replace('{days}', String(gamification.currentStreak))
         .replace('{name}', childName);
@@ -81,7 +60,7 @@ const Index = () => {
     return (t[key] as string) || titleKey;
   };
 
-  // ═══ Loading state ═══
+  // ═══ Loading ═══
 
   if (isLoading || gamLoading) {
     return (
@@ -95,51 +74,42 @@ const Index = () => {
 
   return (
     <div className={`min-h-screen bg-gradient-to-br ${paletteColors.bg} overflow-hidden`}>
-      {/* Decorative elements */}
+      {/* Decorative blurs */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className={`absolute top-10 left-10 w-20 h-20 ${paletteColors.accent} rounded-full blur-2xl animate-bounce-soft`} />
         <div className={`absolute top-40 right-20 w-32 h-32 ${paletteColors.accent} rounded-full blur-3xl animate-bounce-soft`} style={{ animationDelay: "0.5s" }} />
         <div className={`absolute bottom-40 left-1/4 w-24 h-24 ${paletteColors.accent} rounded-full blur-2xl animate-bounce-soft`} style={{ animationDelay: "1s" }} />
       </div>
 
-      <div className="relative container max-w-lg mx-auto px-4 py-4 md:py-6 flex flex-col items-center min-h-screen">
+      <div className="relative container max-w-2xl mx-auto px-4 py-3 flex flex-col items-center">
         {/* Migration Banner */}
         {needsMigration && (
-          <div className="w-full mb-4">
+          <div className="w-full mb-3">
             <MigrationBanner language={kidAppLanguage} />
           </div>
         )}
 
         {/* Top Right Icons */}
-        <div className="absolute top-4 right-4 flex items-center gap-2 z-10">
+        <div className="absolute top-3 right-4 flex items-center gap-2 z-10">
           {user?.role === 'admin' && (
             <button
               onClick={() => navigate("/feedback-stats")}
               className="p-2 rounded-full bg-card/80 backdrop-blur-sm border border-border hover:bg-muted transition-colors"
-              title="Statistics"
             >
               <BarChart3 className="h-5 w-5 text-muted-foreground" />
             </button>
           )}
           <button
-            onClick={() => navigate("/words")}
-            className="p-2 rounded-full bg-card/80 backdrop-blur-sm border border-border hover:bg-muted transition-colors"
-            title={t.myWords}
-          >
-            <Hand className="h-5 w-5 text-muted-foreground" />
-          </button>
-          <button
             onClick={() => navigate("/admin")}
             className="p-2 rounded-full bg-card/80 backdrop-blur-sm border border-border hover:bg-muted transition-colors"
-            title="Settings"
           >
             <Settings className="h-5 w-5 text-muted-foreground" />
           </button>
         </div>
 
-        {/* Profile Selector (only when multiple kids) */}
+        {/* Profile Selector (multiple kids) */}
         {hasMultipleProfiles && (
-          <div className="flex items-center justify-center gap-2 mb-4 mt-12 w-full">
+          <div className="flex items-center justify-center gap-2 mt-12 mb-3 w-full">
             {kidProfiles.map((profile) => (
               <button
                 key={profile.id}
@@ -157,11 +127,7 @@ const Index = () => {
                   ${selectedProfileId === profile.id ? 'border-primary' : 'border-border'}
                 `}>
                   {profile.cover_image_url ? (
-                    <img
-                      src={profile.cover_image_url}
-                      alt={profile.name}
-                      className="w-full h-full object-cover"
-                    />
+                    <img src={profile.cover_image_url} alt={profile.name} className="w-full h-full object-cover" />
                   ) : (
                     <div className="w-full h-full bg-muted flex items-center justify-center">
                       <Users className="w-4 h-4 text-muted-foreground" />
@@ -179,10 +145,10 @@ const Index = () => {
           </div>
         )}
 
-        {/* Profil + Gamification Header */}
-        <div className={`flex items-center gap-4 w-full mb-6 ${hasMultipleProfiles ? '' : 'mt-14'}`}>
-          {/* Profilbild */}
-          <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-primary flex-shrink-0">
+        {/* ═══ BEREICH 1: Profil + Fablino (horizontal) ═══ */}
+        <div className={`flex items-center gap-5 w-full mb-8 ${hasMultipleProfiles ? '' : 'mt-14'}`}>
+          {/* Profilbild – GROSS */}
+          <div className="w-32 h-32 md:w-40 md:h-40 rounded-full overflow-hidden border-4 border-primary/30 flex-shrink-0 shadow-lg">
             {selectedProfile?.cover_image_url ? (
               <img
                 src={selectedProfile.cover_image_url}
@@ -191,111 +157,81 @@ const Index = () => {
               />
             ) : (
               <div className="w-full h-full bg-muted flex items-center justify-center">
-                <Users className="w-8 h-8 text-muted-foreground" />
+                <Users className="w-12 h-12 text-muted-foreground" />
               </div>
             )}
           </div>
 
-          {/* Info */}
-          <div className="flex-1 text-left">
-            <h1 className="text-xl font-baloo font-bold text-foreground leading-tight">
-              {getHeading()}
+          {/* Rechte Seite: Name + Stats + Fablino-Sprechblase */}
+          <div className="flex-1 min-w-0">
+            <h1 className="text-2xl md:text-3xl font-baloo font-bold text-foreground leading-tight truncate">
+              {t.fablinoWelcome.replace('{name}', childName)}
             </h1>
+
             {gamification && (
-              <div className="flex items-center gap-3 text-sm text-muted-foreground mt-1 flex-wrap">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1 flex-wrap">
                 <span>⭐ {gamification.stars}</span>
                 <span>📖 {getTranslatedLevelTitle(gamification.levelTitle)}</span>
                 {gamification.currentStreak > 0 && (
-                  <span>🔥 {gamification.currentStreak} {t.streak}</span>
+                  <span>🔥 {gamification.currentStreak}</span>
                 )}
               </div>
             )}
+
+            {/* Fablino-Sprechblase */}
+            <div className="flex items-end gap-2 mt-3">
+              <img
+                src="/mascot/6_Onboarding.png"
+                alt="Fablino"
+                className="w-12 h-12 object-contain flex-shrink-0"
+              />
+              <div className="bg-primary/10 rounded-xl rounded-bl-none px-3 py-2 max-w-[220px]">
+                <p className="text-sm font-medium text-foreground leading-snug">
+                  {getFablinoGreeting()}
+                </p>
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Fablino Greeting Card */}
-        <div className="w-full mb-6">
-          <div className="flex items-center gap-3 bg-card/80 backdrop-blur-sm rounded-xl p-4 border border-border">
-            <img
-              src="/mascot/6_Onboarding.png"
-              alt="Fablino"
-              className="w-16 h-16 object-contain flex-shrink-0"
-            />
-            <p className="text-sm font-medium text-foreground">
-              {fablinoGreetingMessage}
-            </p>
-          </div>
-        </div>
-
-        {/* Main Navigation */}
-        <div className="w-full space-y-3 mb-4">
-          {/* Neue Geschichte - Primary CTA */}
+        {/* ═══ BEREICH 2: Drei Kacheln (grid 3-spaltig) ═══ */}
+        <div className="grid grid-cols-3 gap-3 md:gap-4 w-full">
+          {/* Créer une histoire */}
           <Card
             onClick={() => navigate("/create-story")}
-            className="cursor-pointer border-2 border-primary hover:shadow-lg transition-all group touch-manipulation"
+            className="cursor-pointer border-2 border-primary/30 hover:border-primary hover:shadow-lg transition-all group touch-manipulation"
           >
-            <CardContent className="flex items-center gap-4 p-4">
-              <div className="h-12 w-12 rounded-full bg-primary/20 flex items-center justify-center group-hover:scale-110 transition-transform flex-shrink-0">
-                <Sparkles className="h-6 w-6 text-primary" />
+            <CardContent className="flex flex-col items-center justify-center p-4 md:p-6 text-center aspect-square">
+              <div className="h-14 w-14 md:h-16 md:w-16 rounded-full bg-primary/20 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                <Sparkles className="h-7 w-7 md:h-8 md:w-8 text-primary" />
               </div>
-              <div className="text-left">
-                <h3 className="font-baloo font-bold text-base">{t.generateNewStory}</h3>
-              </div>
+              <h3 className="font-baloo font-bold text-sm md:text-base leading-tight">{t.createStory}</h3>
             </CardContent>
           </Card>
 
-          {/* Meine Geschichten */}
+          {/* Lire une histoire */}
           <Card
             onClick={() => navigate("/stories")}
-            className="cursor-pointer border-2 border-border hover:border-primary/50 hover:shadow-md transition-all group touch-manipulation"
+            className="cursor-pointer border-2 border-blue-200 hover:border-blue-400 hover:shadow-lg transition-all group touch-manipulation"
           >
-            <CardContent className="flex items-center gap-4 p-4">
-              <div className="h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center group-hover:scale-110 transition-transform flex-shrink-0">
-                <BookOpen className="h-6 w-6 text-blue-600" />
+            <CardContent className="flex flex-col items-center justify-center p-4 md:p-6 text-center aspect-square">
+              <div className="h-14 w-14 md:h-16 md:w-16 rounded-full bg-blue-100 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                <BookOpen className="h-7 w-7 md:h-8 md:w-8 text-blue-600" />
               </div>
-              <div className="text-left">
-                <h3 className="font-baloo font-bold text-base">{t.chooseStory}</h3>
-              </div>
+              <h3 className="font-baloo font-bold text-sm md:text-base leading-tight">{t.readStory}</h3>
             </CardContent>
           </Card>
 
-          {/* Wörter-Quiz */}
-          <Card
-            onClick={() => navigate("/quiz")}
-            className="cursor-pointer border-2 border-border hover:border-accent/50 hover:shadow-md transition-all group touch-manipulation"
-          >
-            <CardContent className="flex items-center gap-4 p-4">
-              <div className="h-12 w-12 rounded-full bg-green-100 flex items-center justify-center group-hover:scale-110 transition-transform flex-shrink-0">
-                <Brain className="h-6 w-6 text-green-600" />
-              </div>
-              <div className="text-left">
-                <h3 className="font-baloo font-bold text-base">{t.vocabManageTitle}</h3>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Secondary Navigation */}
-        <div className="w-full grid grid-cols-2 gap-3">
-          {/* Sticker-Buch */}
+          {/* Mon album de stickers */}
           <Card
             onClick={() => navigate("/sticker-buch")}
-            className="cursor-pointer border-2 border-border hover:border-amber-400 hover:shadow-md transition-all group touch-manipulation"
+            className="cursor-pointer border-2 border-amber-200 hover:border-amber-400 hover:shadow-lg transition-all group touch-manipulation"
           >
-            <CardContent className="flex flex-col items-center p-4 text-center">
-              <span className="text-2xl mb-2">📖</span>
-              <h3 className="font-baloo font-bold text-sm">{t.stickerBook}</h3>
-            </CardContent>
-          </Card>
-
-          {/* Meine Wörter */}
-          <Card
-            onClick={() => navigate("/meine-woerter")}
-            className="cursor-pointer border-2 border-border hover:border-purple-400 hover:shadow-md transition-all group touch-manipulation"
-          >
-            <CardContent className="flex flex-col items-center p-4 text-center">
-              <span className="text-2xl mb-2">📚</span>
-              <h3 className="font-baloo font-bold text-sm">{t.myWords}</h3>
+            <CardContent className="flex flex-col items-center justify-center p-4 md:p-6 text-center aspect-square">
+              <div className="h-14 w-14 md:h-16 md:w-16 rounded-full bg-amber-100 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                <span className="text-2xl md:text-3xl">📖</span>
+              </div>
+              <h3 className="font-baloo font-bold text-sm md:text-base leading-tight">{t.stickerBook}</h3>
             </CardContent>
           </Card>
         </div>

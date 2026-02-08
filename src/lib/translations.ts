@@ -285,6 +285,9 @@ export interface Translations {
   stars: string;
   streak: string;
   continueButton: string;
+  wordQuiz: string;
+  createStory: string;
+  readStory: string;
 }
 
 const translations: Record<Language, Translations> = {
@@ -535,6 +538,9 @@ const translations: Record<Language, Translations> = {
     stars: 'Sterne',
     streak: 'Tage',
     continueButton: 'Weiter',
+    wordQuiz: 'Wörter-Quiz',
+    createStory: 'Eine Geschichte erstellen',
+    readStory: 'Eine Geschichte lesen',
   },
   
   en: {
@@ -784,6 +790,9 @@ const translations: Record<Language, Translations> = {
     stars: 'Stars',
     streak: 'Days',
     continueButton: 'Continue',
+    wordQuiz: 'Word Quiz',
+    createStory: 'Create a Story',
+    readStory: 'Read a Story',
   },
   
   fr: {
@@ -1033,6 +1042,9 @@ const translations: Record<Language, Translations> = {
     stars: 'Étoiles',
     streak: 'Jours',
     continueButton: 'Continuer',
+    wordQuiz: 'Quiz des Mots',
+    createStory: 'Créer une histoire',
+    readStory: 'Lire une histoire',
   },
   
   es: {
@@ -1282,6 +1294,9 @@ const translations: Record<Language, Translations> = {
     stars: 'Estrellas',
     streak: 'Días',
     continueButton: 'Continuar',
+    wordQuiz: 'Quiz de Palabras',
+    createStory: 'Crear una historia',
+    readStory: 'Leer una historia',
   },
   
   nl: {
@@ -1531,6 +1546,9 @@ const translations: Record<Language, Translations> = {
     stars: 'Sterren',
     streak: 'Dagen',
     continueButton: 'Verder',
+    wordQuiz: 'Woordenquiz',
+    createStory: 'Een verhaal maken',
+    readStory: 'Een verhaal lezen',
   },
   
   it: {
@@ -1780,6 +1798,9 @@ const translations: Record<Language, Translations> = {
     stars: 'Stelle',
     streak: 'Giorni',
     continueButton: 'Continua',
+    wordQuiz: 'Quiz delle Parole',
+    createStory: 'Creare una storia',
+    readStory: 'Leggere una storia',
   },
   
   bs: {
@@ -2029,6 +2050,9 @@ const translations: Record<Language, Translations> = {
     stars: 'Zvjezdice',
     streak: 'Dana',
     continueButton: 'Dalje',
+    wordQuiz: 'Kviz riječi',
+    createStory: 'Napravi priču',
+    readStory: 'Čitaj priču',
   },
 };
 
