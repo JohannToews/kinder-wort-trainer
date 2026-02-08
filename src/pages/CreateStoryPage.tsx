@@ -85,7 +85,15 @@ const getEducationalDescription = (
 const CreateStoryPage = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { kidAppLanguage, kidReadingLanguage, kidExplanationLanguage, kidHomeLanguages, kidStoryLanguages, selectedProfile } = useKidProfile();
+  const { 
+    kidAppLanguage, 
+    kidReadingLanguage, 
+    kidExplanationLanguage, 
+    kidHomeLanguages, 
+    kidStoryLanguages, 
+    selectedProfile,
+    selectedProfileId,
+  } = useKidProfile();
   const { colors: paletteColors } = useColorPalette();
 
   // Wizard state
@@ -647,7 +655,7 @@ const CreateStoryPage = () => {
       {currentScreen === "characters" && (
         <CharacterSelectionScreen
           translations={characterTranslations}
-          kidProfileId={selectedProfile?.id}
+          kidProfileId={selectedProfile?.id ?? selectedProfileId ?? undefined}
           kidName={selectedProfile?.name}
           kidAge={selectedProfile?.age}
           onComplete={handleCharactersComplete}
