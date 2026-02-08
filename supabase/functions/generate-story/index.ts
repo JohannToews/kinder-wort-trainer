@@ -833,6 +833,7 @@ Deno.serve(async (req) => {
         loadPrompt(`system_prompt_continuation_${adminLangCode}`)
       ]);
 
+      console.log('[generate-story] Using OLD prompt path (FALLBACK - modular prompts)');
       console.log("Loaded OLD prompts:", {
         source, isSeries,
         hasCorePrompt: !!corePrompt,
