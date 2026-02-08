@@ -284,7 +284,8 @@ const SpecialEffectsScreen = ({
               </div>
             </div>
 
-            {/* Series Toggle */}
+            {/* Series Toggle - TEMPORARILY DISABLED */}
+            {/* 
             <div className="flex items-center justify-between">
               <Label className="text-xs md:text-sm font-medium text-muted-foreground">{st.seriesLabel}</Label>
               <div className="flex items-center gap-2 md:gap-3">
@@ -293,6 +294,7 @@ const SpecialEffectsScreen = ({
                 <span className={cn("text-xs md:text-sm", isSeries && "font-semibold text-foreground")}>{st.seriesYes}</span>
               </div>
             </div>
+            */}
 
             {/* Language Picker */}
             {availableLanguages.length > 1 && (
