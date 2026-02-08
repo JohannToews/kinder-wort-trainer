@@ -44,6 +44,8 @@ const SystemPromptSection = ({ language }: SystemPromptSectionProps) => {
   const [continuationPrompt, setContinuationPrompt] = useState("");
   const [wordExplanationPrompt, setWordExplanationPrompt] = useState("");
   const [consistencyCheckPrompt, setConsistencyCheckPrompt] = useState("");
+  const [consistencyCheckPromptV2, setConsistencyCheckPromptV2] = useState("");
+  const [consistencyCheckSeriesAddon, setConsistencyCheckSeriesAddon] = useState("");
   const [elternModulPrompt, setElternModulPrompt] = useState("");
   const [kinderModulPrompt, setKinderModulPrompt] = useState("");
   const [isLoading, setIsLoading] = useState(true);
@@ -51,6 +53,7 @@ const SystemPromptSection = ({ language }: SystemPromptSectionProps) => {
   const [isSavingContinuation, setIsSavingContinuation] = useState(false);
   const [isSavingWordExplanation, setIsSavingWordExplanation] = useState(false);
   const [isSavingConsistencyCheck, setIsSavingConsistencyCheck] = useState(false);
+  const [isSavingConsistencyCheckV2, setIsSavingConsistencyCheckV2] = useState(false);
   const [isSavingElternModul, setIsSavingElternModul] = useState(false);
   const [isSavingKinderModul, setIsSavingKinderModul] = useState(false);
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
@@ -58,6 +61,7 @@ const SystemPromptSection = ({ language }: SystemPromptSectionProps) => {
     continuation: false,
     wordExplanation: false,
     consistencyCheck: false,
+    consistencyCheckV2: false,
     elternModul: false,
     kinderModul: false,
   });
@@ -75,14 +79,16 @@ const SystemPromptSection = ({ language }: SystemPromptSectionProps) => {
     const elternModulKey = `system_prompt_story_creation_${language}`;
     const kinderModulKey = `system_prompt_kid_creation_${language}`;
     
-    // Load all prompts in parallel
-    const [promptResult, continuationResult, wordExplanationResult, consistencyCheckResult, elternModulResult, kinderModulResult] = await Promise.all([
+    // Load all prompts in parallel (including v2 consistency check prompts)
+    const [promptResult, continuationResult, wordExplanationResult, consistencyCheckResult, elternModulResult, kinderModulResult, consistencyV2Result, seriesAddonResult] = await Promise.all([
       supabase.from("app_settings").select("value").eq("key", promptKey).maybeSingle(),
       supabase.from("app_settings").select("value").eq("key", continuationKey).maybeSingle(),
       supabase.from("app_settings").select("value").eq("key", wordExplanationKey).maybeSingle(),
       supabase.from("app_settings").select("value").eq("key", consistencyCheckKey).maybeSingle(),
       supabase.from("app_settings").select("value").eq("key", elternModulKey).maybeSingle(),
-      supabase.from("app_settings").select("value").eq("key", kinderModulKey).maybeSingle()
+      supabase.from("app_settings").select("value").eq("key", kinderModulKey).maybeSingle(),
+      supabase.from("app_settings").select("value").eq("key", "consistency_check_prompt_v2").maybeSingle(),
+      supabase.from("app_settings").select("value").eq("key", "consistency_check_series_addon_v2").maybeSingle()
     ]);
 
     if (promptResult.data && !promptResult.error) {
@@ -113,6 +119,14 @@ const SystemPromptSection = ({ language }: SystemPromptSectionProps) => {
 
     if (consistencyCheckResult.data && !consistencyCheckResult.error) {
       setConsistencyCheckPrompt(consistencyCheckResult.data.value);
+    }
+
+    // Load v2 consistency check prompts (language-independent)
+    if (consistencyV2Result.data && !consistencyV2Result.error) {
+      setConsistencyCheckPromptV2(consistencyV2Result.data.value);
+    }
+    if (seriesAddonResult.data && !seriesAddonResult.error) {
+      setConsistencyCheckSeriesAddon(seriesAddonResult.data.value);
     }
 
     if (elternModulResult.data && !elternModulResult.error) {
@@ -258,7 +272,47 @@ const SystemPromptSection = ({ language }: SystemPromptSectionProps) => {
     }
   };
 
-  const saveElternModulPrompt = async () => {
+  const saveConsistencyCheckPromptV2 = async () => {
+    setIsSavingConsistencyCheckV2(true);
+    
+    try {
+      // Save both v2 prompts
+      const { error: error1 } = await supabase.functions.invoke("manage-users", {
+        body: {
+          action: "updateSystemPrompt",
+          promptKey: "consistency_check_prompt_v2",
+          promptValue: consistencyCheckPromptV2,
+        },
+      });
+
+      const { error: error2 } = await supabase.functions.invoke("manage-users", {
+        body: {
+          action: "updateSystemPrompt",
+          promptKey: "consistency_check_series_addon_v2",
+          promptValue: consistencyCheckSeriesAddon,
+        },
+      });
+
+      if (error1 || error2) {
+        console.error("Error saving v2 consistency check prompts:", error1, error2);
+        toast.error(language === 'de' ? "Fehler beim Speichern" : 
+                    language === 'fr' ? "Erreur lors de la sauvegarde" :
+                    "Error saving");
+      } else {
+        toast.success(language === 'de' ? "Consistency-Check V2 Prompts gespeichert" : 
+                      language === 'fr' ? "Prompts de vérification V2 sauvegardés" :
+                      "Consistency check V2 prompts saved");
+      }
+    } catch (err) {
+      console.error("Error:", err);
+      toast.error(language === 'de' ? "Fehler beim Speichern" : 
+                  language === 'fr' ? "Erreur lors de la sauvegarde" :
+                  "Error saving");
+    } finally {
+      setIsSavingConsistencyCheckV2(false);
+    }
+  };
+
     setIsSavingElternModul(true);
     const promptKey = `system_prompt_story_creation_${language}`;
     
@@ -598,18 +652,122 @@ const SystemPromptSection = ({ language }: SystemPromptSectionProps) => {
         </Card>
       </Collapsible>
 
-      {/* Consistency Check Prompt */}
+      {/* Consistency Check V2 - AKTIV (Language-independent with placeholders) */}
+      <Collapsible open={openSections.consistencyCheckV2} onOpenChange={() => toggleSection('consistencyCheckV2')}>
+        <Card className="border-2 border-emerald-500/50 bg-emerald-50/30 dark:bg-emerald-950/20">
+          <CollapsibleTrigger asChild>
+            <CardHeader className="pb-3 cursor-pointer hover:bg-muted/50 transition-colors">
+              <CardTitle className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-lg">
+                  {openSections.consistencyCheckV2 ? <ChevronDown className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
+                  <CheckCircle className="h-5 w-5 text-emerald-500" />
+                  {language === 'de' ? 'Consistency-Check V2' : 
+                   language === 'fr' ? 'Vérification V2' : 
+                   'Consistency Check V2'}
+                  <span className="ml-2 px-2 py-0.5 text-xs font-semibold bg-emerald-500 text-white rounded-full">
+                    AKTIV
+                  </span>
+                </div>
+                <span className="text-sm font-normal text-muted-foreground">
+                  {language === 'de' ? '(Alle Sprachen)' : 
+                   language === 'fr' ? '(Toutes langues)' : 
+                   '(All Languages)'}
+                </span>
+              </CardTitle>
+            </CardHeader>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <CardContent className="space-y-4 pt-0">
+              <div className="p-3 bg-emerald-100/50 dark:bg-emerald-900/30 rounded-md border border-emerald-300/50">
+                <p className="text-sm text-emerald-800 dark:text-emerald-200">
+                  {language === 'de' 
+                    ? '✨ AKTIVER PROMPT: Dieser Template-basierte Prompt wird für ALLE Story-Sprachen verwendet. Platzhalter: {story_language}, {age_min}, {age_max}, {episode_number}, {series_context}'
+                    : language === 'fr'
+                    ? '✨ PROMPT ACTIF: Ce prompt basé sur template est utilisé pour TOUTES les langues. Placeholders: {story_language}, {age_min}, {age_max}, {episode_number}, {series_context}'
+                    : '✨ ACTIVE PROMPT: This template-based prompt is used for ALL story languages. Placeholders: {story_language}, {age_min}, {age_max}, {episode_number}, {series_context}'}
+                </p>
+              </div>
+
+              {isLoading ? (
+                <div className="flex items-center gap-2 text-muted-foreground py-8 justify-center">
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  <span>{t.loading}</span>
+                </div>
+              ) : (
+                <>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">
+                      {language === 'de' ? 'Haupt-Prompt (consistency_check_prompt_v2)' : 
+                       language === 'fr' ? 'Prompt Principal (consistency_check_prompt_v2)' : 
+                       'Main Prompt (consistency_check_prompt_v2)'}
+                    </label>
+                    <Textarea
+                      value={consistencyCheckPromptV2}
+                      onChange={(e) => setConsistencyCheckPromptV2(e.target.value)}
+                      className="min-h-[300px] text-sm font-mono leading-relaxed"
+                      placeholder="Enter v2 consistency check prompt with placeholders..."
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">
+                      {language === 'de' ? 'Serien-Addon (consistency_check_series_addon_v2)' : 
+                       language === 'fr' ? 'Addon Séries (consistency_check_series_addon_v2)' : 
+                       'Series Addon (consistency_check_series_addon_v2)'}
+                    </label>
+                    <Textarea
+                      value={consistencyCheckSeriesAddon}
+                      onChange={(e) => setConsistencyCheckSeriesAddon(e.target.value)}
+                      className="min-h-[150px] text-sm font-mono leading-relaxed"
+                      placeholder="Enter series addon prompt..."
+                    />
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <Button
+                      onClick={saveConsistencyCheckPromptV2}
+                      disabled={isSavingConsistencyCheckV2}
+                      className="btn-primary-kid"
+                    >
+                      {isSavingConsistencyCheckV2 ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          {language === 'de' ? 'Speichern...' : 
+                           language === 'fr' ? 'Sauvegarde...' : 
+                           'Saving...'}
+                        </>
+                      ) : (
+                        <>
+                          <Save className="h-4 w-4 mr-2" />
+                          {language === 'de' ? 'V2 Prompts speichern' : 
+                           language === 'fr' ? 'Sauvegarder V2' : 
+                           'Save V2 Prompts'}
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </>
+              )}
+            </CardContent>
+          </CollapsibleContent>
+        </Card>
+      </Collapsible>
+
+      {/* Consistency Check Prompt - FALLBACK (Language-specific, old format) */}
       <Collapsible open={openSections.consistencyCheck} onOpenChange={() => toggleSection('consistencyCheck')}>
-        <Card className="border-2 border-green-500/30">
+        <Card className="border-2 border-amber-500/30 bg-amber-50/20 dark:bg-amber-950/10">
           <CollapsibleTrigger asChild>
             <CardHeader className="pb-3 cursor-pointer hover:bg-muted/50 transition-colors">
               <CardTitle className="flex items-center justify-between">
                 <div className="flex items-center gap-2 text-lg">
                   {openSections.consistencyCheck ? <ChevronDown className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
-                  <CheckCircle className="h-5 w-5 text-green-500" />
-                  {language === 'de' ? 'Consistency-Check Prompt' : 
-                   language === 'fr' ? 'Prompt de Vérification de Cohérence' : 
-                   'Consistency Check Prompt'}
+                  <CheckCircle className="h-5 w-5 text-amber-500" />
+                  {language === 'de' ? 'Consistency-Check (Alt)' : 
+                   language === 'fr' ? 'Vérification (Ancien)' : 
+                   'Consistency Check (Old)'}
+                  <span className="ml-2 px-2 py-0.5 text-xs font-semibold bg-amber-500 text-white rounded-full">
+                    FALLBACK
+                  </span>
                 </div>
                 <span className="text-sm font-normal text-muted-foreground">
                   ({getLanguageLabel()})
@@ -619,13 +777,15 @@ const SystemPromptSection = ({ language }: SystemPromptSectionProps) => {
           </CollapsibleTrigger>
           <CollapsibleContent>
             <CardContent className="space-y-4 pt-0">
-              <p className="text-sm text-muted-foreground">
-                {language === 'de' 
-                  ? 'Dieser Prompt wird verwendet, um generierte Texte auf Konsistenz und Qualität zu prüfen. Definiere hier die Kriterien für die Überprüfung.'
-                  : language === 'fr'
-                  ? 'Ce prompt est utilisé pour vérifier la cohérence et la qualité des textes générés. Définissez ici les critères de vérification.'
-                  : 'This prompt is used to check generated texts for consistency and quality. Define the verification criteria here.'}
-              </p>
+              <div className="p-3 bg-amber-100/50 dark:bg-amber-900/30 rounded-md border border-amber-300/50">
+                <p className="text-sm text-amber-800 dark:text-amber-200">
+                  {language === 'de' 
+                    ? '⚠️ FALLBACK: Dieser sprachspezifische Prompt wird nur verwendet, wenn V2 nicht existiert. Der V2-Prompt oben ist jetzt aktiv für alle Sprachen.'
+                    : language === 'fr'
+                    ? '⚠️ FALLBACK: Ce prompt spécifique à la langue n\'est utilisé que si V2 n\'existe pas. Le prompt V2 ci-dessus est maintenant actif pour toutes les langues.'
+                    : '⚠️ FALLBACK: This language-specific prompt is only used if V2 doesn\'t exist. The V2 prompt above is now active for all languages.'}
+                </p>
+              </div>
 
               {isLoading ? (
                 <div className="flex items-center gap-2 text-muted-foreground py-8 justify-center">
