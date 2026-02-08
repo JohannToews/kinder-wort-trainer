@@ -100,9 +100,10 @@ kinder-wort-trainer/
 │   │   ├── generate-story/        # Main story generation (~1409 lines)
 │   │   ├── _shared/               # Shared modules for Edge Functions
 │   │   │   ├── promptBuilder.ts   # Block 2.3c: Dynamic prompt builder (queries rule tables)
+│   │   │   ├── imagePromptBuilder.ts  # Block 2.4: Image prompt construction (buildImagePrompts, loadImageRules)
 │   │   │   └── learningThemeRotation.ts  # Block 2.3c: Learning theme rotation logic
 │   │   └── …                      # 14 more Edge Functions
-│   └── migrations/                # 40 SQL migrations (incl. multilingual fields, Block 2.1 learning/guardrails, Block 2.2 rule tables + difficulty_rules, Block 2.3a story classifications + kid_characters, Block 2.3c core slim prompt, Block 2.3d+ story_languages)
+│   └── migrations/                # 40+ SQL migrations (incl. multilingual fields, Block 2.1 learning/guardrails, Block 2.2 rule tables + difficulty_rules, Block 2.3a story classifications + kid_characters, Block 2.3c core slim prompt, Block 2.3d+ story_languages, Block 2.4 image generation rules)
 ├── package.json
 ├── vite.config.ts
 ├── tailwind.config.ts
@@ -244,16 +245,23 @@ generate-story/index.ts:
      • Build composite system prompt inline
   2. Call Lovable AI Gateway (Gemini 3 Flash Preview)
      → Generates: title, content, questions, vocabulary, structure ratings,
-        emotional classifications (humor_level, emotional_depth, moral_topic, etc.)
+        emotional classifications (humor_level, emotional_depth, moral_topic, etc.),
+        **image_plan** (character_anchor, world_anchor, scenes[]) (Block 2.4)
   3. Word count validation (retry if below minimum)
-  4. Consistency check (parallel)
-  5. Image generation (parallel):
-     • Cover image (Google Gemini 2.5 Flash, cached via image_cache)
-     • Story images (1-3 based on story length)
-     • Fallback: Lovable Gateway image models
+  4. **Block 2.4: Image prompt building** (parallel with step 5):
+     a. Parse image_plan from LLM response
+     b. Load image_style_rules (by age group) + theme_rules (image_*) from DB
+     c. imagePromptBuilder.ts: buildImagePrompts() → cover + scene prompts
+        (or buildFallbackImagePrompt() if no image_plan)
+  5. **PARALLEL execution** (Promise.allSettled + 90s timeout):
+     a. Consistency check v2 (up to 2 correction attempts)
+     b. ALL image generation in parallel:
+        • Cover image + 1-3 scene images (based on story length)
+        • Per image: Gemini 2.5 Flash → Lovable Gateway fallback
+        • image_cache check before generation
   6. Parse LLM response: extract classifications (structure, emotion, humor, theme)
-  7. Save to DB (stories + comprehension_questions + marked_words + classifications)
-  8. Return everything to frontend
+  7. Save to DB (stories + comprehension_questions + marked_words + classifications + **image_count**)
+  8. Return everything to frontend (coverImageBase64, storyImages[], image_count)
         │
         ▼
 CreateStoryPage.tsx saves to DB:
@@ -268,7 +276,12 @@ CreateStoryPage.tsx saves to DB:
 ```
 ReadingPage.tsx loads story by ID
         │
+        ├── Display cover image (top of page)
         ├── Display story text (with SyllableText for German)
+        │     • Block 2.4: Scene images (story_images[]) distributed
+        │       evenly between paragraphs via getImageInsertionMap()
+        │     • Lazy loading, responsive (max-w-full, max-h-64)
+        │     • Fallback: no scene images → cover only (pre-2.4 behavior)
         │
         ├── Word tap → explain-word function
         │     • Checks cache (cachedExplanations Map)
@@ -414,7 +427,7 @@ difficulty_rules             ← Block 2.2b (standalone rule table, 9 entries: 3
 | `user_profiles` | User accounts | username, password_hash, display_name, admin_language, app_language, text_language |
 | `kid_profiles` | Child profiles (multi per user) | name, hobbies, school_system, school_class, color_palette, image_style, gender, age, **ui_language**, **reading_language**, **explanation_language**, **home_languages[]**, **story_languages[]** (Block 2.3d+), **content_safety_level** (1-4, default 2), **difficulty_level** (1-3, default 2) |
 | `user_roles` | Role assignments | user_id, role (admin/standard) |
-| `stories` | Story content and metadata | title, content, cover_image_url, story_images[], difficulty, text_type, **text_language** (NOT NULL, default 'fr'), generation_status, series_id, episode_number, ending_type, structure ratings, **learning_theme_applied**, **parent_prompt_text**, **emotional_secondary**, **humor_level** (1-5), **emotional_depth** (1-3), **moral_topic**, **concrete_theme** |
+| `stories` | Story content and metadata | title, content, cover_image_url, story_images[], difficulty, text_type, **text_language** (NOT NULL, default 'fr'), generation_status, series_id, episode_number, ending_type, structure ratings, **learning_theme_applied**, **parent_prompt_text**, **emotional_secondary**, **humor_level** (1-5), **emotional_depth** (1-3), **moral_topic**, **concrete_theme**, **image_count** (Block 2.4, integer DEFAULT 1) |
 | `kid_characters` | Recurring story figures per kid (Block 2.3a) | kid_profile_id (FK CASCADE), name, role (sibling/friend/known_figure/custom), age, relation, description, is_active, sort_order |
 | `marked_words` | Vocabulary words with explanations | word, explanation, story_id, quiz_history[], is_learned, difficulty, **word_language**, **explanation_language** |
 | `comprehension_questions` | Story comprehension questions | question, expected_answer, options[], story_id, **question_language** |
@@ -520,9 +533,9 @@ Added structured rule tables to replace monolithic 30k-token system prompts with
 | Table | Purpose | Key Columns | Entries |
 |-------|---------|-------------|---------|
 | `age_rules` | Language complexity rules by age group and language | min_age, max_age, language (UNIQUE), max_sentence_length, allowed_tenses[], sentence_structures, min/max_word_count, paragraph_length, dialogue_ratio, narrative_perspective, narrative_guidelines, example_sentences[] | 12 (4 age groups × FR/DE/EN) |
-| `theme_rules` | Plot templates, settings, and conflicts per story theme | theme_key + language (UNIQUE), labels (JSONB), plot_templates[], setting_descriptions, character_archetypes[], sensory_details, typical_conflicts[] | 18 (6 themes × FR/DE/EN) |
+| `theme_rules` | Plot templates, settings, and conflicts per story theme | theme_key + language (UNIQUE), labels (JSONB), plot_templates[], setting_descriptions, character_archetypes[], sensory_details, typical_conflicts[], **image_style_prompt**, **image_negative_prompt**, **image_color_palette** (Block 2.4) | 18 (6 themes × FR/DE/EN) |
 | `emotion_rules` | Conflict patterns and character development per emotional coloring | emotion_key + language (UNIQUE), labels (JSONB), conflict_patterns[], character_development, resolution_patterns[], emotional_vocabulary[] | 18 (6 emotions × FR/DE/EN) |
-| `image_style_rules` | Visual style instructions per age group and optional theme | age_group, theme_key (nullable), style_prompt, negative_prompt, color_palette, art_style | 6 (3 age groups general + 3 educational) |
+| `image_style_rules` | Visual style instructions per age group and optional theme | age_group, theme_key (nullable), style_prompt, negative_prompt, color_palette, art_style, **character_style**, **complexity_level**, **forbidden_elements** (Block 2.4) | 6 (3 age groups general + 3 educational) |
 | `difficulty_rules` | Vocabulary complexity and language difficulty per level | difficulty_level + language (UNIQUE), label (JSONB), description (JSONB), vocabulary_scope, new_words_per_story, figurative_language, idiom_usage, humor_types[], repetition_strategy, example_vocabulary[] | 9 (3 levels × FR/DE/EN) |
 
 **Age groups in `age_rules`:** 6-7, 8-9, 10-11, 12-13 – each with language-specific tense rules (e.g. FR: présent/passé composé/imparfait, DE: Präsens/Perfekt/Präteritum, EN: simple present/simple past/past continuous). Age group 4-5 removed; vocabulary/complexity dimensions moved to `difficulty_rules`.
@@ -574,7 +587,8 @@ Replaced the monolithic 30k-token system prompt with a modular, database-driven 
 
 | Module | Purpose | Key Functions |
 |--------|---------|---------------|
-| `promptBuilder.ts` | Builds dynamic user message by querying rule tables | `buildStoryPrompt(request, supabase)` – fetches age_rules, difficulty_rules, theme_rules, emotion_rules, content_themes_by_level; calculates word counts; builds character (with relationship logic), guardrail, and variety sections. `buildCharactersSection()` (Block 2.3d) – intelligent relationship formatting: include_self=true → relations relative to child; include_self=false → parents as couple, siblings grouped, family hint, friends grouped. Block 2.3e: Handles `theme_key='surprise'` (skips theme_rules, instructs LLM to pick creative theme); `surprise_characters=true` (fictional-only characters section); enrichment hint for normal characters. `injectLearningTheme(prompt, label, lang)` – appends learning theme instruction |
+| `promptBuilder.ts` | Builds dynamic user message by querying rule tables | `buildStoryPrompt(request, supabase)` – fetches age_rules, difficulty_rules, theme_rules, emotion_rules, content_themes_by_level; calculates word counts; builds character (with relationship logic), guardrail, and variety sections. `buildCharactersSection()` (Block 2.3d) – intelligent relationship formatting: include_self=true → relations relative to child; include_self=false → parents as couple, siblings grouped, family hint, friends grouped. Block 2.3e: Handles `theme_key='surprise'` (skips theme_rules, instructs LLM to pick creative theme); `surprise_characters=true` (fictional-only characters section); enrichment hint for normal characters. `injectLearningTheme(prompt, label, lang)` – appends learning theme instruction. Block 2.4: `getSceneCount(length)` → maps story length to scene count (short=1, medium=2, long=3); adds `## IMAGE PLAN INSTRUCTIONS` section to dynamic prompt. |
+| `imagePromptBuilder.ts` | Block 2.4: Constructs image prompts from LLM image_plan + DB style rules | `buildImagePrompts(imagePlan, ageRules, themeRules, childAge)` – builds cover + scene prompts with character_anchor, world_anchor, per-scene descriptions, age-specific style modifiers (per year 5-12+). `buildFallbackImagePrompt(title, charDesc, ageRules, themeRules)` – simple cover prompt when no image_plan. `loadImageRules(supabase, ageGroup, themeKey, language)` – fetches image_style_rules + theme_rules image_* columns. `getAgeModifier(age)` – fine-grained style adjustments per year. |
 | `learningThemeRotation.ts` | Determines if a learning theme should be applied | `shouldApplyLearningTheme(kidProfileId, lang, supabase)` – checks parent_learning_config frequency, rotates through active_themes round-robin based on past stories |
 
 #### Prompt Architecture
@@ -629,8 +643,88 @@ CreateStoryPage.tsx → generate-story Edge Function
   └── LLM Response parsing
         ├── JSON.parse(content.match(/\{[\s\S]*\}/))
         ├── Extract: title, content, questions, vocabulary, structure ratings
-        └── Extract: emotional_secondary, humor_level, emotional_depth, moral_topic, concrete_theme
+        ├── Extract: emotional_secondary, humor_level, emotional_depth, moral_topic, concrete_theme
+        └── Extract: image_plan { character_anchor, world_anchor, scenes[] } (Block 2.4)
 ```
+
+### Intelligent Image Generation (Block 2.4 – Migrations `20260208`)
+
+Replaced hardcoded image prompts with a structured, DB-driven image generation pipeline. The LLM now outputs an `image_plan` with visual descriptions, and a new shared module builds final image prompts using age- and theme-specific style rules from the database.
+
+#### Architecture
+
+```
+LLM Response (image_plan)
+  │  character_anchor: "A brave 8-year-old girl with red pigtails..."
+  │  world_anchor: "A magical forest with glowing mushrooms..."
+  │  scenes: [{ scene_id: 1, description: "...", emotion: "excited" }, ...]
+  │
+  ▼
+imagePromptBuilder.ts
+  │  + image_style_rules (by age_group: 4-6, 7-9, 10-12)
+  │    → style_prompt, negative_prompt, character_style, complexity_level, forbidden_elements
+  │  + theme_rules (image_* columns by theme_key)
+  │    → image_style_prompt, image_negative_prompt, image_color_palette
+  │  + getAgeModifier(childAge) → per-year fine-tuning (ages 5-12+)
+  │
+  ▼
+Image Prompts: [cover, scene_1, scene_2, ...]
+  │
+  ▼
+Parallel generation (Promise.allSettled + 90s timeout)
+  │  Per image: cache check → Gemini 2.5 Flash → Lovable Gateway fallback
+  │
+  ▼
+Results: coverImageBase64 + storyImages[]
+```
+
+#### New/Extended DB Columns
+
+| Table | New Columns (Block 2.4) | Purpose |
+|-------|------------------------|---------|
+| `theme_rules` | `image_style_prompt`, `image_negative_prompt`, `image_color_palette` | Theme-specific visual style for image generation (e.g. fantasy → "Magical fairy-tale illustration") |
+| `image_style_rules` | `character_style`, `complexity_level`, `forbidden_elements` | Age-appropriate character rendering (e.g. 4-6 → "Cute chibi-like proportions") |
+| `stories` | `image_count` (integer DEFAULT 1) | Total images generated (cover + scenes) |
+
+#### New Shared Module
+
+| Module | Key Exports |
+|--------|------------|
+| `imagePromptBuilder.ts` | `buildImagePrompts()` – structured prompts from image_plan + DB rules |
+| | `buildFallbackImagePrompt()` – simple cover when no image_plan |
+| | `loadImageRules()` – fetches image_style_rules + theme_rules image_* |
+| | `getAgeModifier()` – per-year style adjustments (5-12+) |
+
+#### LLM Output Format Extension
+
+The CORE Slim v2 system prompt now includes an `## IMAGE PLAN` section instructing the LLM to output:
+
+```json
+{
+  "image_plan": {
+    "character_anchor": "Visual description of main character(s)...",
+    "world_anchor": "Visual description of the setting/world...",
+    "scenes": [
+      { "scene_id": 1, "description": "Cover scene...", "emotion": "excited" },
+      { "scene_id": 2, "description": "Middle scene...", "emotion": "curious" }
+    ]
+  }
+}
+```
+
+Scene count is determined by story length: short=1 (cover only), medium=2 (cover + 1 scene), long=3 (cover + 2 scenes).
+
+#### Frontend Integration
+
+`ReadingPage.tsx` distributes scene images (`story_images[]`) evenly between story paragraphs using `getImageInsertionMap()`. Images are lazy-loaded and responsive. Cover image remains at the top. Stories without scene images (pre-2.4) display only the cover, as before.
+
+#### Image Count by Story Length
+
+| Length | Cover | Scene Images | Total |
+|--------|-------|-------------|-------|
+| short | 1 | 0 | 1 |
+| medium | 1 | 1 | 2 |
+| long | 1 | 2 | 3 |
 
 ### Story Wizard Extensions (Block 2.3d + 2.3e)
 
@@ -728,7 +822,7 @@ Added `difficulty_level`, `age`, `gender`, and `story_languages` to the `KidProf
 
 | Function | External API | DB Tables |
 |----------|-------------|-----------|
-| `generate-story` | Gemini 3 Flash (text), Gemini 2.5 Flash (images), Lovable Gateway | reads: app_settings, image_cache, age_rules, difficulty_rules, theme_rules, emotion_rules, content_themes_by_level, parent_learning_config, learning_themes, stories (variety check); writes: stories, image_cache, consistency_check_results. Uses `_shared/promptBuilder.ts` + `_shared/learningThemeRotation.ts` (Block 2.3c) |
+| `generate-story` | Gemini 3 Flash (text), Gemini 2.5 Flash (images), Lovable Gateway | reads: app_settings, image_cache, age_rules, difficulty_rules, theme_rules, emotion_rules, image_style_rules, content_themes_by_level, parent_learning_config, learning_themes, stories (variety check); writes: stories, image_cache, consistency_check_results. Uses `_shared/promptBuilder.ts` + `_shared/imagePromptBuilder.ts` (Block 2.4) + `_shared/learningThemeRotation.ts` (Block 2.3c). Block 2.4: Parses image_plan from LLM, builds structured image prompts, generates all images in parallel (Promise.allSettled + 90s timeout). |
 | `explain-word` | Gemini 2.0 Flash, Lovable Gateway (fallback) | reads: app_settings. Accepts optional `explanationLanguage` param for multilingual explanations |
 | `generate-quiz` | Gemini 2.0 Flash | — |
 | `evaluate-answer` | Gemini 2.0 Flash | — |
@@ -796,4 +890,4 @@ Added `difficulty_level`, `age`, `gender`, and `story_languages` to the `KidProf
 
 ---
 
-*Generated on 2026-02-06 by codebase analysis. Updated 2026-02-07 with Block 1 (multilingual DB model), translation consolidation, Block 2.1 (learning themes + content guardrails), Block 2.2 (story generation rule tables), Block 2.2b (difficulty_rules + age group adjustments), Block 2.3a (story classifications + kid_characters), Block 2.3c (dynamic prompt engine + CORE Slim v2 + story classifications + shared modules promptBuilder.ts + learningThemeRotation.ts). Updated 2026-02-08 with Block 2.3d full (5 phases): story_languages[] on kid_profiles, kid_characters role constraint migration (sibling/custom → family), character management UI in profile (stepped dialog, family sync), wizard redesign (expandable tiles with checkboxes, no save dialog), character role/relation/description passed to Edge Function, intelligent relationship logic in promptBuilder.ts (include_self vs. group relationships). Updated 2026-02-08 with Block 2.3e (4 phases): Wizard dual-path entry screen (Weg A: free text / Weg B: guided), "Überrasch mich" on Screen 1 (storyType='surprise' → LLM chooses theme), "Überrasch mich" on Screen 2 (surprise_characters=true → 100% fictional characters), enrichment hint for normal character selection, promptBuilder handles surprise theme + surprise characters.*
+*Generated on 2026-02-06 by codebase analysis. Updated 2026-02-07 with Block 1 (multilingual DB model), translation consolidation, Block 2.1 (learning themes + content guardrails), Block 2.2 (story generation rule tables), Block 2.2b (difficulty_rules + age group adjustments), Block 2.3a (story classifications + kid_characters), Block 2.3c (dynamic prompt engine + CORE Slim v2 + story classifications + shared modules promptBuilder.ts + learningThemeRotation.ts). Updated 2026-02-08 with Block 2.3d full (5 phases): story_languages[] on kid_profiles, kid_characters role constraint migration (sibling/custom → family), character management UI in profile (stepped dialog, family sync), wizard redesign (expandable tiles with checkboxes, no save dialog), character role/relation/description passed to Edge Function, intelligent relationship logic in promptBuilder.ts (include_self vs. group relationships). Updated 2026-02-08 with Block 2.3e (4 phases): Wizard dual-path entry screen (Weg A: free text / Weg B: guided), "Überrasch mich" on Screen 1 (storyType='surprise' → LLM chooses theme), "Überrasch mich" on Screen 2 (surprise_characters=true → 100% fictional characters), enrichment hint for normal character selection, promptBuilder handles surprise theme + surprise characters. Updated 2026-02-08 with Block 2.4 (5 phases): Intelligent image generation – DB-driven image style rules (theme_rules image_*, image_style_rules character_style/complexity/forbidden), LLM image_plan output (character_anchor + world_anchor + scenes[]), imagePromptBuilder.ts shared module, parallel image generation (Promise.allSettled + 90s timeout), age-specific style modifiers (per year 5-12+), scene images in ReadingPage text flow (lazy, responsive, evenly distributed).*
