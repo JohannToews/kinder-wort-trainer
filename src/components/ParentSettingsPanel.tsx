@@ -43,8 +43,9 @@ const categoryIcons: Record<string, string> = {
 
 const ParentSettingsPanel = ({ language }: ParentSettingsPanelProps) => {
   const t = useTranslations(language);
-  const { selectedProfileId, kidAppLanguage } = useKidProfile();
-  const displayLang = (kidAppLanguage || language || 'de') as string;
+  const { selectedProfileId } = useKidProfile();
+  // Use admin language (passed via prop) for displaying labels - NOT the kid's language
+  const displayLang = (language || 'de') as string;
 
   // Learning themes state
   const [learningThemes, setLearningThemes] = useState<LearningTheme[]>([]);
