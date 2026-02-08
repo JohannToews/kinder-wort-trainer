@@ -13,6 +13,8 @@ interface VoiceInputFieldProps {
   placeholder?: string;
   language?: string;
   multiline?: boolean;
+  /** Compact mode: places mic button beside input instead of below */
+  compact?: boolean;
 }
 
 // Map language codes to speech recognition language codes
@@ -95,6 +97,7 @@ const VoiceInputField = ({
   placeholder,
   language = "de",
   multiline = false,
+  compact = false,
 }: VoiceInputFieldProps) => {
   const [isRecording, setIsRecording] = useState(false);
   const [interimTranscript, setInterimTranscript] = useState("");
@@ -271,6 +274,67 @@ const VoiceInputField = ({
     ? `${value}${value ? " " : ""}${interimTranscript}`
     : value;
 
+  // Compact layout: input + mic side by side
+  if (compact) {
+    return (
+      <div className="space-y-2">
+        {label && <Label className="text-sm font-medium">{label}</Label>}
+        
+        <div className="flex items-start gap-3">
+          {/* Input field */}
+          <div className="flex-1">
+            <InputComponent
+              value={isRecording ? value : displayValue}
+              onChange={(e) => {
+                if (!isRecording) {
+                  onChange(e.target.value);
+                }
+              }}
+              placeholder={placeholder}
+              className={multiline ? "min-h-[60px] text-sm resize-none" : "text-sm"}
+              readOnly={isRecording}
+            />
+            
+            {/* Live transcription display */}
+            {isRecording && interimTranscript && (
+              <div className="mt-2 p-2 bg-primary/10 rounded-lg border border-primary/30 animate-fade-in">
+                <p className="text-sm text-primary font-medium">
+                  {interimTranscript}
+                </p>
+              </div>
+            )}
+          </div>
+          
+          {/* Mic button - compact size */}
+          <div className="flex flex-col items-center gap-1 flex-shrink-0">
+            <Button
+              type="button"
+              className={`rounded-full transition-all duration-300 shadow-md ${
+                isRecording 
+                  ? "h-12 w-12 md:h-14 md:w-14 bg-destructive hover:bg-destructive/90 animate-pulse" 
+                  : "h-12 w-12 md:h-14 md:w-14 bg-primary hover:bg-primary/90 hover:scale-105"
+              }`}
+              onClick={isRecording ? stopRecording : startRecording}
+            >
+              {isRecording ? (
+                <MicOff className="h-5 w-5 md:h-6 md:w-6 text-destructive-foreground" />
+              ) : (
+                <Mic className="h-5 w-5 md:h-6 md:w-6 text-primary-foreground" />
+              )}
+            </Button>
+            
+            {isRecording && (
+              <p className="text-[10px] text-primary font-medium animate-pulse whitespace-nowrap">
+                🎤
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Original layout: input above, big mic button centered below
   return (
     <div className="space-y-4">
       {label && <Label className="text-base font-medium">{label}</Label>}

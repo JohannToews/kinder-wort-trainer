@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import VoiceInputField from "@/components/VoiceInputField";
@@ -321,16 +320,13 @@ const SpecialEffectsScreen = ({
           </div>
         )}
 
-        {/* Special Effects Checkboxes */}
-        <section className="space-y-3 md:space-y-4">
-          <h2 className="text-base md:text-lg font-baloo font-semibold text-center">
+        {/* Special Effects Checkboxes - Compact Grid */}
+        <section className="space-y-2 md:space-y-3">
+          <h2 className="text-sm md:text-base font-baloo font-semibold text-center">
             {t.effectsHeader}
           </h2>
-          <p className="text-xs md:text-sm text-muted-foreground text-center">
-            {t.effectsHint}
-          </p>
           
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 md:gap-4">
+          <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
             {attributeOptions.map((option) => {
               const isSelected = selectedAttributes.includes(option.id);
               return (
@@ -338,44 +334,39 @@ const SpecialEffectsScreen = ({
                   key={option.id}
                   onClick={() => toggleAttribute(option.id)}
                   className={cn(
-                    "flex flex-col items-center gap-2 p-4 md:p-5 rounded-xl md:rounded-2xl",
+                    "flex flex-col items-center gap-1 p-2 md:p-3 rounded-lg md:rounded-xl",
                     "border-2 transition-all duration-200",
                     "hover:scale-105 active:scale-95",
-                    "focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2",
+                    "focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-1",
                     isSelected
-                      ? "border-primary bg-primary/10 shadow-md"
+                      ? "border-primary bg-primary/10 shadow-sm"
                       : "border-border bg-card hover:border-primary/50"
                   )}
                 >
-                  <span className="text-3xl md:text-4xl">{option.emoji}</span>
-                  <div className="flex items-center gap-2">
-                    <Checkbox 
-                      checked={isSelected} 
-                      className="pointer-events-none"
-                    />
-                    <span className="text-xs md:text-sm font-medium text-center">
-                      {t[option.labelKey]}
-                    </span>
-                  </div>
+                  <span className="text-xl md:text-2xl">{option.emoji}</span>
+                  <span className="text-[10px] md:text-xs font-medium text-center leading-tight">
+                    {t[option.labelKey]}
+                  </span>
                 </button>
               );
             })}
           </div>
         </section>
 
-        {/* Additional Description with Voice Input */}
-        <section className="space-y-3 md:space-y-4">
-          <h2 className="text-base md:text-lg font-baloo font-semibold text-center">
+        {/* Additional Description with Voice Input - Compact Inline Layout */}
+        <section className="space-y-2">
+          <h2 className="text-sm md:text-base font-baloo font-semibold text-center">
             {t.descriptionHeader}
           </h2>
           
-          <div className="bg-card rounded-xl md:rounded-2xl p-4 md:p-5 border border-border">
+          <div className="bg-card rounded-xl md:rounded-2xl p-3 md:p-4 border border-border">
             <VoiceInputField
               value={additionalDescription}
               onChange={setAdditionalDescription}
               placeholder={t.descriptionPlaceholder}
               language={kidAppLanguage}
               multiline
+              compact
             />
           </div>
         </section>
