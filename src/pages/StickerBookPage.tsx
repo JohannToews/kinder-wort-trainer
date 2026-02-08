@@ -56,10 +56,12 @@ const StickerBookPage = () => {
   }, [selectedProfileId]);
 
   const completedStories = stories.filter(s => s.completed);
-  const totalStories = stories.length;
-
+  
   // Always show 3 empty placeholders after the last sticker
   const emptySlots = 3;
+  
+  // Show empty state when no completed stories exist
+  const showEmptyState = completedStories.length === 0;
 
   if (isLoading) {
     return (
@@ -96,7 +98,7 @@ const StickerBookPage = () => {
 
       <main className="p-4 max-w-4xl mx-auto">
         {/* Empty State */}
-        {totalStories === 0 ? (
+        {showEmptyState ? (
           <div className="flex flex-col items-center justify-center py-16 text-center">
             <img
               src="/mascot/6_Onboarding.png"
