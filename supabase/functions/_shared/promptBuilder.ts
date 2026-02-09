@@ -234,6 +234,16 @@ function friendsLabel(l: string): string {
   return map[l] || 'are friends with each other';
 }
 
+function friendOfLabel(l: string): string {
+  const map: Record<string, string> = { fr: 'ami(e) de', de: 'Freund(in) von', en: 'friend of', es: 'amigo/a de', it: 'amico/a di', bs: 'prijatelj/ica od', nl: 'vriend(in) van' };
+  return map[l] || 'friend of';
+}
+
+function singleFriendLabel(l: string): string {
+  const map: Record<string, string> = { fr: 'un(e) ami(e)', de: 'ein(e) Freund(in)', en: 'a friend', es: 'un(a) amigo/a', it: 'un(a) amico/a', bs: 'prijatelj/ica', nl: 'een vriend(in)' };
+  return map[l] || 'a friend';
+}
+
 function knownFigureLabel(l: string): string {
   const map: Record<string, string> = { fr: 'personnage connu', de: 'bekannte Figur', en: 'known character', es: 'personaje conocido', it: 'personaggio noto', bs: 'poznati lik', nl: 'bekend personage' };
   return map[l] || 'known character';
@@ -281,6 +291,8 @@ function buildCharactersSection(
 
       if (char.relation) {
         entry += ` — ${char.relation} ${ofWord(lang)} ${kidName}`;
+      } else if (char.role === 'friend') {
+        entry += ` — ${friendOfLabel(lang)} ${kidName}`;
       } else if (char.role === 'known_figure') {
         entry += ` — ${knownFigureLabel(lang)}`;
       }
@@ -333,7 +345,7 @@ function buildCharactersSection(
     if (friends.length >= 2) {
       lines.push(`${friends.map(fmtChar).join(` ${andWord(lang)} `)} — ${friendsLabel(lang)}`);
     } else if (friends.length === 1) {
-      lines.push(fmtChar(friends[0]));
+      lines.push(`${fmtChar(friends[0])} — ${singleFriendLabel(lang)}`);
     }
 
     // -- Known figures --
