@@ -9,14 +9,25 @@ export interface EarnedBadge {
 interface BadgeCelebrationModalProps {
   badges: EarnedBadge[];
   onDismiss: () => void;
+  language?: string;
 }
 
-const BadgeCelebrationModal = ({ badges, onDismiss }: BadgeCelebrationModalProps) => {
+const t: Record<string, { newSticker: string; wellDone: string; next: string; done: string }> = {
+  de: { newSticker: "Neuer Sticker!", wellDone: "Super gemacht! 🎉", next: "Nächster Sticker →", done: "Weiter" },
+  fr: { newSticker: "Nouveau sticker !", wellDone: "Bravo ! 🎉", next: "Sticker suivant →", done: "Continuer" },
+  en: { newSticker: "New Sticker!", wellDone: "Well done! 🎉", next: "Next Sticker →", done: "Continue" },
+  es: { newSticker: "¡Nuevo sticker!", wellDone: "¡Bien hecho! 🎉", next: "Siguiente sticker →", done: "Continuar" },
+  nl: { newSticker: "Nieuwe sticker!", wellDone: "Goed gedaan! 🎉", next: "Volgende sticker →", done: "Verder" },
+  it: { newSticker: "Nuovo sticker!", wellDone: "Ben fatto! 🎉", next: "Prossimo sticker →", done: "Continua" },
+  bs: { newSticker: "Novi stiker!", wellDone: "Odlično! 🎉", next: "Sljedeći stiker →", done: "Nastavi" },
+};
+
+const BadgeCelebrationModal = ({ badges, onDismiss, language = 'de' }: BadgeCelebrationModalProps) => {
   const [visible, setVisible] = useState(false);
   const [currentIdx, setCurrentIdx] = useState(0);
+  const tr = t[language] || t.de;
 
   useEffect(() => {
-    // Trigger entrance animation after mount
     requestAnimationFrame(() => setVisible(true));
   }, []);
 
@@ -72,46 +83,30 @@ const BadgeCelebrationModal = ({ badges, onDismiss }: BadgeCelebrationModalProps
         {/* Badge emoji */}
         <div
           className="mx-auto mb-3"
-          style={{
-            fontSize: 80,
-            lineHeight: 1,
-            animation: "badgePop 0.6s ease-out 0.3s both",
-          }}
+          style={{ fontSize: 80, lineHeight: 1, animation: "badgePop 0.6s ease-out 0.3s both" }}
         >
           {badge.emoji}
         </div>
 
-        {/* Title */}
-        <h2
-          className="font-fredoka text-[22px] font-bold mb-1"
-          style={{ color: "#2D1810" }}
-        >
-          Neuer Sticker!
+        <h2 className="font-fredoka text-[22px] font-bold mb-1" style={{ color: "#2D1810" }}>
+          {tr.newSticker}
         </h2>
 
-        {/* Badge name */}
-        <p
-          className="font-nunito text-[18px] font-bold mb-2"
-          style={{ color: "#F97316" }}
-        >
+        <p className="font-nunito text-[18px] font-bold mb-2" style={{ color: "#F97316" }}>
           {badge.name}
         </p>
 
         {/* Fablino mini */}
         <div className="flex items-end justify-center gap-2 mt-3 mb-4">
           <FablinoMascot src="/mascot/6_Onboarding.png" size="sm" className="!max-h-[50px]" />
-          <div
-            className="bg-orange-50 rounded-xl px-3 py-2 relative"
-            style={{ border: "1px solid #FDBA74" }}
-          >
+          <div className="bg-orange-50 rounded-xl px-3 py-2 relative" style={{ border: "1px solid #FDBA74" }}>
             <p className="text-[13px] font-semibold" style={{ color: "#92400E" }}>
-              Super gemacht! 🎉
+              {tr.wellDone}
             </p>
             <div
               className="absolute -bottom-1.5 left-4"
               style={{
-                width: 0,
-                height: 0,
+                width: 0, height: 0,
                 borderLeft: "6px solid transparent",
                 borderRight: "6px solid transparent",
                 borderTop: "7px solid #FFF7ED",
@@ -120,24 +115,20 @@ const BadgeCelebrationModal = ({ badges, onDismiss }: BadgeCelebrationModalProps
           </div>
         </div>
 
-        {/* Continue button */}
         <button
           onClick={handleContinue}
           className="w-full py-3 rounded-xl font-bold text-white text-[16px] active:scale-95 transition-transform"
           style={{ background: "linear-gradient(135deg, #FF8C42, #FF6B00)" }}
         >
-          {currentIdx < badges.length - 1 ? "Nächster Sticker →" : "Weiter"}
+          {currentIdx < badges.length - 1 ? tr.next : tr.done}
         </button>
 
-        {/* Badge counter */}
         {badges.length > 1 && (
           <p className="text-[11px] font-medium mt-2" style={{ color: "#aaa" }}>
             {currentIdx + 1} / {badges.length}
           </p>
         )}
       </div>
-
-      {/* Keyframes (gentleBounce, confettiFall, badgePop) are defined globally in index.css */}
     </div>
   );
 };
