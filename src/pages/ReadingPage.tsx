@@ -662,7 +662,7 @@ const ReadingPage = () => {
     if (!currentSelection || !selectionRange) return;
 
     const cleanText = currentSelection
-      .replace(/[.,!?;:'"«»\n\r]/g, " ")
+      .replace(/[.,!?;:"«»\n\r]/g, " ")
       .replace(/\s+/g, " ")
       .trim()
       .toLowerCase();
@@ -764,7 +764,7 @@ const ReadingPage = () => {
       selection.removeAllRanges();
     }
     
-    const cleanWord = word.replace(/[.,!?;:'"«»]/g, "").toLowerCase();
+    const cleanWord = word.replace(/[.,!?;:"«»]/g, "").toLowerCase();
     
     if (!cleanWord) return;
 
