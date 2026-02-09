@@ -1010,11 +1010,13 @@ const ReadingPage = () => {
                       onClick={(e) => handleWordClick(word, e)}
                       className={`word-highlight ${markingClass}`}
                       language={textLang}
+                      data-word-clickable
                     />
                   ) : (
                     <span
                       key={wIndex}
                       data-position={positionKey}
+                      data-word-clickable
                       onClick={(e) => handleWordClick(word, e)}
                       className={`word-highlight ${markingClass}`}
                     >
