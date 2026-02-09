@@ -324,7 +324,7 @@ const CharacterSelectionScreen = ({
       </div>
 
       {/* Vertically centered content */}
-      <div className="flex-1 flex flex-col items-center justify-center px-4 max-w-lg mx-auto w-full gap-4 pb-20">
+      <div className="flex-1 flex flex-col items-stretch px-5 max-w-[480px] mx-auto w-full gap-4 pb-20">
         {/* Fablino Header */}
         {fablinoMessage && viewState === "main" && (
           <FablinoPageHeader
