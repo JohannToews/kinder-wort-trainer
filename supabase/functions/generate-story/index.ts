@@ -1382,7 +1382,8 @@ Antworte NUR mit dem erweiterten Text (ohne Titel, ohne JSON-Format).`;
 
     // ================== Block 2.4: LOAD IMAGE RULES FROM DB ==================
     function getAgeGroup(age: number): string {
-      if (age <= 6) return '4-6';
+      if (age <= 5) return '4-5';
+      if (age === 6) return '6';
       if (age <= 9) return '7-9';
       return '10-12';
     }
