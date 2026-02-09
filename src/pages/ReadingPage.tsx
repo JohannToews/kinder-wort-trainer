@@ -1316,6 +1316,7 @@ const ReadingPage = () => {
                       if (totalStars > 0) {
                         await actions.awardStars(totalStars, isPerfect ? 'quiz_perfect' : 'quiz_passed');
                       }
+                      await actions.markQuizPassed();
                       
                       // Also save to user_results for history/tracking
                       if (totalStars > 0) {

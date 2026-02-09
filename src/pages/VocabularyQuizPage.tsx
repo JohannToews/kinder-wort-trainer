@@ -617,6 +617,7 @@ const VocabularyQuizPage = () => {
         if (totalStars > 0) {
           await actions.awardStars(totalStars, isPerfect ? 'quiz_perfect' : 'quiz_passed');
         }
+        await actions.markQuizPassed();
         
         // Trigger big celebration!
         setTimeout(() => triggerBigConfetti(), 300);

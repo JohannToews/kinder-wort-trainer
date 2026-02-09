@@ -72,7 +72,7 @@ const HomeFablino = () => {
   // Stats
   const stars = gamificationState?.stars ?? 0;
   const storiesCompleted = gamificationState?.storiesCompleted ?? 0;
-  const quizzesPassed = 0; // Placeholder, could be loaded from user_results
+  const quizzesPassed = gamificationState?.quizzesPassed ?? 0;
 
   return (
     <div 

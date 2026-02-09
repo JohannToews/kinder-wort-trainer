@@ -61,6 +61,7 @@ export interface GamificationState {
   isStreakDay: boolean;
   storiesCompleted: number;
   wordsLearned: number;
+  quizzesPassed: number;
 }
 
 interface PendingLevelUp {
@@ -142,6 +143,7 @@ export const useGamification = () => {
           isStreakDay: progressData.last_read_date === today,
           storiesCompleted: progressData.stories_completed ?? progressData.stories_read_total ?? 0,
           wordsLearned: progressData.words_learned ?? 0,
+          quizzesPassed: progressData.quizzes_passed ?? 0,
         });
       } else {
         // Create initial progress record
@@ -170,6 +172,7 @@ export const useGamification = () => {
             isStreakDay: false,
             storiesCompleted: 0,
             wordsLearned: 0,
+            quizzesPassed: 0,
           });
         }
       }
@@ -345,6 +348,24 @@ export const useGamification = () => {
     } : null);
   }, [selectedProfileId, state]);
 
+  // ── Mark quiz passed ──
+  const markQuizPassed = useCallback(async () => {
+    if (!selectedProfileId || !state) return;
+
+    const newCount = state.quizzesPassed + 1;
+    await supabase
+      .from("user_progress")
+      .update({ quizzes_passed: newCount })
+      .eq("kid_profile_id", selectedProfileId);
+
+    setState(prev => prev ? {
+      ...prev,
+      quizzesPassed: newCount,
+    } : null);
+
+    console.log(`[useGamification] Quiz passed (total: ${newCount})`);
+  }, [selectedProfileId, state]);
+
   // ── Clear pending level up ──
   const clearPendingLevelUp = useCallback(() => {
     setPendingLevelUp(null);
@@ -359,6 +380,7 @@ export const useGamification = () => {
       checkAndUpdateStreak,
       markStoryComplete,
       markWordLearned,
+      markQuizPassed,
     },
     clearPendingLevelUp,
     refreshProgress: loadProgress,
@@ -383,7 +405,7 @@ export const useGamification = () => {
       },
       storiesReadTotal: state.storiesCompleted,
       quizzesPerfect: 0,
-      quizzesPassed: 0,
+      quizzesPassed: state.quizzesPassed,
     } : null,
     awardStoryPoints: async (storyId: string): Promise<number> => {
       await awardStars(STAR_REWARDS.STORY_READ, 'story_read');
