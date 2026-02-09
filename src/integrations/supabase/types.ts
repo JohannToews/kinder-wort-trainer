@@ -23,6 +23,8 @@ export type Database = {
           id: string
           language: string
           max_age: number
+          max_characters: number
+          max_plot_twists: number
           max_sentence_length: number
           max_word_count: number
           min_age: number
@@ -30,6 +32,7 @@ export type Database = {
           narrative_guidelines: string
           narrative_perspective: string | null
           paragraph_length: string | null
+          plot_complexity: string
           sentence_structures: string
           updated_at: string | null
         }
@@ -41,6 +44,8 @@ export type Database = {
           id?: string
           language: string
           max_age: number
+          max_characters?: number
+          max_plot_twists?: number
           max_sentence_length: number
           max_word_count: number
           min_age: number
@@ -48,6 +53,7 @@ export type Database = {
           narrative_guidelines: string
           narrative_perspective?: string | null
           paragraph_length?: string | null
+          plot_complexity?: string
           sentence_structures: string
           updated_at?: string | null
         }
@@ -59,6 +65,8 @@ export type Database = {
           id?: string
           language?: string
           max_age?: number
+          max_characters?: number
+          max_plot_twists?: number
           max_sentence_length?: number
           max_word_count?: number
           min_age?: number
@@ -66,6 +74,7 @@ export type Database = {
           narrative_guidelines?: string
           narrative_perspective?: string | null
           paragraph_length?: string | null
+          plot_complexity?: string
           sentence_structures?: string
           updated_at?: string | null
         }
