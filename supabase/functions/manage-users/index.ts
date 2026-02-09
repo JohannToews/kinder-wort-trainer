@@ -26,9 +26,9 @@ Deno.serve(async (req) => {
         .from("user_roles")
         .select("user_id, role");
 
-      const usersWithRoles = users?.map(user => ({
+      const usersWithRoles = users?.map((user: any) => ({
         ...user,
-        role: roles?.find(r => r.user_id === user.id)?.role || 'standard'
+        role: roles?.find((r: any) => r.user_id === user.id)?.role || 'standard'
       }));
 
       return new Response(JSON.stringify({ users: usersWithRoles }), {
