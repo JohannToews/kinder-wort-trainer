@@ -628,7 +628,7 @@ const CreateStoryPage = () => {
   return (
     <div className="min-h-screen flex flex-col items-center font-nunito" style={{ background: "linear-gradient(160deg, #FFF7ED 0%, #FEF3C7 50%, #EFF6FF 100%)" }}>
       {currentScreen === "entry" && (
-        <div className="w-full max-w-[480px] px-5 py-6 flex flex-col">
+        <div className="w-full max-w-[480px] px-5 py-6 flex flex-col mx-auto">
           {/* Back button */}
           <button onClick={() => navigate("/")} className="p-2 -ml-2 rounded-lg hover:bg-white/30 transition-colors w-fit mb-1">
             <svg className="h-5 w-5 text-gray-700" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>

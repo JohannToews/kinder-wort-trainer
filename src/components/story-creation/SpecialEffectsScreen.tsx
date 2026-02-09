@@ -234,7 +234,7 @@ const SpecialEffectsScreen = ({
       </div>
 
       {/* Vertically centered content – consistent with all other screens */}
-      <div className="flex-1 flex flex-col items-center justify-center px-4 max-w-md mx-auto w-full gap-4 pb-6">
+      <div className="flex-1 flex flex-col items-stretch px-5 max-w-[480px] mx-auto w-full gap-4 pb-6">
         {/* Fablino Header – identical to Home, Entry, Theme screens */}
         {fablinoMessage && (
           <FablinoPageHeader
