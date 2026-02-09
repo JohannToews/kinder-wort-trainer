@@ -9,7 +9,7 @@ import { useGamification } from "@/hooks/useGamification";
 import FablinoReaction from "@/components/FablinoReaction";
 import MigrationBanner from "@/components/MigrationBanner";
 
-const Index = () => {
+const HomeClassic = () => {
   const navigate = useNavigate();
   const { user, needsMigration } = useAuth();
   const { colors: paletteColors } = useColorPalette();
@@ -263,4 +263,4 @@ const Index = () => {
   );
 };
 
-export default Index;
+export default HomeClassic;

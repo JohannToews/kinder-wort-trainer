@@ -6,7 +6,9 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import { KidProfileProvider } from "@/hooks/useKidProfile";
 import ProtectedRoute from "@/components/ProtectedRoute";
-import Index from "./pages/Index";
+import HomeClassic from "./pages/HomeClassic";
+import HomeFablino from "./pages/HomeFablino";
+import { FEATURES } from "./config/features";
 import AdminPage from "./pages/AdminPage";
 import StorySelectPage from "./pages/StorySelectPage";
 import ReadingPage from "./pages/ReadingPage";
@@ -44,7 +46,7 @@ const App = () => (
             <Route path="/s/:token" element={<ShareRedirectPage />} />
             <Route path="/" element={
               <ProtectedRoute>
-                <Index />
+                {FEATURES.NEW_FABLINO_HOME ? <HomeFablino /> : <HomeClassic />}
               </ProtectedRoute>
             } />
             <Route path="/admin" element={
