@@ -970,6 +970,7 @@ const VocabularyQuizPage = () => {
         <BadgeCelebrationModal
           badges={pendingBadges}
           onDismiss={() => setPendingBadges([])}
+          language={kidAppLanguage}
         />
       )}
     </div>

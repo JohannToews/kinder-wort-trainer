@@ -1564,6 +1564,7 @@ const ReadingPage = () => {
         <BadgeCelebrationModal
           badges={pendingBadges}
           onDismiss={() => setPendingBadges([])}
+          language={textLang}
         />
       )}
     </div>
