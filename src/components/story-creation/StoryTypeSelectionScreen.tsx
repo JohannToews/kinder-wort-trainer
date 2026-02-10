@@ -207,9 +207,9 @@ const StoryTypeSelectionScreen = ({
           />
         )}
 
-        {/* Main Category Grid – 3 columns on tablet (3×2), 2 columns on mobile */}
+        {/* Main Category Grid – 2x3 with larger tiles */}
         {viewState === "main" && (
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-3 w-full">
+          <div className="grid grid-cols-2 gap-4 w-full">
             {mainCategoryTiles.map((tile) => (
               <CharacterTile
                 key={tile.type}
@@ -227,7 +227,7 @@ const StoryTypeSelectionScreen = ({
         {/* Educational Topics Grid – 3 columns on tablet, 2 on mobile */}
         {viewState === "educational" && (
           <div className="w-full space-y-3">
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 gap-4">
               {educationalTopicTiles.map((tile) => (
                 <CharacterTile
                   key={tile.type}
