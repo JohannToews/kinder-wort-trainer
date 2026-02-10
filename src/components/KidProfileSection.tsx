@@ -514,6 +514,150 @@ const KidProfileSection = ({ language, userId, onProfileUpdate }: KidProfileSect
     await loadCharacters();
   };
 
+  /**
+   * When a NEW kid profile is created, copy all family members from existing sibling profiles.
+   * Rules:
+   * - Shared family (Mama, Papa, Oma, Opa, Tante, Onkel, Cousin, Cousine): copy as-is
+   * - Siblings (Bruder/Schwester): copy all existing siblings to the new kid,
+   *   AND add the new kid as sibling to all existing kid profiles
+   */
+  const copyFamilyMembersToNewProfile = async (newProfileId: string, newProfile: KidProfile) => {
+    // 1. Get all OTHER kid profiles for this user
+    const { data: allKidProfiles } = await supabase
+      .from('kid_profiles')
+      .select('id, name, age, gender')
+      .eq('user_id', userId);
+
+    const otherProfiles = (allKidProfiles || []).filter(p => p.id !== newProfileId);
+    if (otherProfiles.length === 0) return; // First kid – nothing to copy
+
+    // 2. Pick the first sibling as source for shared family members
+    const sourceProfileId = otherProfiles[0].id;
+    const { data: sourceChars } = await supabase
+      .from('kid_characters')
+      .select('*')
+      .eq('kid_profile_id', sourceProfileId)
+      .eq('is_active', true);
+
+    if (!sourceChars || sourceChars.length === 0) return;
+
+    const siblingRelations = ['Bruder', 'Schwester'];
+
+    // 3. Copy shared family members (non-sibling) to the new profile
+    const sharedFamily = sourceChars.filter(
+      c => c.role === 'family' && !siblingRelations.includes(c.relation || '')
+    );
+    for (const fm of sharedFamily) {
+      // Check for duplicates first
+      const { data: existing } = await supabase
+        .from('kid_characters')
+        .select('id')
+        .eq('kid_profile_id', newProfileId)
+        .eq('name', fm.name)
+        .eq('role', 'family')
+        .eq('is_active', true)
+        .maybeSingle();
+
+      if (!existing) {
+        await supabase.from('kid_characters').insert({
+          kid_profile_id: newProfileId,
+          name: fm.name,
+          role: 'family',
+          relation: fm.relation,
+          age: fm.age,
+          description: fm.description,
+          is_active: true,
+          sort_order: fm.sort_order || 0,
+        } as any);
+      }
+    }
+
+    // 4. Copy existing siblings to the new profile
+    const existingSiblings = sourceChars.filter(
+      c => c.role === 'family' && siblingRelations.includes(c.relation || '')
+    );
+    for (const sib of existingSiblings) {
+      const { data: existing } = await supabase
+        .from('kid_characters')
+        .select('id')
+        .eq('kid_profile_id', newProfileId)
+        .eq('name', sib.name)
+        .eq('role', 'family')
+        .in('relation', siblingRelations)
+        .eq('is_active', true)
+        .maybeSingle();
+
+      if (!existing) {
+        await supabase.from('kid_characters').insert({
+          kid_profile_id: newProfileId,
+          name: sib.name,
+          role: 'family',
+          relation: sib.relation,
+          age: sib.age,
+          description: sib.description,
+          is_active: true,
+          sort_order: sib.sort_order || 0,
+        } as any);
+      }
+    }
+
+    // 5. Also add the SOURCE kid profile(s) as siblings to the new kid
+    //    (each existing kid profile is a sibling of the new one)
+    for (const otherKid of otherProfiles) {
+      const otherRelation = otherKid.gender === 'female' ? 'Schwester' : 'Bruder';
+
+      const { data: existing } = await supabase
+        .from('kid_characters')
+        .select('id')
+        .eq('kid_profile_id', newProfileId)
+        .eq('name', otherKid.name)
+        .eq('role', 'family')
+        .in('relation', siblingRelations)
+        .eq('is_active', true)
+        .maybeSingle();
+
+      if (!existing) {
+        await supabase.from('kid_characters').insert({
+          kid_profile_id: newProfileId,
+          name: otherKid.name,
+          role: 'family',
+          relation: otherRelation,
+          age: otherKid.age || null,
+          description: null,
+          is_active: true,
+          sort_order: 0,
+        } as any);
+      }
+    }
+
+    // 6. Add the NEW kid as sibling to ALL existing kid profiles
+    const newKidRelation = newProfile.gender === 'female' ? 'Schwester' : 'Bruder';
+    for (const otherKid of otherProfiles) {
+      const { data: existing } = await supabase
+        .from('kid_characters')
+        .select('id')
+        .eq('kid_profile_id', otherKid.id)
+        .eq('name', newProfile.name)
+        .eq('role', 'family')
+        .in('relation', siblingRelations)
+        .eq('is_active', true)
+        .maybeSingle();
+
+      if (!existing) {
+        await supabase.from('kid_characters').insert({
+          kid_profile_id: otherKid.id,
+          name: newProfile.name,
+          role: 'family',
+          relation: newKidRelation,
+          age: newProfile.age || null,
+          description: null,
+          is_active: true,
+          sort_order: 0,
+        } as any);
+      }
+    }
+  };
+
   const saveProfile = async () => {
     setIsSaving(true);
     
@@ -630,6 +774,11 @@ const KidProfileSection = ({ language, userId, onProfileUpdate }: KidProfileSect
         setCoverPreview(coverUrl);
       }
       
+      // ── Family sync: when creating a NEW kid profile, copy family members from existing siblings ──
+      if (!currentProfile.id && savedData.id) {
+        await copyFamilyMembersToNewProfile(savedData.id, updatedProfile);
+      }
+
       // Refresh global kid profiles context so other pages see the update
       await refreshGlobalProfiles();
       
