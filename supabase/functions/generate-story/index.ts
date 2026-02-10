@@ -13,7 +13,8 @@ const LOVABLE_AI_GATEWAY = "https://ai.gateway.lovable.dev/v1/chat/completions";
 const GEMINI_IMAGE_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent";
 
 // Helper function to count words in a text
-function countWords(text: string): number {
+function countWords(text: string | undefined | null): number {
+  if (!text) return 0;
   return text.trim().split(/\s+/).filter(word => word.length > 0).length;
 }
 
@@ -1276,6 +1277,12 @@ Wähle genau 10 Vokabelwörter aus.`;
       perf.parsing = (perf.parsing || 0) + parseDuration;
       console.log(`[generate-story] [PERF] Response parsing: ${parseDuration}ms`);
       // [PERF] Response parsing - END
+
+      // Ensure required fields exist after parsing
+      if (!story.title) story.title = "Untitled";
+      if (!story.content) story.content = "";
+      if (!Array.isArray(story.questions)) story.questions = [];
+      if (!Array.isArray(story.vocabulary)) story.vocabulary = [];
 
       // Quality check: Count words in the story content
       const wordCountActual = countWords(story.content);
