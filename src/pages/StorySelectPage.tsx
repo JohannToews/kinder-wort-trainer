@@ -64,9 +64,9 @@ const StorySelectPage = () => {
       .eq("is_deleted", false)
       .order("created_at", { ascending: false });
     
-    // Filter by selected kid profile, but also include legacy stories (kid_profile_id = null)
+    // Filter strictly by selected kid profile
     if (selectedProfileId) {
-      query = query.or(`kid_profile_id.eq.${selectedProfileId},kid_profile_id.is.null`);
+      query = query.eq("kid_profile_id", selectedProfileId);
     }
     
     // Build completions query (runs in parallel)
