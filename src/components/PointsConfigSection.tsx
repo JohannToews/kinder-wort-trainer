@@ -82,10 +82,10 @@ const PointsConfigSection = ({ language }: PointsConfigSectionProps) => {
 
     try {
       for (const setting of settings) {
-        const { error } = await supabase
-          .from("point_settings" as any)
-          .update({ value: setting.value } as any)
-          .eq("setting_key" as any, setting.setting_key);
+        const { error } = await (supabase
+          .from("point_settings" as any) as any)
+          .update({ value: setting.value })
+          .eq("setting_key", setting.setting_key);
 
         if (error) {
           console.error("Error saving setting:", error);
