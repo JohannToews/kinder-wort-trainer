@@ -58,7 +58,7 @@ kinder-wort-trainer/
 │   │   ├── story-sharing/             # 5 files – QR code sharing, import/export
 │   │   ├── BadgeCelebrationModal.tsx  # Fullscreen modal celebrating new badges (confetti, animations)
 │   │   ├── ComprehensionQuiz.tsx      # Story comprehension quiz
-│   │   ├── FablinoMascot.tsx          # Reusable mascot image (sm/md/lg sizing, bounce animation)
+│   │   ├── FablinoMascot.tsx          # Reusable mascot image (sm=64px/md=100px/lg=130px, bounce animation)
 │   │   ├── FablinoPageHeader.tsx      # Mascot + SpeechBubble header for story creation pages
 │   │   ├── FablinoReaction.tsx        # Animated mascot reactions (celebrate, encourage, levelUp…)
 │   │   ├── SpeechBubble.tsx           # Reusable speech bubble (hero/tip variants)
@@ -70,7 +70,7 @@ kinder-wort-trainer/
 │   │   ├── NavLink.tsx                # react-router NavLink wrapper
 │   │   ├── PageHeader.tsx             # Standard page header (title, back button)
 │   │   ├── ParentSettingsPanel.tsx     # Learning themes & content guardrails (Block 2.1)
-│   │   ├── PointsConfigSection.tsx    # Admin: point values per category/difficulty
+│   │   ├── PointsConfigSection.tsx    # Admin: configurable star values (point_settings table, 8 entries)
 │   │   ├── ProtectedRoute.tsx         # Route guard
 │   │   ├── QuizCompletionResult.tsx   # Result display after quiz
 │   │   ├── ReadingSettings.tsx        # Font size, line spacing, syllable mode
@@ -85,6 +85,8 @@ kinder-wort-trainer/
 │   │   └── MigrationBanner.tsx        # Migration notification banner
 │   ├── config/
 │   │   └── features.ts                # Feature flags (NEW_FABLINO_HOME: true)
+│   ├── constants/
+│   │   └── design-tokens.ts           # FABLINO_COLORS, FABLINO_SIZES, FABLINO_STYLES
 │   ├── hooks/
 │   │   ├── useAuth.tsx                # Auth context (login/logout, session)
 │   │   ├── useKidProfile.tsx          # Kid profile management (multi-profile, language derivation)
@@ -119,7 +121,7 @@ kinder-wort-trainer/
 │   │   │   └── learningThemeRotation.ts # Block 2.3c: Learning theme rotation
 │   │   ├── generate-story/            # Main story generation (~1409 lines)
 │   │   └── …                          # 14 more Edge Functions
-│   └── migrations/                    # 60 SQL migrations + 3 standalone RPC files
+│   └── migrations/                    # 67 SQL migrations (incl. 7 Gamification Phase 1 migrations)
 ├── Architecture.md                    # This file
 ├── package.json
 ├── vite.config.ts
@@ -146,7 +148,7 @@ kinder-wort-trainer/
 
 | Route | Page | Description |
 |-------|------|-------------|
-| `/` | HomeFablino (or HomeClassic) | Home with Fablino mascot (feature flag controlled) |
+| `/` | HomeFablino (or HomeClassic) | Home with Fablino mascot via FablinoPageHeader (mascotSize="md"), profile switcher, action buttons (design tokens), weekly tracker card. Feature flag controlled. |
 | `/admin` | AdminPage | Admin dashboard (Profile, Erziehung, Stories, Settings, Account, System tabs) |
 | `/stories` | StorySelectPage | Story browser (fiction/non-fiction/series) |
 | `/read/:id` | ReadingPage | Story reading interface (word tap, audio, comprehension quiz, scene images) |
@@ -196,6 +198,7 @@ kinder-wort-trainer/
 │  30+ tables          │
 │  3 enums             │
 │  3 RPC functions     │
+│  (Phase 1 rewritten) │
 │  RLS policies        │
 └──────────────────────┘
 ```
@@ -316,6 +319,7 @@ ReadingPage.tsx loads story by ID
         ├── Comprehension Quiz (after "finished reading")
         │     • Multiple choice from comprehension_questions
         │     • Awards stars via supabase.rpc('log_activity')
+        │     • ⚠️ Still sends 'story_completed'/'quiz_passed' (RPC expects 'story_read'/'quiz_complete')
         │     • Triggers badge check → BadgeCelebrationModal
         │
         └── Series continuation (if ending_type === 'C')
@@ -329,51 +333,88 @@ VocabularyQuizPage.tsx
   2. For each word: call generate-quiz (Gemini 2.0 Flash → 3 wrong options)
   3. Quiz execution: 4 options, immediate feedback
   4. Completion:
-     • Pass threshold: 80%
+     • Pass threshold: 80% (now configurable via point_settings.quiz_pass_threshold)
      • Awards stars via supabase.rpc('log_activity')
+     • ⚠️ Still sends 'quiz_passed'/'quiz_failed' (RPC expects 'quiz_complete')
      • Triggers badge check → BadgeCelebrationModal
      • Words answered correctly 3x → marked as learned
 ```
 
-### 4. Gamification Flow (Star System)
+### 4. Gamification Flow (Star System) – Phase 1 Backend Complete
 
 ```
 supabase.rpc('log_activity') is called from:
-  • ReadingPage (story_completed, quiz_passed)
-  • VocabularyQuizPage (quiz_passed)
+  • ReadingPage (story_read, quiz_complete)
+  • VocabularyQuizPage (quiz_complete)
+  ⚠️ NOTE: Frontend still sends 'story_completed'/'quiz_passed' – needs Phase 2 update!
 
 log_activity(p_child_id, p_activity_type, p_stars, p_metadata):
-  1. Insert into user_results (activity log)
-  2. Upsert user_progress (total_stars, streak)
-  3. Streak logic:
+  1. Load star values from point_settings (DB-configurable, not hardcoded)
+     • story_read → stars_story_read (default 1)
+     • quiz_complete → stars based on score_percent from metadata:
+       - 100% → stars_quiz_perfect (default 2)
+       - ≥80% → stars_quiz_passed (default 1)
+       - <80% → stars_quiz_failed (default 0)
+  2. Load/create user_progress
+  3. Weekly reset check (Monday = new week → reset counters)
+  4. Update counters:
+     • story_read → total_stories_read++, weekly_stories_count++, languages_read[]
+     • quiz_complete (100%) → consecutive_perfect_quizzes++, total_perfect_quizzes++
+     • quiz_complete (<100%) → consecutive_perfect_quizzes = 0
+  5. Streak logic (via last_read_date):
      • Same day → no change
      • Consecutive day → streak + 1
      • Gap > 1 day → streak resets to 1
-  4. Call check_and_award_badges(p_child_id):
-     • Compare current stats against all unearned badges
-     • Award new badges (insert into user_badges with is_new=true)
-  5. Return { total_stars, current_streak, new_badges }
+  6. Weekly bonus (highest only, not cumulative):
+     • 3 stories/week → weekly_bonus_3 (default 3 stars)
+     • 5 stories/week → weekly_bonus_5 (default 5 stars, minus already-claimed)
+     • 7 stories/week → weekly_bonus_7 (default 8 stars, minus already-claimed)
+  7. Add stars (base + bonus) to total_stars
+  8. Insert activity log into user_results
+  9. Call check_and_award_badges(p_child_id)
+  10. Return { total_stars, stars_earned, bonus_stars, weekly_bonus, 
+              current_streak, weekly_stories_count, new_badges[] }
 
-Star rewards (hardcoded in useGamification.tsx):
-  STORY_READ:   2 stars
-  QUIZ_CORRECT: 1 star per correct answer
-  QUIZ_PERFECT: 3 stars bonus (all correct)
-  WORD_LEARNED: 1 star
-  STREAK_BONUS: 1 star (daily from day 2+)
+check_and_award_badges(p_child_id):
+  Checks all 23 badges across 4 categories:
+  • milestone (9): total_stars thresholds (5→300)
+  • weekly (3): weekly_stories ≥ 3/5/7 (repeatable per week)
+  • streak (4): streak_days ≥ 3/7/14/30
+  • special (7): total_stories_read, consecutive_perfect_quiz, 
+                 total_perfect_quiz, series_completed, languages_read
+  Awards bonus_stars per badge. Returns [{id, name, emoji, category, 
+    bonus_stars, fablino_message, frame_color}]
 
-Levels (5 tiers, star-based thresholds):
-  1. Bücherfuchs     🦊  (0+ stars)
-  2. Geschichtenentdecker 🧭  (25+ stars)
-  3. Leseheld        🦸  (75+ stars)
-  4. Wortmagier      🪄  (150+ stars)
-  5. Fablino Meister 👑  (300+ stars)
+Star rewards (now DB-configurable via point_settings):
+  story_read:      1 star (was 2 hardcoded)
+  quiz_perfect:    2 stars (100%)
+  quiz_passed:     1 star (≥80%)
+  quiz_failed:     0 stars (<80%)
+  weekly_bonus_3:  3 bonus stars
+  weekly_bonus_5:  5 bonus stars
+  weekly_bonus_7:  8 bonus stars
+
+Levels (5 tiers, star-based thresholds + unlock features):
+  1. Bücherfuchs        🦊  (0+ stars)   Bronze    — no unlock
+  2. Geschichtenentdecker 🔍 (25+ stars)  Silver   — unlock: sharing
+  3. Leseheld            🛡️ (75+ stars)   Gold     — unlock: series
+  4. Wortmagier          ✨  (150+ stars)  Crystal  — unlock: special_themes
+  5. Fablino-Meister     👑  (300+ stars)  Platinum — unlock: secret_story
 
 ResultsPage.tsx (via get_results_page RPC):
   • Level card with animated star count + progress bar
-  • Level roadmap (6 DB levels with staggered fadeIn animations)
+  • Level roadmap (5 levels with staggered fadeIn animations)
   • Earned badges section (with "Neu" indicator, auto-cleared after 2s)
-  • Badge hints (next 3 unearned badges with progress)
-  • BadgeCelebrationModal for newly earned badges
+  • Badge hints (next unearned badges with progress)
+  ⚠️ NOTE: ResultsPage still uses old interface (allBadgeCount=11) – needs Phase 2 update!
+
+⚠️ KNOWN BREAKING CHANGES after Phase 1 backend:
+  • useGamification.tsx reads total_points (renamed to total_stars) – WILL BREAK
+  • ReadingPage sends activity_type 'story_completed' (RPC expects 'story_read')
+  • VocabularyQuizPage sends 'quiz_passed'/'quiz_failed' (RPC expects 'quiz_complete')
+  • ResultsPage hardcodes allBadgeCount=11 (now 23 badges)
+  • useResultsPage interface doesn't match new get_results_page response
+  → All fixed in Phase 2 (Frontend Integration)
 ```
 
 ---
@@ -409,7 +450,7 @@ ResultsPage.tsx (via get_results_page RPC):
 - **Edge Functions**: 15 Deno functions
 - **Storage**: `covers` bucket for story/profile images
 - **Realtime**: Enabled for `stories` table (generation status updates)
-- **RPC Functions**: `log_activity`, `check_and_award_badges`, `get_results_page`
+- **RPC Functions**: `log_activity`, `check_and_award_badges`, `get_results_page` (all 3 rewritten in Gamification Phase 1)
 
 ---
 
@@ -440,8 +481,10 @@ user_profiles (1) ──── (N) kid_profiles
               ├── (N) consistency_check_results
               └── (N) stories (self-ref via series_id)
 
-levels                      ← (5 rows: star-based level definitions)
-badges                      ← (11 rows: badge/sticker definitions)
+levels                      ← (5 rows: star-based level definitions + unlock_feature)
+badges                      ← (23 rows: 4 categories – milestone/weekly/streak/special)
+point_settings              ← (8 rows: configurable star values, setting_key/value)
+point_settings_legacy       ← (old category/difficulty/points schema, kept for reference)
 
 learning_themes              ← Block 2.1 (15 entries)
 content_themes_by_level      ← Block 2.1 (~19 entries)
@@ -469,13 +512,14 @@ difficulty_rules             ← Block 2.2b (9 entries: 3 levels × 3 langs)
 
 | Table | Purpose | Key Columns |
 |-------|---------|-------------|
-| `levels` | Level definitions (5 tiers) | id, name, emoji, stars_required, sort_order, color |
-| `badges` | Badge/sticker definitions (11 entries) | id, name, emoji, description, category, condition_type, condition_value, sort_order |
-| `user_badges` | Earned badges per child | child_id (FK), badge_id (FK), earned_at, is_new (boolean) |
-| `user_progress` | Aggregated stats per child | kid_profile_id, total_stars, current_streak, longest_streak, last_activity_date |
+| `levels` | Level definitions (5 tiers) | id (SERIAL), name, emoji, stars_required (0/25/75/150/300), sort_order, color, **unlock_feature** (sharing/series/special_themes/secret_story), icon_url |
+| `badges` | Badge/sticker definitions (23 entries) | id (UUID), name, emoji, description, **category** (milestone/weekly/streak/special), condition_type, condition_value, sort_order, **bonus_stars**, **fablino_message**, **frame_color**, **repeatable** (boolean) |
+| `user_badges` | Earned badges per child | child_id (FK), badge_id (FK CASCADE), earned_at, is_new (boolean). **No UNIQUE constraint** – repeatable weekly badges can be earned multiple times. |
+| `user_progress` | Aggregated stats per child | kid_profile_id (UNIQUE), **total_stars** (renamed from total_points), current_streak, longest_streak, last_read_date, **weekly_stories_count**, **weekly_reset_date**, **weekly_bonus_claimed**, **consecutive_perfect_quizzes**, **total_perfect_quizzes**, **total_stories_read**, **languages_read** (TEXT[]) |
 | `user_results` | Activity log (star transactions) | kid_profile_id, user_id, activity_type, stars_earned, points_earned, metadata (JSONB) |
+| `point_settings` | **Configurable star values (new schema)** | **setting_key** (TEXT PK), **value** (TEXT), **description** (TEXT). 8 entries: stars_story_read, stars_quiz_perfect, stars_quiz_passed, stars_quiz_failed, quiz_pass_threshold, weekly_bonus_3/5/7 |
+| `point_settings_legacy` | Old point config (renamed) | category, difficulty, points (kept for reference) |
 | `point_transactions` | Legacy: detailed point history | (pre-star-system, kept for backward compat) |
-| `point_settings` | Configurable point values | (pre-star-system) |
 | `level_settings` | Legacy: level definitions by points | (pre-star-system, coexists with `levels`) |
 | `streak_milestones` | Claimed streak bonuses | |
 | `collected_items` | Items collected by kids | |
@@ -513,9 +557,9 @@ difficulty_rules             ← Block 2.2b (9 entries: 3 levels × 3 langs)
 
 | Function | Purpose | Called From |
 |----------|---------|-------------|
-| `log_activity(p_child_id, p_activity_type, p_stars, p_metadata)` | Log activity, update stars + streak, trigger badge check. Returns `{total_stars, current_streak, new_badges}` | ReadingPage, VocabularyQuizPage |
-| `check_and_award_badges(p_child_id)` | Compare stats against all unearned badges, award new ones. Returns JSONB array of newly earned badges | Called by log_activity |
-| `get_results_page(p_child_id)` | Fetch all results page data in one query: child_name, total_stars, streak, levels, earned_badges, next_badge_hints | ResultsPage (via useResultsPage hook) |
+| `log_activity(p_child_id, p_activity_type, p_stars, p_metadata)` | **Phase 1 rewrite**: Reads star values from `point_settings` (DB-configurable). Weekly reset check (Monday=new week). Updates counters (total_stories_read, weekly_stories_count, consecutive_perfect_quizzes, total_perfect_quizzes, languages_read). Streak logic via `last_read_date`. Weekly bonus (highest only, not cumulative). Calls `check_and_award_badges`. Returns `{total_stars, stars_earned, bonus_stars, weekly_bonus, current_streak, weekly_stories_count, new_badges}`. Activity types: `story_read`, `quiz_complete`. | ReadingPage, VocabularyQuizPage |
+| `check_and_award_badges(p_child_id)` | **Phase 1 rewrite**: Handles all 23 badge types across 4 categories. For repeatable (weekly) badges: checks if earned this week. Awards `bonus_stars` per badge. Returns JSONB array: `[{id, name, emoji, category, bonus_stars, fablino_message, frame_color}]` | Called by log_activity |
+| `get_results_page(p_child_id)` | **Phase 1 rewrite**: Returns child_name, total_stars, current_streak, longest_streak, weekly_stories_count, weekly_bonus_claimed, total_stories_read, total_perfect_quizzes, languages_read[], current_level, next_level (with unlock_feature), levels (5), badges (23 with earned/earned_at/times_earned) | ResultsPage (via useResultsPage hook) |
 
 ### Enums
 
@@ -555,8 +599,8 @@ useKidProfile.tsx → getKidLanguage(school_system)
 |------|---------|------------|
 | `useAuth` | Authentication context (login/logout, session) | sessionStorage |
 | `useKidProfile` | Kid profile selection, language derivation | React Context + Supabase kid_profiles |
-| `useGamification` | Star rewards constants, level computation, legacy points interface | Hardcoded constants + Supabase |
-| `useResultsPage` | Results page data (level, badges, hints) | Supabase RPC `get_results_page` |
+| `useGamification` | Star rewards constants, level computation, legacy points interface. **⚠️ BROKEN after Phase 1**: reads `total_points` (renamed to `total_stars`), hardcoded LEVELS (outdated), direct DB updates instead of RPC calls. Needs Phase 2 rewrite. | Hardcoded constants + Supabase |
+| `useResultsPage` | Results page data (level, badges, hints). **⚠️ NEEDS UPDATE**: interface doesn't match new `get_results_page` RPC response (new fields: total_stories_read, total_perfect_quizzes, languages_read, full badges array with times_earned). | Supabase RPC `get_results_page` |
 | `useCollection` | Collectible items | Supabase collected_items |
 | `useColorPalette` | Color theme per kid profile | Derived from kid_profiles.color_palette |
 | `useEdgeFunctionHeaders` | Headers for edge function requests | Auth session |
@@ -592,9 +636,10 @@ useKidProfile.tsx → getKidLanguage(school_system)
 
 | Component | File | Description |
 |-----------|------|-------------|
-| `FablinoMascot` | `src/components/FablinoMascot.tsx` | Reusable mascot image with consistent sizing. Sizes: `sm` (120px), `md` (180px, default), `lg` (220px) max-height. Optional bounce animation (`gentleBounce`). |
-| `SpeechBubble` | `src/components/SpeechBubble.tsx` | Reusable speech bubble next to Fablino. Variants: `hero` (large white, left-pointing triangle) and `tip` (smaller orange-tinted, centered). Consistent font, padding, shadow. |
-| `FablinoPageHeader` | `src/components/FablinoPageHeader.tsx` | Combines FablinoMascot + SpeechBubble in a flex row. Used across story creation wizard screens. |
+| `FablinoMascot` | `src/components/FablinoMascot.tsx` | Reusable mascot image with consistent sizing via design tokens. Sizes: `sm` (64px), `md` (100px, default), `lg` (130px) max-height. Optional bounce animation (`gentleBounce` from global CSS). |
+| `SpeechBubble` | `src/components/SpeechBubble.tsx` | Reusable speech bubble next to Fablino. Variants: `hero` (large white, left-pointing triangle) and `tip` (smaller orange-tinted, centered). min/max-width from design tokens (200/300px). Text color `#2D1810`. |
+| `FablinoPageHeader` | `src/components/FablinoPageHeader.tsx` | Combines FablinoMascot + SpeechBubble in a flex row. Used on ALL screens with Fablino (Home, Entry, Theme, Characters, Effects). Always `mascotSize="md"` for pixel-perfect consistency across screens. |
+| `design-tokens.ts` | `src/constants/design-tokens.ts` | Centralized design constants: `FABLINO_COLORS` (primary, text, speech bubble), `FABLINO_SIZES` (mascot sm/md/lg, speech bubble min/max-width, button height), `FABLINO_STYLES` (primary/secondary button Tailwind classes). |
 | `BadgeCelebrationModal` | `src/components/BadgeCelebrationModal.tsx` | Fullscreen modal for new badges. CSS confetti/star animations, badge emoji, Fablino mascot, "Weiter" button. Supports multiple badges (cycles through). Scale-up entrance animation. |
 | `FablinoReaction` | `src/components/FablinoReaction.tsx` | Animated mascot reactions: celebrate, encourage, welcome, levelUp, perfect. |
 
@@ -602,11 +647,11 @@ useKidProfile.tsx → getKidLanguage(school_system)
 
 | Component | Description |
 |-----------|-------------|
-| `StoryTypeSelectionScreen` | Screen 1: Theme tiles (6 themes from `src/assets/themes/`), length/difficulty/series toggles, language picker |
-| `CharacterSelectionScreen` | Screen 2: 4 tiles (me, family, friends, surprise from `src/assets/people/`), expandable categories with kid_characters |
-| `SpecialEffectsScreen` | Screen 3: Attribute selection + free text + always-visible settings (length, difficulty, series, language) |
+| `StoryTypeSelectionScreen` | Screen 1: Theme tiles (6 themes via Vite imports from `src/assets/themes/`). Grid: `grid-cols-2 md:grid-cols-3` (3×2 on tablet). FablinoPageHeader `mascotSize="md"`. Vertically centered, `max-w-md`. |
+| `CharacterSelectionScreen` | Screen 2: 4 tiles (me, family, friends, surprise via Vite imports from `src/assets/people/`). Grid: `grid-cols-2 md:grid-cols-4` (4×1 on tablet). Expandable categories with kid_characters checkboxes. |
+| `SpecialEffectsScreen` | Screen 3: Compact toggle rows (length, difficulty, language) with orange active state (`bg-[#E8863A]`). Attribute grid (`grid-cols-3 md:grid-cols-6`, aspect-square buttons). Free text textarea. Orange inline "Create story" button (no fixed bottom bar). |
 | `StoryGenerationProgress` | Screen 4: Animated progress during generation |
-| `CharacterTile` | Reusable tile for character options with selection state |
+| `CharacterTile` | Reusable tile: `rounded-xl`, `aspect-square` image, `ring-2 ring-[#E8863A]` selection state, label `text-sm font-semibold text-[#2D1810]` |
 | `BonusAttributesModal` | Modal for special character attributes |
 | `FamilyMemberModal` | Modal for adding family members |
 | `NameInputModal` | Modal for custom character names |
@@ -667,33 +712,50 @@ OLD PATH (Fallback – used if NEW PATH throws):
 | **No error boundaries** | React app | API failures can crash entire app |
 | **No automated tests** | `src/test/` contains only example test | Zero test coverage |
 | **Mixed toast systems** | Components | Both `sonner` and `shadcn/ui` toast used |
-| **Legacy gamification tables** | `point_transactions`, `point_settings`, `level_settings` | Pre-star-system tables coexist with new `levels`/`badges`/`user_badges` |
+| **Legacy gamification tables** | `point_transactions`, `point_settings_legacy`, `level_settings` | Pre-star-system tables coexist with new schema. `point_settings` renamed to `_legacy`. |
+| **Frontend–Backend mismatch (Phase 1)** | `useGamification.tsx`, `ReadingPage.tsx`, `VocabularyQuizPage.tsx`, `ResultsPage.tsx`, `useResultsPage.tsx` | Backend RPCs rewritten but frontend still uses old column names (`total_points`), old activity types (`story_completed`/`quiz_passed`), hardcoded badge count (11). **Blocks gamification until Phase 2 frontend update.** |
 
 ### Minor
 
 | Issue | Location | Impact |
 |-------|----------|--------|
-| **Magic numbers** | Various | Pass threshold 80%, star rewards hardcoded |
+| ~~**Magic numbers**~~ | ~~Various~~ | **PARTIALLY RESOLVED**: Star rewards + quiz pass threshold now DB-configurable via `point_settings`. Some frontend magic numbers remain. |
 | **Inconsistent async patterns** | Edge Functions | Mix of `async/await` and `.then()` chains |
 | **Unused imports** | Various files | Minor cleanup needed |
 | **No code splitting** | `vite.config.ts` | All pages loaded upfront |
-| **Duplicate gentleBounce keyframes** | `FablinoMascot.tsx`, `FablinoPageHeader.tsx` | Animation defined in `style` tags in multiple places – should be in global CSS |
-| **UI harmonization incomplete** | Multiple pages | FablinoMascot/SpeechBubble components created but not yet adopted on all pages |
+| ~~**Duplicate gentleBounce keyframes**~~ | ~~`FablinoMascot.tsx`, `FablinoPageHeader.tsx`~~ | **RESOLVED**: `gentleBounce` and `speechBubbleIn` keyframes now in global `src/index.css` |
+| ~~**UI harmonization incomplete**~~ | ~~Multiple pages~~ | **RESOLVED**: All screens (Home, Entry, Theme, Characters, Effects) now use `FablinoPageHeader` with `mascotSize="md"`. Design tokens centralized in `design-tokens.ts`. |
 
 ### Recommendations (Priority Order)
 
 1. **Security**: Implement proper password hashing, server-side session validation, token expiration
 2. **Security**: Tighten RLS policies, restrict CORS origins, add rate limiting
-3. **Architecture**: Split large components into smaller, testable units
-4. **Architecture**: Complete UI harmonization (adopt FablinoMascot/SpeechBubble across all pages)
-5. **Architecture**: Extract remaining inline translations into `lib/translations.ts`
-6. **Quality**: Add error boundaries and proper error handling
-7. **Quality**: Replace console.log with structured logging
-8. **Quality**: Add TypeScript strict mode, eliminate `any` types
-9. **Testing**: Add unit tests for hooks and Edge Functions
-10. **Performance**: Implement code splitting, React.memo, optimize re-renders
-11. **Cleanup**: Remove legacy gamification tables or add migration path
+3. **Gamification Phase 2**: Update `useGamification.tsx` to use `total_stars` + RPC calls instead of direct DB access. Fix `ReadingPage.tsx` / `VocabularyQuizPage.tsx` activity_type values (`story_read`, `quiz_complete`). Update `useResultsPage.tsx` interface for new RPC response. Fix `ResultsPage.tsx` badge count (23, not 11).
+4. **Gamification Phase 3**: Badge-Celebrations + Badge-Vitrine UI (improved celebration modal, full badge grid on ResultsPage)
+5. **Architecture**: Split large components into smaller, testable units
+6. ~~**Architecture**: Complete UI harmonization~~ **DONE** – all wizard screens + Home use FablinoPageHeader with design tokens
+7. **Architecture**: Extract remaining inline translations into `lib/translations.ts`
+8. **Quality**: Add error boundaries and proper error handling
+9. **Quality**: Replace console.log with structured logging
+10. **Quality**: Add TypeScript strict mode, eliminate `any` types
+11. **Testing**: Add unit tests for hooks and Edge Functions
+12. **Performance**: Implement code splitting, React.memo, optimize re-renders
+13. **Cleanup**: Remove legacy gamification tables (`point_settings_legacy`, `point_transactions`, `level_settings`) or add migration path
 
 ---
 
-*Last updated: 2026-02-09. Covers: Block 1 (multilingual DB), Block 2.1 (learning themes + guardrails), Block 2.2/2.2b (rule tables + difficulty_rules), Block 2.3a (story classifications + kid_characters), Block 2.3c (dynamic prompt engine), Block 2.3d (story_languages, wizard character management), Block 2.3e (dual-path wizard, surprise theme/characters), Block 2.4 (intelligent image generation), Phase 5 (star-based gamification, badges, BadgeCelebrationModal, ResultsPage), UI harmonization (FablinoMascot, SpeechBubble, theme/character image migration).*
+### Gamification Phase 1 Migrations (2026-02-10)
+
+| File | Purpose |
+|------|---------|
+| `20260210_01_gamification_levels_update.sql` | Add `unlock_feature`/`icon_url` to levels, update 5 level definitions, delete 6th |
+| `20260210_02_gamification_badges_overhaul.sql` | Add `bonus_stars`/`fablino_message`/`frame_color`/`repeatable`, new CHECK constraint (4 categories), drop UNIQUE on user_badges, delete old + insert 23 new badges |
+| `20260210_03_gamification_point_settings_rebuild.sql` | Rename old to `_legacy`, create new `point_settings` (setting_key PK), RLS, seed 8 defaults |
+| `20260210_04_gamification_user_progress_extend.sql` | Consolidate `total_points`→`total_stars`, add weekly/quiz/story/language counters |
+| `20260210_05_rpc_log_activity.sql` | Full rewrite: DB-configurable stars, weekly resets, counters, streak via last_read_date, weekly bonus, badge check |
+| `20260210_06_rpc_check_and_award_badges.sql` | Full rewrite: 4 categories, 8 condition types, repeatable weekly badges, bonus stars |
+| `20260210_07_rpc_get_results_page.sql` | Full rewrite: comprehensive response with all counters, levels, 23 badges with earned/times_earned |
+
+---
+
+*Last updated: 2026-02-10. Covers: Block 1 (multilingual DB), Block 2.1 (learning themes + guardrails), Block 2.2/2.2b (rule tables + difficulty_rules), Block 2.3a (story classifications + kid_characters), Block 2.3c (dynamic prompt engine), Block 2.3d (story_languages, wizard character management), Block 2.3e (dual-path wizard, surprise theme/characters), Block 2.4 (intelligent image generation), Phase 5 (star-based gamification, badges, BadgeCelebrationModal, ResultsPage), UI harmonization complete (design-tokens.ts, FablinoMascot sm=64/md=100/lg=130, SpeechBubble, FablinoPageHeader on all screens, compact SpecialEffectsScreen, theme/character Vite imports), **Gamification Phase 1 backend complete** (7 migrations: levels with unlock_feature, 23 badges in 4 categories, point_settings table, extended user_progress, rewritten log_activity/check_and_award_badges/get_results_page RPCs, levelTranslations.ts, PointsConfigSection.tsx).*
