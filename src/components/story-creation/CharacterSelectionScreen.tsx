@@ -337,7 +337,7 @@ const CharacterSelectionScreen = ({
         {/* Main Content */}
         {viewState === "main" && (
           <div className="w-full space-y-2">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 gap-4">
               {mainTiles.map((tile) => {
                 const isExpandable = tile.type === "family" || tile.type === "friends";
                 const hasSelections = isExpandable && hasSavedSelections(tile.type as "family" | "friends");
@@ -370,7 +370,7 @@ const CharacterSelectionScreen = ({
 
         {viewState === "family" && (
           <div className="w-full space-y-3">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-4">
               {familyTiles.map((tile) => (
                 <CharacterTile
                   key={tile.type}

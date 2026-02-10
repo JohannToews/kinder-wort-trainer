@@ -25,18 +25,19 @@ const CharacterTile = ({
     <button
       onClick={onClick}
       className={cn(
-        "group relative flex flex-col items-center gap-1.5 p-2 rounded-xl",
+        "group relative flex flex-col items-center gap-2 p-2.5 rounded-2xl",
         "bg-white border transition-all duration-200 cursor-pointer",
-        "hover:shadow-md active:scale-[0.97]",
+        "shadow-[0_2px_12px_-4px_rgba(45,24,16,0.1)]",
+        "hover:shadow-[0_4px_20px_-4px_rgba(45,24,16,0.15)] active:scale-[0.97]",
         "focus:outline-none focus:ring-2 focus:ring-orange-400 focus:ring-offset-2",
         selected
-          ? "ring-2 ring-[#E8863A] border-[#E8863A] bg-orange-50 shadow-md"
+          ? "ring-2 ring-[#E8863A] border-[#E8863A] bg-orange-50 shadow-[0_4px_20px_-4px_rgba(232,134,58,0.25)]"
           : "border-[#E8863A]/10 hover:border-[#E8863A]/30",
         className
       )}
     >
       {/* Image Container */}
-      <div className="relative w-full overflow-hidden rounded-lg aspect-square">
+      <div className="relative w-full overflow-hidden rounded-xl aspect-square">
         <img
           src={image}
           alt={label}
@@ -71,7 +72,7 @@ const CharacterTile = ({
 
         {/* Badge (e.g., star for "Surprise me") */}
         {badge && (
-          <div className="absolute top-1 right-1 text-base">{badge}</div>
+          <div className="absolute top-1.5 right-1.5 text-base">{badge}</div>
         )}
       </div>
 
