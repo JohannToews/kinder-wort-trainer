@@ -903,7 +903,7 @@ Deno.serve(async (req) => {
 
     // Resolve the effective story language (new param > textLanguage mapping > default)
     const effectiveStoryLanguage = storyLanguageParam
-      || (textLanguage ? textLanguage.toLowerCase() : 'fr');
+      || (textLanguage ? textLanguage.toLowerCase() : 'de');
 
     try {
       // 1. Load CORE Slim v2
@@ -1059,8 +1059,13 @@ Deno.serve(async (req) => {
       DE: "Deutsch",
       FR: "Französisch",
       EN: "Englisch",
+      ES: "Spanisch",
+      IT: "Italienisch",
+      NL: "Niederländisch",
+      BS: "Bosnisch",
+      PT: "Portugiesisch",
     };
-    const targetLanguage = languageNames[textLanguage] || "Französisch";
+    const targetLanguage = languageNames[textLanguage] || textLanguage || "Deutsch";
 
     // Map length to approximate word count with explicit minimum
     const lengthMap: Record<string, { range: string; min: number; max: number }> = {
@@ -1535,9 +1540,10 @@ Respond ONLY with valid JSON:
       // Map text language code to full language name
       const languageMap: Record<string, string> = {
         'DE': 'German', 'FR': 'French', 'EN': 'English',
-        'ES': 'Spanish', 'IT': 'Italian', 'NL': 'Dutch', 'PT': 'Portuguese'
+        'ES': 'Spanish', 'IT': 'Italian', 'NL': 'Dutch',
+        'BS': 'Bosnian', 'PT': 'Portuguese'
       };
-      const storyLanguage = languageMap[textLanguage] || 'French';
+      const storyLanguage = languageMap[textLanguage] || textLanguage || 'German';
       
       // Replace placeholders in base prompt
       let prompt = rawPrompt
