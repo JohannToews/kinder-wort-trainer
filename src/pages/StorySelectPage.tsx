@@ -1,10 +1,10 @@
-import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect, useCallback } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { BookOpen, BookText, GraduationCap, CheckCircle2, Users, Layers, Loader2 } from "lucide-react";
+import { BookOpen, BookText, GraduationCap, CheckCircle2, Users, Layers } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useKidProfile } from "@/hooks/useKidProfile";
 import { useTranslations, type Translations } from "@/lib/translations";
@@ -12,8 +12,6 @@ import { toast } from "sonner";
 import FablinoPageHeader from "@/components/FablinoPageHeader";
 import { ArrowLeft } from "lucide-react";
 import SeriesGrid from "@/components/SeriesGrid";
-
-const PAGE_SIZE = 20;
 
 interface Story {
   id: string;
@@ -36,19 +34,9 @@ const getDifficultyLabel = (t: ReturnType<typeof useTranslations>, difficulty: s
   return difficulty;
 };
 
-// ── Skeleton Card ──────────────────────────────────────────────────────────────
-const SkeletonCard = () => (
-  <div className="card-story">
-    <div className="aspect-[4/3] mb-4 rounded-xl overflow-hidden bg-muted animate-pulse" />
-    <div className="space-y-2 px-1">
-      <div className="h-5 bg-muted rounded-lg animate-pulse w-3/4 mx-auto" />
-      <div className="h-4 bg-muted rounded-lg animate-pulse w-1/2 mx-auto" />
-    </div>
-  </div>
-);
-
 const StorySelectPage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
   const { selectedProfileId, selectedProfile, kidProfiles, hasMultipleProfiles, setSelectedProfileId, kidAppLanguage } = useKidProfile();
   const appLang = kidAppLanguage;
@@ -56,199 +44,71 @@ const StorySelectPage = () => {
   const [stories, setStories] = useState<Story[]>([]);
   const [storyStatuses, setStoryStatuses] = useState<Map<string, boolean>>(new Map());
   const [isLoading, setIsLoading] = useState(true);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const [hasMore, setHasMore] = useState(false);
   const [isGeneratingForSeries, setIsGeneratingForSeries] = useState<string | null>(null);
 
-  // ── Initial load + reload on user/profile change ──
+  // Reload data when navigating to this page (location.key changes on each navigation)
   useEffect(() => {
-    console.log('[StorySelect] useEffect fired, user:', user?.id, 'profile:', selectedProfileId);
-    if (!user) {
-      console.log('[StorySelect] No user yet, skipping');
-      return;
+    if (user) {
+      loadStories();
     }
+  }, [user, selectedProfileId, location.key]);
 
-    const fetchStories = async () => {
-      console.log('[StorySelect] fetchStories START');
-      setIsLoading(true);
-
-      try {
-        // Build stories query — NO content field (saves large text transfer)
-        let query = supabase
-          .from("stories")
-          .select("id, title, cover_image_url, difficulty, text_type, kid_profile_id, series_id, episode_number, ending_type")
-          .eq("user_id", user.id)
-          .eq("is_deleted", false)
-          .order("created_at", { ascending: false })
-          .range(0, PAGE_SIZE - 1);
-
-        if (selectedProfileId) {
-          query = query.eq("kid_profile_id", selectedProfileId);
-        }
-
-        console.log('[StorySelect] Executing stories query...');
-        const storiesResult = await query;
-        console.log('[StorySelect] Stories result:', {
-          data: storiesResult.data?.length,
-          error: storiesResult.error,
-          status: storiesResult.status,
-          statusText: storiesResult.statusText,
-        });
-        const storiesData: Story[] = storiesResult.data || [];
-
-        // Build completions query filtered by loaded story IDs
-        const storyIds = storiesData.map(s => s.id);
-        const statusMap = new Map<string, boolean>();
-
-        if (storyIds.length > 0) {
-          console.log('[StorySelect] Fetching completions for', storyIds.length, 'stories...');
-          const completionsResult = await supabase
-            .from("user_results")
-            .select("reference_id, kid_profile_id")
-            .eq("user_id", user.id)
-            .in("activity_type", ["story_read", "story_completed"])
-            .in("reference_id", storyIds);
-
-          console.log('[StorySelect] Completions result:', {
-            data: completionsResult.data?.length,
-            error: completionsResult.error,
-          });
-
-          completionsResult.data?.forEach(r => {
-            if (r.reference_id && storyIds.includes(r.reference_id)) {
-              const matches = !selectedProfileId ||
-                             r.kid_profile_id === selectedProfileId ||
-                             r.kid_profile_id === null;
-              if (matches) {
-                statusMap.set(r.reference_id, true);
-              }
-            }
-          });
-        }
-
-        console.log('[StorySelect] Setting state:', storiesData.length, 'stories, hasMore:', storiesData.length === PAGE_SIZE);
-        setStories(storiesData);
-        setStoryStatuses(statusMap);
-        setHasMore(storiesData.length === PAGE_SIZE);
-      } catch (err) {
-        console.error("[StorySelect] CATCH Error loading stories:", err);
-      } finally {
-        console.log('[StorySelect] FINALLY - setIsLoading(false)');
-        setIsLoading(false);
-      }
-    };
-
-    fetchStories();
-  }, [user?.id, selectedProfileId]);
-
-  // ── Load more (append next page) ──
-  const loadMore = async () => {
-    if (!user || isLoadingMore) return;
-    setIsLoadingMore(true);
-
-    try {
-      let query = supabase
-        .from("stories")
-        .select("id, title, cover_image_url, difficulty, text_type, kid_profile_id, series_id, episode_number, ending_type")
-        .eq("user_id", user.id)
-        .eq("is_deleted", false)
-        .order("created_at", { ascending: false })
-        .range(stories.length, stories.length + PAGE_SIZE - 1);
-
-      if (selectedProfileId) {
-        query = query.eq("kid_profile_id", selectedProfileId);
-      }
-
-      const storiesResult = await query;
-      const newStories: Story[] = storiesResult.data || [];
-      const allStories = [...stories, ...newStories];
-      const allStoryIds = allStories.map(s => s.id);
-
-      // Re-fetch completions for all loaded stories
-      const statusMap = new Map<string, boolean>();
-      if (allStoryIds.length > 0) {
-        const completionsResult = await supabase
-          .from("user_results")
-          .select("reference_id, kid_profile_id")
-          .eq("user_id", user.id)
-          .in("activity_type", ["story_read", "story_completed"])
-          .in("reference_id", allStoryIds);
-
-        completionsResult.data?.forEach(r => {
-          if (r.reference_id && allStoryIds.includes(r.reference_id)) {
-            const matches = !selectedProfileId ||
-                           r.kid_profile_id === selectedProfileId ||
-                           r.kid_profile_id === null;
-            if (matches) {
-              statusMap.set(r.reference_id, true);
-            }
-          }
-        });
-      }
-
-      setStories(allStories);
-      setStoryStatuses(statusMap);
-      setHasMore(newStories.length === PAGE_SIZE);
-    } catch (err) {
-      console.error("Error loading more stories:", err);
-    } finally {
-      setIsLoadingMore(false);
-    }
-  };
-
-  // Manual refresh (e.g. after generating an episode)
-  const refreshStories = async () => {
+  const loadStories = async () => {
     if (!user) return;
-    setIsLoading(true);
-    setStories([]);
-    setStoryStatuses(new Map());
-
-    try {
-      let query = supabase
-        .from("stories")
-        .select("id, title, cover_image_url, difficulty, text_type, kid_profile_id, series_id, episode_number, ending_type")
-        .eq("user_id", user.id)
-        .eq("is_deleted", false)
-        .order("created_at", { ascending: false })
-        .range(0, PAGE_SIZE - 1);
-
-      if (selectedProfileId) {
-        query = query.eq("kid_profile_id", selectedProfileId);
-      }
-
-      const storiesResult = await query;
-      const storiesData: Story[] = storiesResult.data || [];
-      const storyIds = storiesData.map(s => s.id);
-      const statusMap = new Map<string, boolean>();
-
-      if (storyIds.length > 0) {
-        const completionsResult = await supabase
-          .from("user_results")
-          .select("reference_id, kid_profile_id")
-          .eq("user_id", user.id)
-          .in("activity_type", ["story_read", "story_completed"])
-          .in("reference_id", storyIds);
-
-        completionsResult.data?.forEach(r => {
-          if (r.reference_id && storyIds.includes(r.reference_id)) {
-            const matches = !selectedProfileId ||
-                           r.kid_profile_id === selectedProfileId ||
-                           r.kid_profile_id === null;
-            if (matches) {
-              statusMap.set(r.reference_id, true);
-            }
-          }
-        });
-      }
-
-      setStories(storiesData);
-      setStoryStatuses(statusMap);
-      setHasMore(storiesData.length === PAGE_SIZE);
-    } catch (err) {
-      console.error("Error refreshing stories:", err);
-    } finally {
-      setIsLoading(false);
+    
+    // Build stories query — NO content field (saves large text transfer)
+    let query = supabase
+      .from("stories")
+      .select("id, title, cover_image_url, difficulty, text_type, kid_profile_id, series_id, episode_number, ending_type")
+      .eq("user_id", user.id)
+      .eq("is_deleted", false)
+      .order("created_at", { ascending: false });
+    
+    // Filter by selected kid profile – also include stories without a profile (null)
+    if (selectedProfileId) {
+      query = query.or(`kid_profile_id.eq.${selectedProfileId},kid_profile_id.is.null`);
     }
+    
+    // Build completions query (runs in parallel)
+    const completionsQuery = supabase
+      .from("user_results")
+      .select("reference_id, kid_profile_id")
+      .eq("user_id", user.id)
+      .in("activity_type", ["story_read", "story_completed"]);
+
+    // Run both queries in parallel
+    const [storiesResult, completionsResult] = await Promise.all([
+      query,
+      completionsQuery,
+    ]);
+
+    const storiesData = storiesResult.data;
+    console.log("[StorySelect] query result:", { 
+      storiesCount: storiesData?.length, 
+      error: storiesResult.error, 
+      selectedProfileId,
+      userId: user.id,
+      firstFew: storiesData?.slice(0, 3) 
+    });
+    if (storiesData) {
+      setStories(storiesData);
+
+      // Build status map from completions
+      const storyIdSet = new Set(storiesData.map(s => s.id));
+      const statusMap = new Map<string, boolean>();
+      completionsResult.data?.forEach(r => {
+        if (r.reference_id && storyIdSet.has(r.reference_id)) {
+          const matches = !selectedProfileId ||
+                         r.kid_profile_id === selectedProfileId ||
+                         r.kid_profile_id === null;
+          if (matches) {
+            statusMap.set(r.reference_id, true);
+          }
+        }
+      });
+      setStoryStatuses(statusMap);
+    }
+    setIsLoading(false);
   };
 
   // Generate next episode for a series
@@ -281,7 +141,7 @@ const StorySelectPage = () => {
     if (existingEpisode) {
       console.log("Episode already exists, reloading stories");
       toast.info("Diese Episode existiert bereits");
-      refreshStories();
+      loadStories();
       return;
     }
     
@@ -421,7 +281,7 @@ const StorySelectPage = () => {
       }
       
       toast.success(appLang === 'de' ? 'Neue Episode erstellt!' : 'New episode created!');
-      refreshStories(); // Refresh the list
+      loadStories(); // Refresh the list
       
     } catch (err) {
       console.error("Error generating episode:", err);
@@ -437,39 +297,6 @@ const StorySelectPage = () => {
   const fictionStories = stories.filter(s => (!s.text_type || s.text_type === 'fiction') && !isPartOfSeries(s));
   const nonFictionStories = stories.filter(s => s.text_type === 'non-fiction' && !isPartOfSeries(s));
   const seriesStories = stories.filter(s => isPartOfSeries(s));
-
-  // ── Load More button ──
-  const LoadMoreButton = () => {
-    if (!hasMore) return null;
-    return (
-      <div className="flex justify-center pt-8 pb-4">
-        <Button
-          onClick={loadMore}
-          disabled={isLoadingMore}
-          className="btn-primary-kid px-8 py-3 text-base font-baloo"
-        >
-          {isLoadingMore ? (
-            <>
-              <Loader2 className="h-5 w-5 animate-spin mr-2" />
-              {t.loadingMore || (appLang === 'de' ? 'Wird geladen...' : 'Loading...')}
-            </>
-          ) : (
-            t.loadMoreStories || (appLang === 'de' ? 'Mehr Geschichten laden' : 'Load more stories')
-          )}
-        </Button>
-      </div>
-    );
-  };
-
-  // ── Skeleton grid for "load more" ──
-  const LoadMoreSkeletons = () => {
-    if (!isLoadingMore) return null;
-    return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">
-        {[1, 2, 3].map(i => <SkeletonCard key={`more-skel-${i}`} />)}
-      </div>
-    );
-  };
 
   return (
     <div className="min-h-screen flex flex-col items-center font-nunito" style={{ background: "linear-gradient(160deg, #FFF7ED 0%, #FEF3C7 50%, #EFF6FF 100%)" }}>
@@ -501,9 +328,10 @@ const StorySelectPage = () => {
       {/* Tabs for Fiction / Non-Fiction */}
       <div className="container max-w-5xl px-4 pb-12">
         {isLoading ? (
-          /* ── Fix 3: Skeleton loader instead of spinner ── */
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[1, 2, 3, 4, 5, 6].map(i => <SkeletonCard key={`skel-${i}`} />)}
+          <div className="flex justify-center py-20">
+            <div className="animate-bounce-soft">
+              <BookOpen className="h-16 w-16 text-primary" />
+            </div>
           </div>
         ) : stories.length === 0 ? (
           <div className="text-center py-20">
@@ -520,71 +348,65 @@ const StorySelectPage = () => {
             </Button>
           </div>
         ) : (
-          <>
-            <Tabs defaultValue={seriesStories.length > 0 ? "series" : "fiction"} className="w-full">
-              <TabsList className="grid w-full grid-cols-3 mb-6 h-14 bg-card/80 backdrop-blur-sm rounded-2xl p-1">
-                <TabsTrigger 
-                  value="series" 
-                  className="flex items-center gap-2 text-base font-baloo rounded-xl data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
-                >
-                  <Layers className="h-5 w-5" />
-                  {t.tabSeries}
-                  {seriesStories.length > 0 && (
-                    <span className="ml-1 bg-background/30 text-xs px-2 py-0.5 rounded-full">
-                      {new Set(seriesStories.map(s => s.series_id)).size}
-                    </span>
-                  )}
-                </TabsTrigger>
-                <TabsTrigger 
-                  value="fiction" 
-                  className="flex items-center gap-2 text-base font-baloo rounded-xl data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
-                >
-                  <BookText className="h-5 w-5" />
-                  {t.tabFiction}
-                  {fictionStories.length > 0 && (
-                    <span className="ml-1 bg-background/30 text-xs px-2 py-0.5 rounded-full">
-                      {fictionStories.length}
-                    </span>
-                  )}
-                </TabsTrigger>
-                <TabsTrigger 
-                  value="non-fiction" 
-                  className="flex items-center gap-2 text-base font-baloo rounded-xl data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
-                >
-                  <GraduationCap className="h-5 w-5" />
-                  {t.tabNonFiction}
-                  {nonFictionStories.length > 0 && (
-                    <span className="ml-1 bg-background/30 text-xs px-2 py-0.5 rounded-full">
-                      {nonFictionStories.length}
-                    </span>
-                  )}
-                </TabsTrigger>
-              </TabsList>
+          <Tabs defaultValue={seriesStories.length > 0 ? "series" : "fiction"} className="w-full">
+            <TabsList className="grid w-full grid-cols-3 mb-6 h-14 bg-card/80 backdrop-blur-sm rounded-2xl p-1">
+              <TabsTrigger 
+                value="series" 
+                className="flex items-center gap-2 text-base font-baloo rounded-xl data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+              >
+                <Layers className="h-5 w-5" />
+                {t.tabSeries}
+                {seriesStories.length > 0 && (
+                  <span className="ml-1 bg-background/30 text-xs px-2 py-0.5 rounded-full">
+                    {new Set(seriesStories.map(s => s.series_id)).size}
+                  </span>
+                )}
+              </TabsTrigger>
+              <TabsTrigger 
+                value="fiction" 
+                className="flex items-center gap-2 text-base font-baloo rounded-xl data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+              >
+                <BookText className="h-5 w-5" />
+                {t.tabFiction}
+                {fictionStories.length > 0 && (
+                  <span className="ml-1 bg-background/30 text-xs px-2 py-0.5 rounded-full">
+                    {fictionStories.length}
+                  </span>
+                )}
+              </TabsTrigger>
+              <TabsTrigger 
+                value="non-fiction" 
+                className="flex items-center gap-2 text-base font-baloo rounded-xl data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+              >
+                <GraduationCap className="h-5 w-5" />
+                {t.tabNonFiction}
+                {nonFictionStories.length > 0 && (
+                  <span className="ml-1 bg-background/30 text-xs px-2 py-0.5 rounded-full">
+                    {nonFictionStories.length}
+                  </span>
+                )}
+              </TabsTrigger>
+            </TabsList>
 
-              <TabsContent value="series">
-                <SeriesGrid 
-                  stories={seriesStories} 
-                  appLang={appLang} 
-                  navigate={navigate} 
-                  storyStatuses={storyStatuses}
-                  onGenerateNextEpisode={handleGenerateNextEpisode}
-                  isGeneratingForSeries={isGeneratingForSeries}
-                />
-              </TabsContent>
+            <TabsContent value="series">
+              <SeriesGrid 
+                stories={seriesStories} 
+                appLang={appLang} 
+                navigate={navigate} 
+                storyStatuses={storyStatuses}
+                onGenerateNextEpisode={handleGenerateNextEpisode}
+                isGeneratingForSeries={isGeneratingForSeries}
+              />
+            </TabsContent>
 
-              <TabsContent value="fiction">
-                <StoryGrid stories={fictionStories} t={t} navigate={navigate} storyStatuses={storyStatuses} />
-              </TabsContent>
+            <TabsContent value="fiction">
+              <StoryGrid stories={fictionStories} t={t} navigate={navigate} storyStatuses={storyStatuses} />
+            </TabsContent>
 
-              <TabsContent value="non-fiction">
-                <StoryGrid stories={nonFictionStories} t={t} navigate={navigate} storyStatuses={storyStatuses} />
-              </TabsContent>
-            </Tabs>
-
-            {/* Load more button + skeletons */}
-            <LoadMoreSkeletons />
-            <LoadMoreButton />
-          </>
+            <TabsContent value="non-fiction">
+              <StoryGrid stories={nonFictionStories} t={t} navigate={navigate} storyStatuses={storyStatuses} />
+            </TabsContent>
+          </Tabs>
         )}
       </div>
     </div>
@@ -593,7 +415,7 @@ const StorySelectPage = () => {
 
 // Sub-tab labels now come from central translations.ts
 
-// Single story card component with improved image lazy loading
+// Single story card component
 const StoryCard = ({ 
   story, 
   t, 
@@ -617,9 +439,7 @@ const StoryCard = ({
             src={story.cover_image_url}
             alt={story.title}
             loading="lazy"
-            decoding="async"
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-            style={{ backgroundColor: '#FDE68A' }}
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-sunshine-light to-cotton-candy">
