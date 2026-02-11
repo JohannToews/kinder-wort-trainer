@@ -61,7 +61,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         .from('user_profiles')
         .select('*')
         .eq('auth_id', authUser.id)
-        .single();
+        .order('auth_migrated', { ascending: false })
+        .limit(1)
+        .maybeSingle();
 
       if (error || !profile) {
         console.error('Error fetching user profile:', error);

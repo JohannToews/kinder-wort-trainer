@@ -103,6 +103,28 @@ Deno.serve(async (req) => {
 
     const authUserId = authData.user.id;
 
+    // Delete the auto-created trigger profile (handle_new_user trigger creates a duplicate)
+    // Wait briefly for the trigger to complete
+    await new Promise(resolve => setTimeout(resolve, 500));
+    const { error: deleteDuplicateError } = await supabase
+      .from('user_profiles')
+      .delete()
+      .eq('auth_id', authUserId)
+      .neq('id', userId);
+    
+    if (deleteDuplicateError) {
+      console.log('No duplicate profile to delete or error:', deleteDuplicateError.message);
+    } else {
+      console.log('Cleaned up auto-created duplicate profile for auth_id:', authUserId);
+    }
+
+    // Also clean up any auto-created user_roles for the duplicate
+    await supabase
+      .from('user_roles')
+      .delete()
+      .eq('auth_id', authUserId)
+      .neq('user_id', userId);
+
     // Aktualisiere user_profiles mit auth_id und auth_migrated flag
     const { error: updateProfileError } = await supabase
       .from('user_profiles')
