@@ -229,14 +229,14 @@ const SpecialEffectsScreen = ({
   return (
     <div className="min-h-screen flex flex-col" style={{ background: "linear-gradient(160deg, #FFF7ED 0%, #FEF3C7 50%, #EFF6FF 100%)" }}>
       {/* Back button */}
-      <div className="px-4 pt-3 pb-0">
+      <div className="px-4 pt-2 pb-0">
         <Button variant="ghost" size="icon" onClick={onBack}>
           <ArrowLeft className="h-5 w-5" />
         </Button>
       </div>
 
       {/* Vertically centered content – consistent with all other screens */}
-      <div className="flex-1 flex flex-col items-stretch px-5 max-w-[600px] mx-auto w-full gap-4 pb-6">
+      <div className="flex-1 flex flex-col items-stretch px-5 max-w-[600px] mx-auto w-full gap-2.5 pb-4">
         {/* Fablino Header – identical to Home, Entry, Theme screens */}
         {fablinoMessage && (
           <FablinoPageHeader
@@ -248,7 +248,7 @@ const SpecialEffectsScreen = ({
 
         {/* Story Settings (only for Weg A / free path) – compact toggle rows */}
         {showSettings && (
-          <div className="w-full bg-white/70 backdrop-blur-sm rounded-2xl border border-orange-100 shadow-sm p-4 space-y-3">
+          <div className="w-full bg-white/70 backdrop-blur-sm rounded-2xl border border-orange-100 shadow-sm p-3 space-y-2">
             {/* Length */}
             <div className="flex items-center gap-3">
               <span className="text-sm font-semibold text-[#92400E] w-24 shrink-0">{st.lengthLabel}</span>
@@ -322,11 +322,11 @@ const SpecialEffectsScreen = ({
         )}
 
         {/* Special Attributes – compact square grid */}
-        <div className="w-full space-y-2">
+        <div className="w-full space-y-1.5">
           <h2 className="text-sm font-semibold text-center text-[#2D1810]">
             {t.effectsHeader}
           </h2>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-3 gap-2">
             {attributeOptions.map((option) => {
               const isSelected = selectedAttributes.includes(option.id);
               return (
@@ -334,7 +334,7 @@ const SpecialEffectsScreen = ({
                   key={option.id}
                   onClick={() => toggleAttribute(option.id)}
                   className={cn(
-                    "flex flex-col items-center justify-center gap-1.5 w-full py-4 rounded-2xl",
+                    "flex flex-col items-center justify-center gap-1 w-full py-2.5 rounded-2xl",
                     "transition-all duration-150 cursor-pointer",
                     "hover:scale-105 active:scale-95",
                     "focus:outline-none focus:ring-2 focus:ring-orange-400 focus:ring-offset-1",
@@ -343,8 +343,8 @@ const SpecialEffectsScreen = ({
                       : "border border-gray-200 bg-white hover:border-[#E8863A]/30"
                   )}
                 >
-                  <span className="text-3xl leading-none">{option.emoji}</span>
-                  <span className="text-xs font-medium text-center leading-tight text-[#2D1810]">
+                  <span className="text-2xl leading-none">{option.emoji}</span>
+                  <span className="text-[11px] font-medium text-center leading-tight text-[#2D1810]">
                     {t[option.labelKey]}
                   </span>
                 </button>
@@ -355,7 +355,7 @@ const SpecialEffectsScreen = ({
 
 
         {/* Additional Description – compact */}
-        <div className="w-full space-y-2">
+        <div className="w-full space-y-1.5">
           <h2 className="text-sm font-semibold text-center text-[#2D1810]">
             {t.descriptionHeader}
           </h2>
