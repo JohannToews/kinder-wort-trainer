@@ -3,16 +3,16 @@ import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { BookOpen, UserPlus, Loader2, ArrowLeft, CheckCircle } from "lucide-react";
+import { UserPlus, Loader2, ArrowLeft, CheckCircle, Eye, EyeOff } from "lucide-react";
 
 const RegisterPage = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const navigate = useNavigate();
@@ -25,40 +25,23 @@ const RegisterPage = () => {
     const trimmedDisplayName = displayName.trim();
     const trimmedPassword = password.trim();
     
-    // Validation
     if (!trimmedEmail || !trimmedPassword || !trimmedDisplayName) {
-      toast({
-        title: "Fehler",
-        description: "Bitte alle Felder ausfüllen.",
-        variant: "destructive",
-      });
+      toast({ title: "Error", description: "Please fill in all fields.", variant: "destructive" });
       return;
     }
 
     if (!trimmedEmail.includes('@')) {
-      toast({
-        title: "Fehler",
-        description: "Bitte eine gültige E-Mail-Adresse eingeben.",
-        variant: "destructive",
-      });
+      toast({ title: "Error", description: "Please enter a valid email address.", variant: "destructive" });
       return;
     }
 
     if (trimmedPassword.length < 6) {
-      toast({
-        title: "Fehler",
-        description: "Das Passwort muss mindestens 6 Zeichen lang sein.",
-        variant: "destructive",
-      });
+      toast({ title: "Error", description: "Password must be at least 6 characters.", variant: "destructive" });
       return;
     }
 
     if (password !== confirmPassword) {
-      toast({
-        title: "Fehler",
-        description: "Die Passwörter stimmen nicht überein.",
-        variant: "destructive",
-      });
+      toast({ title: "Error", description: "Passwords do not match.", variant: "destructive" });
       return;
     }
 
@@ -69,230 +52,207 @@ const RegisterPage = () => {
         email: trimmedEmail,
         password: trimmedPassword,
         options: {
-          data: {
-            display_name: trimmedDisplayName,
-          },
+          data: { display_name: trimmedDisplayName },
           emailRedirectTo: window.location.origin,
         },
       });
 
       if (error) {
         console.error('Registration error:', error);
-        let errorMessage = "Registrierung fehlgeschlagen.";
-        
+        let errorMessage = "Registration failed.";
         if (error.message.includes("already registered")) {
-          errorMessage = "Diese E-Mail-Adresse ist bereits registriert.";
+          errorMessage = "This email is already registered.";
         } else if (error.message.includes("Invalid email")) {
-          errorMessage = "Ungültige E-Mail-Adresse.";
+          errorMessage = "Invalid email address.";
         } else if (error.message.includes("Password")) {
-          errorMessage = "Das Passwort erfüllt nicht die Anforderungen.";
+          errorMessage = "Password does not meet requirements.";
         }
-        
-        toast({
-          title: "Fehler",
-          description: errorMessage,
-          variant: "destructive",
-        });
+        toast({ title: "Error", description: errorMessage, variant: "destructive" });
         return;
       }
 
       if (data.user) {
-        // Check if email confirmation is required
         if (data.session === null) {
-          // Email confirmation required
           setIsSuccess(true);
         } else {
-          // Auto-confirmed (shouldn't happen with our settings)
-          toast({
-            title: "Willkommen!",
-            description: "Registrierung erfolgreich.",
-          });
+          toast({ title: "Welcome!", description: "Registration successful." });
           navigate("/", { replace: true });
         }
       }
     } catch (error) {
       console.error('Registration error:', error);
-      toast({
-        title: "Fehler",
-        description: "Ein Fehler ist aufgetreten. Bitte erneut versuchen.",
-        variant: "destructive",
-      });
+      toast({ title: "Error", description: "An error occurred. Please try again.", variant: "destructive" });
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Success state - show email confirmation message
+  // Success state
   if (isSuccess) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-sky-100 via-cyan-50 to-teal-100 flex items-center justify-center p-4 relative overflow-hidden">
-        {/* Background decorations */}
-        <div className="absolute inset-0 pointer-events-none overflow-hidden">
-          <div className="absolute top-[10%] left-[8%] text-5xl opacity-20 animate-bounce" style={{ animationDuration: '4s' }}>📧</div>
-          <div className="absolute top-[15%] right-[12%] text-4xl opacity-15 animate-bounce" style={{ animationDelay: '1s', animationDuration: '5s' }}>✉️</div>
-          <div className="absolute bottom-[20%] left-[15%] text-4xl opacity-20 animate-bounce" style={{ animationDelay: '0.5s', animationDuration: '4.5s' }}>📬</div>
-          <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-bl from-primary/10 to-transparent rounded-bl-full" />
-          <div className="absolute bottom-0 left-0 w-80 h-80 bg-gradient-to-tr from-secondary/10 to-transparent rounded-tr-full" />
+      <div className="min-h-screen flex items-center justify-center p-4" style={{ background: 'linear-gradient(180deg, #FFF8F0 0%, #FFECD2 100%)' }}>
+        <div className="w-full max-w-sm bg-white rounded-3xl shadow-lg px-8 py-10 text-center">
+          <div className="flex justify-center mb-4">
+            <div className="p-4 rounded-full shadow-lg" style={{ background: 'linear-gradient(135deg, #4ade80, #16a34a)' }}>
+              <CheckCircle className="w-8 h-8 text-white" />
+            </div>
+          </div>
+          <h2 className="text-2xl font-bold text-green-600 mb-2">Confirm your email</h2>
+          <p className="text-sm mb-6" style={{ color: 'rgba(45, 24, 16, 0.6)' }}>
+            We've sent an email to <strong>{email}</strong>. Click the confirmation link to activate your account.
+          </p>
+          <div className="bg-muted/50 rounded-xl p-4 mb-6">
+            <p className="text-sm text-muted-foreground">Didn't receive the email? Check your spam folder.</p>
+          </div>
+          <Button
+            onClick={() => navigate("/login")}
+            variant="outline"
+            className="w-full h-12 rounded-2xl text-base"
+          >
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Sign In
+          </Button>
         </div>
-
-        <Card className="w-full max-w-md shadow-2xl border-2 border-green-500/30 bg-white/95 backdrop-blur relative z-10">
-          <CardHeader className="text-center space-y-4">
-            <div className="flex justify-center">
-              <div className="bg-gradient-to-br from-green-400 to-green-600 p-4 rounded-full shadow-lg">
-                <CheckCircle className="w-8 h-8 text-white" />
-              </div>
-            </div>
-            <CardTitle className="text-2xl font-bold text-green-600">
-              E-Mail bestätigen
-            </CardTitle>
-            <CardDescription className="text-base text-muted-foreground">
-              Fast geschafft! Wir haben dir eine E-Mail an <strong>{email}</strong> gesendet.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="bg-muted/50 rounded-lg p-4 text-center">
-              <p className="text-sm text-muted-foreground">
-                Klicke auf den Bestätigungslink in der E-Mail, um dein Konto zu aktivieren.
-              </p>
-            </div>
-            
-            <div className="text-center text-sm text-muted-foreground">
-              <p>Keine E-Mail erhalten?</p>
-              <p className="mt-1">Überprüfe deinen Spam-Ordner.</p>
-            </div>
-
-            <Button
-              onClick={() => navigate("/login")}
-              variant="outline"
-              className="w-full"
-            >
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Zurück zum Login
-            </Button>
-          </CardContent>
-        </Card>
       </div>
     );
   }
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-sky-100 via-cyan-50 to-teal-100 flex items-center justify-center p-4 relative overflow-hidden">
-      {/* Reading-themed background decorations */}
-      <div className="absolute inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute top-[10%] left-[8%] text-5xl opacity-20 animate-bounce" style={{ animationDuration: '4s' }}>📖</div>
-        <div className="absolute top-[15%] right-[12%] text-4xl opacity-15 animate-bounce" style={{ animationDelay: '1s', animationDuration: '5s' }}>📚</div>
-        <div className="absolute bottom-[20%] left-[15%] text-4xl opacity-20 animate-bounce" style={{ animationDelay: '0.5s', animationDuration: '4.5s' }}>📕</div>
-        <div className="absolute bottom-[15%] right-[10%] text-5xl opacity-15 animate-bounce" style={{ animationDelay: '1.5s', animationDuration: '5s' }}>📗</div>
-        <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-bl from-primary/10 to-transparent rounded-bl-full" />
-        <div className="absolute bottom-0 left-0 w-80 h-80 bg-gradient-to-tr from-secondary/10 to-transparent rounded-tr-full" />
-      </div>
+  const inputStyle = {
+    borderColor: 'rgba(232, 134, 58, 0.3)',
+    '--tw-ring-color': 'rgba(232, 134, 58, 0.2)',
+  } as React.CSSProperties;
 
-      <Card className="w-full max-w-md shadow-2xl border-2 border-primary/20 bg-white/95 backdrop-blur relative z-10">
-        <CardHeader className="text-center space-y-4">
-          <div className="flex justify-center">
-            <div className="bg-gradient-to-br from-primary to-secondary p-4 rounded-full shadow-lg">
-              <BookOpen className="w-8 h-8 text-primary-foreground" />
-            </div>
+  return (
+    <div className="min-h-screen flex items-center justify-center p-4" style={{ background: 'linear-gradient(180deg, #FFF8F0 0%, #FFECD2 100%)' }}>
+      <div className="w-full max-w-sm bg-white rounded-3xl shadow-lg px-8 py-10">
+        {/* Mascot */}
+        <div className="flex justify-center mb-3">
+          <img
+            src="/mascot/6_Onboarding.png"
+            alt="Fablino"
+            className="h-[120px] w-auto drop-shadow-md"
+            style={{ animation: "gentleBounce 2.2s ease-in-out infinite" }}
+          />
+        </div>
+
+        {/* Title */}
+        <h1 className="text-center text-3xl font-bold mb-1" style={{ color: '#E8863A' }}>
+          Fablino
+        </h1>
+        <p className="text-center text-sm mb-8" style={{ color: 'rgba(45, 24, 16, 0.6)' }}>
+          Create your account ✨
+        </p>
+
+        {/* Form */}
+        <form onSubmit={handleRegister} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="displayName" className="text-base font-medium text-foreground">
+              Name
+            </Label>
+            <Input
+              id="displayName"
+              type="text"
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value)}
+              placeholder="Your name..."
+              className="text-base h-12 rounded-xl border-2 focus:ring-2"
+              style={inputStyle}
+              autoComplete="name"
+            />
           </div>
-          <CardTitle className="text-3xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent flex items-center justify-center gap-2">
-            <span className="text-2xl">📖</span>
-            Le Petit Lecteur
-            <span className="text-2xl">📖</span>
-          </CardTitle>
-          <CardDescription className="text-base text-muted-foreground">Neues Konto erstellen</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleRegister} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="displayName" className="text-base font-medium text-foreground">
-                Name
-              </Label>
-              <Input
-                id="displayName"
-                type="text"
-                value={displayName}
-                onChange={(e) => setDisplayName(e.target.value)}
-                placeholder="Dein Name..."
-                className="text-base h-11 border-2 border-primary/20 focus:border-primary"
-                autoComplete="name"
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="email" className="text-base font-medium text-foreground">
-                E-Mail-Adresse
-              </Label>
-              <Input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="deine@email.com"
-                className="text-base h-11 border-2 border-primary/20 focus:border-primary"
-                autoComplete="email"
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="password" className="text-base font-medium text-foreground">
-                Passwort
-              </Label>
+
+          <div className="space-y-2">
+            <Label htmlFor="email" className="text-base font-medium text-foreground">
+              Email
+            </Label>
+            <Input
+              id="email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="your@email.com"
+              className="text-base h-12 rounded-xl border-2 focus:ring-2"
+              style={inputStyle}
+              autoComplete="email"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="password" className="text-base font-medium text-foreground">
+              Password
+            </Label>
+            <div className="relative">
               <Input
                 id="password"
-                type="password"
+                type={showPassword ? "text" : "password"}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Mindestens 6 Zeichen..."
-                className="text-base h-11 border-2 border-primary/20 focus:border-primary"
+                placeholder="At least 6 characters..."
+                className="text-base h-12 rounded-xl border-2 pr-12 focus:ring-2"
+                style={inputStyle}
                 autoComplete="new-password"
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                tabIndex={-1}
+              >
+                {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+              </button>
             </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="confirmPassword" className="text-base font-medium text-foreground">
-                Passwort bestätigen
-              </Label>
-              <Input
-                id="confirmPassword"
-                type="password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="Passwort wiederholen..."
-                className="text-base h-11 border-2 border-primary/20 focus:border-primary"
-                autoComplete="new-password"
-              />
-            </div>
+          </div>
 
-            <Button
-              type="submit"
-              disabled={isLoading}
-              className="w-full h-12 text-lg font-bold bg-gradient-to-r from-primary to-secondary hover:from-primary/90 hover:to-secondary/90 text-primary-foreground shadow-lg mt-2"
-            >
-              {isLoading ? (
-                <span className="flex items-center gap-2">
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                </span>
-              ) : (
-                <span className="flex items-center gap-2">
-                  <UserPlus className="h-5 w-5" /> Registrieren
-                </span>
-              )}
-            </Button>
-            
-            <div className="text-center pt-2">
-              <p className="text-sm text-muted-foreground">
-                Bereits ein Konto?{" "}
-                <Link 
-                  to="/login" 
-                  className="text-primary hover:underline font-medium"
-                >
-                  Anmelden
-                </Link>
-              </p>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
+          <div className="space-y-2">
+            <Label htmlFor="confirmPassword" className="text-base font-medium text-foreground">
+              Confirm Password
+            </Label>
+            <Input
+              id="confirmPassword"
+              type="password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              placeholder="Repeat password..."
+              className="text-base h-12 rounded-xl border-2 focus:ring-2"
+              style={inputStyle}
+              autoComplete="new-password"
+            />
+          </div>
+
+          <Button
+            type="submit"
+            disabled={isLoading}
+            className="w-full h-14 text-lg font-semibold rounded-2xl shadow-lg text-white mt-2"
+            style={{ backgroundColor: '#E8863A' }}
+            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#D4752E')}
+            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#E8863A')}
+          >
+            {isLoading ? (
+              <Loader2 className="h-5 w-5 animate-spin" />
+            ) : (
+              <span className="flex items-center gap-2">
+                <UserPlus className="h-5 w-5" /> Create Account
+              </span>
+            )}
+          </Button>
+
+          <div className="text-center pt-2 border-t border-border mt-4">
+            <p className="text-sm text-muted-foreground pt-4">
+              Already have an account?{" "}
+              <Link to="/login" className="font-medium hover:underline" style={{ color: '#E8863A' }}>
+                Sign In
+              </Link>
+            </p>
+          </div>
+        </form>
+      </div>
+
+      <style>{`
+        @keyframes gentleBounce {
+          0%, 100% { transform: translateY(0); }
+          50% { transform: translateY(-6px); }
+        }
+      `}</style>
     </div>
   );
 };
