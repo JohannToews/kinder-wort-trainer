@@ -1,6 +1,7 @@
 // Allowed origins for CORS
 const ALLOWED_ORIGINS = [
   'https://kinder-wort-trainer.lovable.app',
+  'https://fablino.lovable.app',
   'http://localhost:5173',
   'http://localhost:8080',
   'http://localhost:3000',
