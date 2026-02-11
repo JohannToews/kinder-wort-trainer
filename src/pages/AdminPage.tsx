@@ -59,12 +59,22 @@ const AdminPage = () => {
     if (!user) return;
     setUpdatingLang(true);
     try {
-      const { error } = await invokeEdgeFunction("manage-users", {
-        action: "updateLanguages",
-        userId: user.id,
-        adminLanguage: newLang,
-      });
-      if (error) throw error;
+      // Try direct DB update first (works for Supabase-auth users via RLS)
+      const { error: dbError } = await supabase
+        .from('user_profiles')
+        .update({ admin_language: newLang, updated_at: new Date().toISOString() })
+        .eq('id', user.id);
+
+      if (dbError) {
+        // Fallback to edge function (for legacy users)
+        const { error } = await invokeEdgeFunction("manage-users", {
+          action: "updateLanguages",
+          userId: user.id,
+          adminLanguage: newLang,
+        });
+        if (error) throw error;
+      }
+
       await refreshUserProfile();
       toast.success(
         newLang === 'de' ? 'Sprache aktualisiert' :
