@@ -1,27 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
-// Supabase URL und Key aus dem bestehenden Client oder aus Env extrahieren
-function getSupabaseConfig() {
-  // Versuche zuerst aus dem Client zu extrahieren
-  const restUrl = (supabase as any).restUrl || (supabase as any).supabaseUrl || '';
-  const baseUrl = restUrl.replace('/rest/v1', '');
-  
-  const anonKey = (supabase as any).supabaseKey 
-    || (supabase as any).headers?.['apikey'] 
-    || '';
-  
-  // Fallback: aus Environment Variablen
-  if (!baseUrl || baseUrl === 'undefined' || !baseUrl.startsWith('http')) {
-    return {
-      baseUrl: import.meta.env.VITE_SUPABASE_URL || '',
-      anonKey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || '',
-    };
-  }
-  
-  return { baseUrl, anonKey };
-}
-
 export type VoiceRecorderState = 'idle' | 'recording' | 'processing' | 'result' | 'error';
 export type VoiceErrorType = 'mic_denied' | 'empty' | 'failed';
 
@@ -116,105 +95,101 @@ export function useVoiceRecorder(options: UseVoiceRecorderOptions = {}): UseVoic
     return 'audio/webm';
   };
 
-  // Transcribe: Blob → Base64 → direct fetch (NOT supabase.functions.invoke)
+  // Transcribe: Blob → Base64 → supabase.functions.invoke with retry
   const doTranscribe = async (audioBlob: Blob) => {
     setState('processing');
     setErrorDetail('');
-    setDebugInfo('');
-
-    if (!audioBlob || audioBlob.size === 0) {
-      setErrorDetail('Aufnahme ist leer (0 bytes)');
-      setErrorType('empty');
-      setState('error');
-      return;
-    }
+    setDebugInfo('stt-start');
 
     try {
-      // Step 1: Blob → Base64
-      const base64 = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          const result = reader.result as string;
-          const b64 = result.split(',')[1];
-          if (b64) resolve(b64);
-          else reject(new Error('Base64 conversion failed'));
-        };
-        reader.onerror = () => reject(new Error('FileReader error'));
-        reader.readAsDataURL(audioBlob);
-      });
-
-      const mimeType = audioBlob.type || 'audio/webm';
-      setDebugInfo(`b64: ${Math.round(base64.length / 1024)}KB`);
-
-      // Config aus dem bestehenden Supabase Client oder Env holen
-      const { baseUrl, anonKey } = getSupabaseConfig();
-      
-      if (!baseUrl || baseUrl === 'undefined' || !baseUrl.startsWith('http')) {
-        throw new Error(`Supabase URL ungültig: "${baseUrl}"`);
-      }
-
-      const url = `${baseUrl}/functions/v1/speech-to-text`;
-      setDebugInfo(`b64: ${Math.round(baseUrl.length ? baseUrl.substring(8, 30) : 'MISSING')}`);
-
-      // Get fresh auth session
-      const { data: sessionData } = await supabase.auth.getSession();
-      const accessToken = sessionData?.session?.access_token;
-
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 20000);
-
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'apikey': anonKey,
-          'Authorization': `Bearer ${accessToken || anonKey}`,
-        },
-        body: JSON.stringify({
-          audio: base64,
-          language: languageRef.current,
-          mimeType,
-        }),
-        signal: controller.signal,
-      });
-
-      clearTimeout(timeoutId);
-
-      if (!response.ok) {
-        const errText = await response.text();
-        throw new Error(`HTTP ${response.status}: ${errText.substring(0, 200)}`);
-      }
-
-      const data = await response.json();
-      const text = (data?.text || '').trim();
-
-      if (!text) {
-        setErrorDetail(`Leere Antwort: ${JSON.stringify(data).substring(0, 200)}`);
+      // Validate
+      if (!audioBlob || audioBlob.size === 0) {
+        setErrorDetail('blob-empty');
         setErrorType('empty');
         setState('error');
         return;
       }
 
+      setDebugInfo('stt-b64');
+
+      // Blob to Base64
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          const result = reader.result as string;
+          const idx = result.indexOf(',');
+          if (idx > -1) {
+            resolve(result.substring(idx + 1));
+          } else {
+            reject(new Error('no-comma-in-dataurl'));
+          }
+        };
+        reader.onerror = () => reject(new Error('filereader-err'));
+        reader.readAsDataURL(audioBlob);
+      });
+
+      const sizeKB = base64 ? Math.round(base64.length / 1024) : 0;
+      setDebugInfo('stt-invoke ' + sizeKB + 'KB');
+
+      // Call edge function with retry
+      let lastError: Error | null = null;
+      let data: any = null;
+
+      for (let attempt = 1; attempt <= 2; attempt++) {
+        try {
+          const result = await supabase.functions.invoke('speech-to-text', {
+            body: {
+              audio: base64,
+              language: languageRef.current,
+              mimeType: audioBlob.type || 'audio/webm',
+            },
+          });
+
+          if (result.error) {
+            lastError = new Error(result.error.message || JSON.stringify(result.error));
+            setDebugInfo('stt-err-' + attempt + ' ' + (result.error.message || '').substring(0, 40));
+            if (attempt < 2) {
+              await new Promise(r => setTimeout(r, 1000));
+            }
+            continue;
+          }
+
+          data = result.data;
+          break;
+
+        } catch (invokeErr) {
+          lastError = invokeErr instanceof Error ? invokeErr : new Error(String(invokeErr));
+          setDebugInfo('stt-catch-' + attempt + ' ' + lastError.message.substring(0, 40));
+          if (attempt < 2) {
+            await new Promise(r => setTimeout(r, 1000));
+          }
+        }
+      }
+
+      if (!data && lastError) {
+        throw lastError;
+      }
+
+      const text = (data?.text || '').trim();
+      if (!text) {
+        setDebugInfo('stt-empty-response');
+        setErrorDetail('empty-response: ' + JSON.stringify(data).substring(0, 80));
+        setErrorType('empty');
+        setState('error');
+        return;
+      }
+
+      setDebugInfo('stt-ok');
       setTranscript(text);
       setState('result');
 
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      const name = err instanceof Error ? err.name : 'unknown';
-
-      if (name === 'AbortError') {
-        setErrorDetail('Timeout nach 20s – Edge Function antwortet nicht');
-      } else if (message.includes('Failed to fetch') || message.includes('NetworkError') || message.includes('network')) {
-        setErrorDetail(`Netzwerk-Fehler: ${message}. Prüfe ob Edge Function deployed ist.`);
-      } else {
-        setErrorDetail(`${name}: ${message}`);
-      }
-
+      const msg = err instanceof Error ? err.message : String(err);
+      setErrorDetail(msg.substring(0, 120));
       setErrorType('failed');
       setState('error');
     }
   };
-
   // Keep a ref to doTranscribe so onstop always calls the latest version
   const transcribeRef = useRef(doTranscribe);
   transcribeRef.current = doTranscribe;
