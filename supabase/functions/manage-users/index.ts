@@ -1,5 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
-import { requireAdmin } from '../_shared/auth.ts';
+import { requireAdmin, getAuthenticatedUser } from '../_shared/auth.ts';
 import { getCorsHeaders, handleCorsOptions } from '../_shared/cors.ts';
 
 Deno.serve(async (req) => {
@@ -12,7 +12,6 @@ Deno.serve(async (req) => {
 
     // For language updates on own profile, allow any authenticated user
     if (action === "updateLanguages" || action === "updateLanguage") {
-      const { getAuthenticatedUser } = await import('../_shared/auth.ts');
       const auth = await getAuthenticatedUser(req);
       
       // Allow if updating own profile OR if admin

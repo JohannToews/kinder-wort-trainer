@@ -21,35 +21,47 @@ export async function getAuthenticatedUser(req: Request): Promise<AuthResult> {
   // Versuch 1: Supabase Auth Token
   const authHeader = req.headers.get('Authorization');
   if (authHeader?.startsWith('Bearer ')) {
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_ANON_KEY')!,
-      { global: { headers: { Authorization: authHeader } } }
-    );
+    const token = authHeader.replace('Bearer ', '');
+    
+    // Use direct REST API call to verify token (avoids supabase-js "Auth session missing" bug)
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    
+    const userResponse = await fetch(`${supabaseUrl}/auth/v1/user`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'apikey': serviceRoleKey,
+      },
+    });
+    
+    if (userResponse.ok) {
+      const user = await userResponse.json();
+      // User verified successfully
+      if (user?.id) {
+        // User-Profil laden via auth_id
+        const { data: profile } = await supabaseAdmin
+          .from('user_profiles')
+          .select('id')
+          .eq('auth_id', user.id)
+          .single();
 
-    const { data: { user }, error } = await supabaseClient.auth.getUser();
-    if (user && !error) {
-      // User-Profil laden via auth_id
-      const { data: profile } = await supabaseAdmin
-        .from('user_profiles')
-        .select('id')
-        .eq('auth_id', user.id)
-        .single();
+        if (!profile) throw new Error('User profile not found for auth_id: ' + user.id);
 
-      if (!profile) throw new Error('User profile not found');
+        const { data: role } = await supabaseAdmin
+          .from('user_roles')
+          .select('role')
+          .eq('auth_id', user.id)
+          .single();
 
-      const { data: role } = await supabaseAdmin
-        .from('user_roles')
-        .select('role')
-        .eq('auth_id', user.id)
-        .single();
-
-      return {
-        userId: profile.id,
-        authMode: 'supabase',
-        isAdmin: role?.role === 'admin',
-        supabase: supabaseAdmin,
-      };
+        return {
+          userId: profile.id,
+          authMode: 'supabase',
+          isAdmin: role?.role === 'admin',
+          supabase: supabaseAdmin,
+        };
+      }
+    } else {
+      console.log('Auth: token verification failed:', userResponse.status);
     }
   }
 
