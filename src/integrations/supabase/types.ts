@@ -1617,13 +1617,26 @@ export type Database = {
       get_my_stories_list: {
         Args: { p_limit?: number; p_offset?: number; p_profile_id: string }
         Returns: {
+          completed: boolean
+          cover_image_status: string
           cover_image_url: string
           created_at: string
-          difficulty_level: string
+          difficulty: string
+          emotional_coloring: string
+          ending_type: string
+          episode_number: number
+          generation_status: string
           id: string
-          language: string
-          status: string
+          image_count: number
+          is_deleted: boolean
+          kid_profile_id: string
+          series_id: string
+          story_images_status: string
+          text_language: string
+          text_type: string
           title: string
+          updated_at: string
+          user_id: string
         }[]
       }
       get_my_story_count: { Args: { p_profile_id?: string }; Returns: number }
