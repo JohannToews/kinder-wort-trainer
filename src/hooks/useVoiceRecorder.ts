@@ -44,6 +44,8 @@ export function useVoiceRecorder(options: UseVoiceRecorderOptions = {}): UseVoic
 
   // Use ref for language to avoid stale closures in onstop
   const languageRef = useRef(language);
+  // Sync ref immediately on every render AND via effect for safety
+  languageRef.current = language;
   useEffect(() => { languageRef.current = language; }, [language]);
 
   // Cleanup all resources
