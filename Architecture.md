@@ -25,7 +25,7 @@
 |-------|-----------|
 | Frontend | React 18.3, TypeScript 5.8, Vite 5.4 |
 | UI | shadcn/ui (50+ Radix UI components), Tailwind CSS 3.4, Framer Motion 12 |
-| State | React Context, TanStack React Query 5 |
+| State | React Context, TanStack React Query 5 (stories cache: 5min stale / 10min GC) |
 | Backend | Supabase (Edge Functions, PostgreSQL, Storage, Realtime) |
 | AI / LLM | Google Gemini (2.0 Flash, 2.5 Flash, 3 Flash Preview), Lovable AI Gateway |
 | Speech | ElevenLabs (TTS + STT) |
@@ -54,8 +54,9 @@ kinder-wort-trainer/
 │   ├── components/
 │   │   ├── ui/                        # 50+ shadcn/ui components
 │   │   ├── gamification/              # PointsDisplay, LevelBadge, LevelUpModal, StreakFlame, CollectibleModal
-│   │   ├── story-creation/            # 12 files – multi-step story creation wizard
+│   │   ├── story-creation/            # 13 files – multi-step story creation wizard (incl. SavedCharactersModal)
 │   │   ├── story-sharing/             # 5 files – QR code sharing, import/export
+│   │   ├── ConsistencyCheckStats.tsx  # Admin: consistency check result stats (delete, refresh, selection)
 │   │   ├── BadgeCelebrationModal.tsx  # Fullscreen modal celebrating new badges (confetti, animations)
 │   │   ├── ComprehensionQuiz.tsx      # Story comprehension quiz
 │   │   ├── FablinoMascot.tsx          # Reusable mascot image (sm=64px/md=100px/lg=130px, bounce animation)
@@ -106,6 +107,8 @@ kinder-wort-trainer/
 │   │   ├── translations.ts            # i18n (7 languages: DE, FR, EN, ES, NL, IT, BS) – 2000+ lines
 │   │   ├── levelTranslations.ts       # Level name translations (7 languages)
 │   │   ├── schoolSystems.ts           # School systems (FR, DE, ES, NL, EN, IT, BS) with class names
+│   │   ├── edgeFunctionHelper.ts      # invokeEdgeFunction() with legacy auth (x-legacy-token/x-legacy-user-id)
+│   │   ├── imageUtils.ts              # getThumbnailUrl() for Supabase Storage thumbnails (width, quality)
 │   │   └── utils.ts                   # cn() utility (clsx + tailwind-merge)
 │   ├── pages/                         # 19 pages (see Routing below)
 │   ├── test/
@@ -114,14 +117,18 @@ kinder-wort-trainer/
 │   └── types/
 │       └── speech-recognition.d.ts
 ├── supabase/
-│   ├── functions/                     # 15 Edge Functions
+│   ├── functions/                     # 17 Edge Functions
 │   │   ├── _shared/                   # Shared modules
 │   │   │   ├── promptBuilder.ts       # Block 2.3c: Dynamic prompt builder
 │   │   │   ├── imagePromptBuilder.ts  # Block 2.4: Image prompt construction
-│   │   │   └── learningThemeRotation.ts # Block 2.3c: Learning theme rotation
+│   │   │   ├── learningThemeRotation.ts # Block 2.3c: Learning theme rotation
+│   │   │   ├── auth.ts                # Supabase + legacy auth (x-legacy-token/x-legacy-user-id)
+│   │   │   └── cors.ts               # CORS logic (Lovable + allowed origins)
 │   │   ├── generate-story/            # Main story generation (~1409 lines)
+│   │   ├── migrate-covers/            # Migrates cover images to story-images bucket
+│   │   ├── migrate-user-auth/         # Auth migration (called from MigrationBanner)
 │   │   └── …                          # 14 more Edge Functions
-│   └── migrations/                    # 67 SQL migrations (incl. 7 Gamification Phase 1 migrations)
+│   └── migrations/                    # 77 SQL migrations (incl. 7 Gamification Phase 1 + 3 performance/storage)
 ├── Architecture.md                    # This file
 ├── package.json
 ├── vite.config.ts
@@ -150,7 +157,7 @@ kinder-wort-trainer/
 |-------|------|-------------|
 | `/` | HomeFablino (or HomeClassic) | Home with Fablino mascot via FablinoPageHeader (mascotSize="md"), profile switcher, action buttons (design tokens), weekly tracker card. Feature flag controlled. |
 | `/admin` | AdminPage | Admin dashboard (Profile, Erziehung, Stories, Settings, Account, System tabs) |
-| `/stories` | StorySelectPage | Story browser (fiction/non-fiction/series) |
+| `/stories` | StorySelectPage | Story browser (fiction/non-fiction/series) – React Query cached, RPC `get_my_stories_list` |
 | `/read/:id` | ReadingPage | Story reading interface (word tap, audio, comprehension quiz, scene images) |
 | `/quiz` | VocabularyQuizPage | Vocabulary quiz (multiple choice, awards stars) |
 | `/words` | VocabularyManagePage | Manage saved vocabulary words |
@@ -447,9 +454,9 @@ Phase 2 fixes applied (2026-02-10):
 
 - **Database**: PostgreSQL with RLS
 - **Edge Functions**: 15 Deno functions
-- **Storage**: `covers` bucket for story/profile images
+- **Storage**: `covers` bucket for story/profile images, `story-images` bucket (public) for migrated images
 - **Realtime**: Enabled for `stories` table (generation status updates)
-- **RPC Functions**: `log_activity`, `check_and_award_badges`, `get_results_page` (all 3 rewritten in Gamification Phase 1)
+- **RPC Functions**: `log_activity`, `check_and_award_badges`, `get_results_page` (all 3 rewritten in Gamification Phase 1), `get_my_stories_list` (performance: server-side filtered story list), `get_my_results` (user results)
 
 ---
 
@@ -502,7 +509,7 @@ difficulty_rules             ← Block 2.2b (9 entries: 3 levels × 3 langs)
 | `user_profiles` | User accounts | username, password_hash, display_name, admin_language, app_language, text_language |
 | `kid_profiles` | Child profiles (multi per user) | name, hobbies, school_system, school_class, color_palette, image_style, gender, age, ui_language, reading_language, explanation_language, home_languages[], story_languages[], content_safety_level (1-4), difficulty_level (1-3) |
 | `user_roles` | Role assignments | user_id, role (admin/standard) |
-| `stories` | Story content and metadata | title, content, cover_image_url, story_images[], difficulty, text_language, generation_status, series_id, episode_number, ending_type, structure ratings, learning_theme_applied, parent_prompt_text, humor_level (1-5), emotional_depth (1-3), moral_topic, concrete_theme, image_count |
+| `stories` | Story content and metadata | title, content, cover_image_url, story_images[], difficulty, text_language, generation_status, series_id, episode_number, ending_type, structure ratings, learning_theme_applied, parent_prompt_text, humor_level (1-5), emotional_depth (1-3), moral_topic, concrete_theme, image_count, **is_favorite** (boolean, default false) |
 | `kid_characters` | Recurring story figures per kid | kid_profile_id (FK CASCADE), name, role (family/friend/known_figure), age, relation, description, is_active, sort_order |
 | `marked_words` | Vocabulary words with explanations | word, explanation, story_id, quiz_history[], is_learned, difficulty, word_language, explanation_language |
 | `comprehension_questions` | Story comprehension questions | question, expected_answer, options[], story_id, question_language |
@@ -559,6 +566,8 @@ difficulty_rules             ← Block 2.2b (9 entries: 3 levels × 3 langs)
 | `log_activity(p_child_id, p_activity_type, p_stars, p_metadata)` | **Phase 1 rewrite**: Reads star values from `point_settings` (DB-configurable). Weekly reset check (Monday=new week). Updates counters (total_stories_read, weekly_stories_count, consecutive_perfect_quizzes, total_perfect_quizzes, languages_read). Streak logic via `last_read_date`. Weekly bonus (highest only, not cumulative). Calls `check_and_award_badges`. Returns `{total_stars, stars_earned, bonus_stars, weekly_bonus, current_streak, weekly_stories_count, new_badges}`. Activity types: `story_read`, `quiz_complete`. | ReadingPage, VocabularyQuizPage |
 | `check_and_award_badges(p_child_id)` | **Phase 1 rewrite**: Handles all 23 badge types across 4 categories. For repeatable (weekly) badges: checks if earned this week. Awards `bonus_stars` per badge. Returns JSONB array: `[{id, name, emoji, category, bonus_stars, fablino_message, frame_color}]` | Called by log_activity |
 | `get_results_page(p_child_id)` | **Phase 1 rewrite**: Returns child_name, total_stars, current_streak, longest_streak, weekly_stories_count, weekly_bonus_claimed, total_stories_read, total_perfect_quizzes, languages_read[], current_level, next_level (with unlock_feature), levels (5), badges (23 with earned/earned_at/times_earned) | ResultsPage (via useResultsPage hook) |
+| `get_my_stories_list(p_profile_id, p_limit, p_offset)` | **Performance**: Server-side filtered story list by kid profile (includes null kid_profile_id). Returns id, title, cover_image_url, difficulty, text_type, kid_profile_id, series_id, episode_number, ending_type. Avoids transferring story content. | StorySelectPage (via React Query) |
+| `get_my_results()` | Returns user activity results (reference_id, kid_profile_id) for story completion status | StorySelectPage (via React Query) |
 
 ### Enums
 
@@ -626,6 +635,8 @@ useKidProfile.tsx → getKidLanguage(school_system)
 | `create-share` | — | reads: stories; writes: shared_stories |
 | `get-share` | — | reads: shared_stories, stories |
 | `import-story` | — | reads: shared_stories, stories; writes: stories |
+| `migrate-covers` | — | reads: stories (cover URLs); writes: story-images bucket |
+| `migrate-user-auth` | — | reads/writes: user_profiles (auth migration) |
 
 ---
 
@@ -655,6 +666,7 @@ useKidProfile.tsx → getKidLanguage(school_system)
 | `FamilyMemberModal` | Modal for adding family members |
 | `NameInputModal` | Modal for custom character names |
 | `SiblingInputModal` | Modal for adding siblings |
+| `SavedCharactersModal` | Modal for selecting saved kid_characters with checkboxes (used in CharacterSelectionScreen) |
 | `SelectionSummary` | Summary of selected characters |
 | `SettingSelectionScreen` | Story setting selection (currently unused in main flow) |
 | `types.ts` | TypeScript types + translation maps for wizard |
@@ -705,7 +717,7 @@ OLD PATH (Fallback – used if NEW PATH throws):
 
 | Issue | Location | Impact |
 |-------|----------|--------|
-| **Oversized components** | `ReadingPage.tsx` (1465+ lines), `VocabularyQuizPage.tsx` (882+ lines), `generate-story/index.ts` (1409 lines) | Hard to maintain, test, review |
+| **Oversized components** | `ReadingPage.tsx` (~1618 lines), `FeedbackStatsPage.tsx` (~1576 lines), `VocabularyQuizPage.tsx` (~954 lines), `generate-story/index.ts` (1409 lines) | Hard to maintain, test, review |
 | **Remaining inline translations** | `ReadingPage.tsx`, `VocabularyQuizPage.tsx`, `ResultsPage.tsx`, `HomeFablino.tsx` | Page-specific translation objects not yet in `lib/translations.ts` |
 | **Many `any` types** | Various files | `supabase: any`, `data: any` reduce type safety |
 | **No error boundaries** | React app | API failures can crash entire app |
@@ -738,7 +750,7 @@ OLD PATH (Fallback – used if NEW PATH throws):
 9. **Quality**: Replace console.log with structured logging
 10. **Quality**: Add TypeScript strict mode, eliminate `any` types
 11. **Testing**: Add unit tests for hooks and Edge Functions
-12. **Performance**: Implement code splitting, React.memo, optimize re-renders
+12. **Performance**: Extend React Query caching to more pages (AdminPage, VocabularyPages), implement code splitting, React.memo, virtualization for large lists
 13. **Cleanup**: Remove legacy gamification tables (`point_settings_legacy`, `point_transactions`, `level_settings`) or add migration path
 
 ---
@@ -755,6 +767,40 @@ OLD PATH (Fallback – used if NEW PATH throws):
 | `20260210_06_rpc_check_and_award_badges.sql` | Full rewrite: 4 categories, 8 condition types, repeatable weekly badges, bonus stars |
 | `20260210_07_rpc_get_results_page.sql` | Full rewrite: comprehensive response with all counters, levels, 23 badges with earned/times_earned |
 
+### Performance & Storage Migrations (2026-02-11)
+
+| File | Purpose |
+|------|---------|
+| `20260211070403_…` | Creates `story-images` storage bucket (public) with storage policies |
+| `20260211120540_…` | Storage bucket policies (additional) |
+| `20260211125053_…` | Adds `is_favorite` boolean column to `stories` table (default false) |
+
 ---
 
-*Last updated: 2026-02-10. Covers: Block 1 (multilingual DB), Block 2.1 (learning themes + guardrails), Block 2.2/2.2b (rule tables + difficulty_rules), Block 2.3a (story classifications + kid_characters), Block 2.3c (dynamic prompt engine), Block 2.3d (story_languages, wizard character management), Block 2.3e (dual-path wizard, surprise theme/characters), Block 2.4 (intelligent image generation), Phase 5 (star-based gamification, badges, BadgeCelebrationModal, ResultsPage), UI harmonization complete (design-tokens.ts, FablinoMascot sm=64/md=100/lg=130, SpeechBubble, FablinoPageHeader on all screens, compact SpecialEffectsScreen, theme/character Vite imports), **Gamification Phase 1 backend complete** (7 migrations), **Gamification Phase 2 frontend fixes complete** (total_stars insert, activity types story_read/quiz_complete, allBadgeCount=23).*
+## Performance Optimizations
+
+### Implemented
+
+| Optimization | Location | Details |
+|-------------|----------|---------|
+| **React Query caching** | StorySelectPage | `useQuery` with `staleTime: 5min`, `gcTime: 10min`. Query key: `['stories', selectedProfileId, userId]`. Invalidated after mutations (e.g. new episode). |
+| **Server-side story filtering** | `get_my_stories_list` RPC | Replaces client-side `.from("stories").select(...)` with server-side RPC. Filters by kid_profile_id (including null). No content field transferred. |
+| **Image thumbnails** | `lib/imageUtils.ts` | `getThumbnailUrl(url, width, quality)` for Supabase Storage transform API. Used in StorySelectPage, AdminPage, SeriesGrid. |
+| **Lazy image loading** | StorySelectPage, AdminPage, SeriesGrid, ReadingPage | `loading="lazy"` on all story cover images. |
+| **useMemo filtering** | AdminPage | `useMemo` for search + status filtering of story list. |
+| **useCallback** | Various hooks | `useCallback` in VocabularyQuizPage, KidProfileSection, gamification hooks, ParentSettingsPanel, StoryAudioPlayer. |
+| **In-memory explanation cache** | ReadingPage | `cachedExplanations` Map avoids repeated LLM calls for word explanations within a session. |
+| **Parallel queries** | StorySelectPage, AdminPage | Stories + completions fetched with `Promise.all`. |
+
+### Not Yet Implemented
+
+| Optimization | Notes |
+|-------------|-------|
+| Route-level code splitting | No `React.lazy` / `Suspense` for pages |
+| List virtualization | No `react-window` / `react-virtualized` for large story lists |
+| React Query on other pages | AdminPage, VocabularyPages still use `useEffect` + direct Supabase calls |
+| Skeleton loaders on StorySelectPage | Currently uses animated BookOpen icon; ResultsPage has skeletons |
+
+---
+
+*Last updated: 2026-02-11. Covers: Block 1 (multilingual DB), Block 2.1 (learning themes + guardrails), Block 2.2/2.2b (rule tables + difficulty_rules), Block 2.3a (story classifications + kid_characters), Block 2.3c (dynamic prompt engine), Block 2.3d (story_languages, wizard character management), Block 2.3e (dual-path wizard, surprise theme/characters), Block 2.4 (intelligent image generation), Phase 5 (star-based gamification, badges, BadgeCelebrationModal, ResultsPage), UI harmonization complete (design-tokens.ts, FablinoMascot sm=64/md=100/lg=130, SpeechBubble, FablinoPageHeader on all screens, compact SpecialEffectsScreen, theme/character Vite imports), **Gamification Phase 1 backend complete** (7 migrations), **Gamification Phase 2 frontend fixes complete** (total_stars insert, activity types story_read/quiz_complete, allBadgeCount=23), **Performance optimizations** (React Query caching on StorySelectPage, server-side story list RPC, image thumbnails via getThumbnailUrl, lazy loading), **New infrastructure** (story-images storage bucket, edgeFunctionHelper with legacy auth, migrate-covers + migrate-user-auth edge functions, SavedCharactersModal, ConsistencyCheckStats, stories.is_favorite).*
