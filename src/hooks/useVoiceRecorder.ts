@@ -129,7 +129,7 @@ export function useVoiceRecorder(options: UseVoiceRecorderOptions = {}): UseVoic
       });
 
       const sizeKB = base64 ? Math.round(base64.length / 1024) : 0;
-      setDebugInfo('stt-invoke ' + sizeKB + 'KB');
+      setDebugInfo('stt-invoke ' + sizeKB + 'KB lang=' + languageRef.current);
 
       // Call edge function with retry
       let lastError: Error | null = null;

@@ -363,7 +363,7 @@ const SpecialEffectsScreen = ({
             />
             <div className="absolute right-2 bottom-2">
               <VoiceRecordButton
-                language={kidReadingLanguage || 'de'}
+                language={showSettings ? storyLanguage : (kidReadingLanguage || 'de')}
                 onTranscript={(text) => {
                   setAdditionalDescription((prev) => prev ? `${prev} ${text}` : text);
                 }}
