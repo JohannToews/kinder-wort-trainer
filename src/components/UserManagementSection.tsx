@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import { invokeEdgeFunction } from "@/lib/edgeFunctionHelper";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -58,6 +59,9 @@ const UserManagementSection = ({ language, currentUserId }: UserManagementSectio
   const loadUsers = async () => {
     setIsLoading(true);
     try {
+      // Refresh session to ensure valid auth token
+      await supabase.auth.refreshSession();
+      
       const result = await invokeEdgeFunction("manage-users", {
         action: "list",
       });

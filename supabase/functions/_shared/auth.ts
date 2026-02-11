@@ -18,8 +18,18 @@ export async function getAuthenticatedUser(req: Request): Promise<AuthResult> {
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
   );
 
-  // Versuch 1: Supabase Auth Token
+  // Debug: log all relevant headers
   const authHeader = req.headers.get('Authorization');
+  const legacyToken = req.headers.get('x-legacy-token');
+  const legacyUserId = req.headers.get('x-legacy-user-id');
+  console.log('[AUTH] Headers received:', {
+    hasAuthHeader: !!authHeader,
+    authHeaderPrefix: authHeader?.substring(0, 20),
+    hasLegacyToken: !!legacyToken,
+    hasLegacyUserId: !!legacyUserId,
+  });
+
+  // Versuch 1: Supabase Auth Token
   if (authHeader?.startsWith('Bearer ')) {
     const token = authHeader.replace('Bearer ', '');
     
@@ -66,8 +76,7 @@ export async function getAuthenticatedUser(req: Request): Promise<AuthResult> {
   }
 
   // Versuch 2: Legacy Token (Übergangsphase)
-  const legacyToken = req.headers.get('x-legacy-token');
-  const legacyUserId = req.headers.get('x-legacy-user-id');
+  
   
   if (legacyToken && legacyUserId) {
     const { data: profile } = await supabaseAdmin
