@@ -1,6 +1,9 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+
 export type VoiceRecorderState = 'idle' | 'recording' | 'processing' | 'result' | 'error';
 export type VoiceErrorType = 'mic_denied' | 'empty' | 'failed';
 
@@ -95,10 +98,11 @@ export function useVoiceRecorder(options: UseVoiceRecorderOptions = {}): UseVoic
     return 'audio/webm';
   };
 
-  // Transcribe: Blob → Base64 → JSON (no FormData = no Safari issues)
+  // Transcribe: Blob → Base64 → direct fetch (NOT supabase.functions.invoke)
   const doTranscribe = async (audioBlob: Blob) => {
     setState('processing');
     setErrorDetail('');
+    setDebugInfo('');
 
     if (!audioBlob || audioBlob.size === 0) {
       setErrorDetail('Aufnahme ist leer (0 bytes)');
@@ -108,17 +112,14 @@ export function useVoiceRecorder(options: UseVoiceRecorderOptions = {}): UseVoic
     }
 
     try {
-      // Convert Blob → Base64 via FileReader (Safari-safe)
+      // Step 1: Blob → Base64
       const base64 = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
         reader.onloadend = () => {
           const result = reader.result as string;
-          const base64Data = result.split(',')[1];
-          if (base64Data) {
-            resolve(base64Data);
-          } else {
-            reject(new Error('Base64 conversion failed'));
-          }
+          const b64 = result.split(',')[1];
+          if (b64) resolve(b64);
+          else reject(new Error('Base64 conversion failed'));
         };
         reader.onerror = () => reject(new Error('FileReader error'));
         reader.readAsDataURL(audioBlob);
@@ -126,26 +127,49 @@ export function useVoiceRecorder(options: UseVoiceRecorderOptions = {}): UseVoic
 
       const mimeType = audioBlob.type || 'audio/webm';
       const ext = mimeType.includes('mp4') ? 'mp4' : 'webm';
+      setDebugInfo(`b64: ${Math.round(base64.length / 1024)}KB`);
 
-      setDebugInfo(`Base64: ${Math.round(base64.length / 1024)}KB | ${ext}`);
+      // Step 2: Get fresh auth session
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData?.session?.access_token;
 
-      // Send as plain JSON via supabase.functions.invoke – no FormData
-      const { data, error } = await supabase.functions.invoke('speech-to-text', {
-        body: {
+      // Step 3: Direct fetch (bypasses supabase.functions.invoke Safari issues)
+      const url = `${SUPABASE_URL}/functions/v1/speech-to-text`;
+
+      const fetchHeaders: Record<string, string> = {
+        'Content-Type': 'application/json',
+        'apikey': SUPABASE_PUBLISHABLE_KEY,
+        'Authorization': `Bearer ${accessToken || SUPABASE_PUBLISHABLE_KEY}`,
+      };
+
+      setDebugInfo(`b64: ${Math.round(base64.length / 1024)}KB | fetching...`);
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 20000);
+
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: fetchHeaders,
+        body: JSON.stringify({
           audio: base64,
           language: languageRef.current,
           mimeType,
-        },
+        }),
+        signal: controller.signal,
       });
 
-      if (error) {
-        throw new Error(`Edge Function: ${error.message || JSON.stringify(error)}`);
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        const errText = await response.text();
+        throw new Error(`HTTP ${response.status}: ${errText.substring(0, 200)}`);
       }
 
+      const data = await response.json();
       const text = (data?.text || '').trim();
 
       if (!text) {
-        setErrorDetail(`Response: ${JSON.stringify(data).substring(0, 200)}`);
+        setErrorDetail(`Leere Antwort: ${JSON.stringify(data).substring(0, 200)}`);
         setErrorType('empty');
         setState('error');
         return;
@@ -153,10 +177,19 @@ export function useVoiceRecorder(options: UseVoiceRecorderOptions = {}): UseVoic
 
       setTranscript(text);
       setState('result');
+
     } catch (err) {
-      const name = err instanceof Error ? err.constructor.name : 'unknown';
       const message = err instanceof Error ? err.message : String(err);
-      setErrorDetail(`${name}: ${message}`);
+      const name = err instanceof Error ? err.name : 'unknown';
+
+      if (name === 'AbortError') {
+        setErrorDetail('Timeout nach 20s – Edge Function antwortet nicht');
+      } else if (message.includes('Failed to fetch') || message.includes('NetworkError') || message.includes('network')) {
+        setErrorDetail(`Netzwerk-Fehler: ${message}. Prüfe ob Edge Function deployed ist.`);
+      } else {
+        setErrorDetail(`${name}: ${message}`);
+      }
+
       setErrorType('failed');
       setState('error');
     }
