@@ -304,6 +304,8 @@ const ReadingPage = () => {
   // Interactive series: branch options for current episode
   const [branchOptions, setBranchOptions] = useState<BranchOption[] | null>(null);
   const [branchId, setBranchId] = useState<string | null>(null); // story_branches row id
+  const [showBranchDecision, setShowBranchDecision] = useState(false); // show decision screen before quiz
+  const [branchChosen, setBranchChosen] = useState(false); // child has picked an option
   // Interactive series finale: all past choices for recap
   const [branchHistory, setBranchHistory] = useState<{ episode_number: number; chosen_title: string }[]>([]);
   // System prompt for story generation
@@ -740,31 +742,70 @@ const ReadingPage = () => {
     }
   };
 
-  // Handle interactive series branch decision
-  const handleBranchDecision = async (option: BranchOption) => {
+  // Step 1: Child selects a branch option → save choice, then show quiz
+  const handleBranchSelect = async (option: BranchOption) => {
     if (!story || !branchId) return;
 
-    setIsGeneratingContinuation(true);
-
     try {
-      // 1. Update story_branches: save the chosen option
-      await (supabase as any)
+      // Save choice to story_branches
+      await supabase
         .from("story_branches")
         .update({
           chosen_option_id: option.option_id,
           chosen_at: new Date().toISOString(),
-        })
+        } as any)
         .eq("id", branchId);
 
-      // 2. Update story: save branch_chosen
-      await (supabase as any)
+      // Save branch_chosen on the story
+      await supabase
         .from("stories")
-        .update({ branch_chosen: option.title })
+        .update({ branch_chosen: option.title } as any)
         .eq("id", story.id);
 
-      // 3. Generate next episode with branch context
+      console.log('[ReadingPage] Branch choice saved:', option.option_id, option.title);
+
+      // Mark as chosen
+      setBranchChosen(true);
+      setShowBranchDecision(false);
+
+      // Now show quiz if available, otherwise generate next episode directly
+      if (hasQuestions) {
+        setShowQuiz(true);
+      } else {
+        // No quiz – generate next episode immediately
+        handleGenerateInteractiveEpisode(option.title);
+      }
+    } catch (err) {
+      console.error("Error saving branch choice:", err);
+      toast.error("Fehler beim Speichern der Auswahl");
+    }
+  };
+
+  // Step 2: Generate next interactive episode (called after quiz or directly if no quiz)
+  const handleGenerateInteractiveEpisode = async (chosenTitle?: string) => {
+    if (!story || !user?.id) return;
+
+    setIsGeneratingContinuation(true);
+    toast.info(readingLabels[textLang]?.generatingSeriesContinuation || "Creating next episode...");
+
+    try {
       const nextEpisodeNumber = (story.episode_number || 1) + 1;
       const continuationPrompt = `Fortsetzung von "${story.title}" (Episode ${story.episode_number || 1}):\n\nVorherige Geschichte (Zusammenfassung):\n${story.content.slice(0, 500)}...\n\nUrsprüngliche Idee: ${story.prompt || ""}`;
+
+      // Resolve chosen title: from parameter, from story.branch_chosen, or reload from DB
+      let branchTitle = chosenTitle || (story as any).branch_chosen;
+      if (!branchTitle && branchId) {
+        const { data: branchRow } = await supabase
+          .from("story_branches")
+          .select("options, chosen_option_id")
+          .eq("id", branchId)
+          .maybeSingle();
+        if (branchRow?.chosen_option_id && branchRow?.options) {
+          const opts = branchRow.options as BranchOption[];
+          const chosen = opts.find(o => o.option_id === branchRow.chosen_option_id);
+          branchTitle = chosen?.title;
+        }
+      }
 
       const { data: genData, error } = await supabase.functions.invoke("generate-story", {
         body: {
@@ -778,10 +819,10 @@ const ReadingPage = () => {
           episodeNumber: nextEpisodeNumber,
           previousStoryId: story.id,
           seriesId: story.series_id || story.id,
-          userId: user?.id,
+          userId: user.id,
           isSeries: true,
           seriesMode: 'interactive',
-          branchChosen: option.title,
+          branchChosen: branchTitle,
           storyLanguage: story.text_language || "de",
           kidProfileId: story.kid_profile_id,
         },
@@ -794,7 +835,6 @@ const ReadingPage = () => {
       }
 
       if (genData?.title && genData?.content) {
-        // Save new episode
         const { data: newStory, error: storyError } = await supabase
           .from("stories")
           .insert({
@@ -806,7 +846,7 @@ const ReadingPage = () => {
             prompt: story.prompt,
             cover_image_url: genData.coverImageBase64 || null,
             story_images: genData.storyImages || null,
-            user_id: user?.id,
+            user_id: user.id,
             kid_profile_id: story.kid_profile_id,
             ending_type: nextEpisodeNumber >= 5 ? "A" : "C",
             episode_number: nextEpisodeNumber,
@@ -827,12 +867,12 @@ const ReadingPage = () => {
 
         // Save branch options for the new episode (if not Episode 5)
         if (genData.branch_options && newStory && nextEpisodeNumber < 5) {
-          await (supabase as any).from("story_branches").insert({
+          await supabase.from("story_branches").insert({
             story_id: newStory.id,
             series_id: story.series_id || story.id,
             episode_number: nextEpisodeNumber,
             options: genData.branch_options,
-          });
+          } as any);
         }
 
         toast.success(`Episode ${nextEpisodeNumber} erstellt! 🎉`);
@@ -1566,6 +1606,17 @@ const ReadingPage = () => {
                 />
               )}
 
+              {/* Branch Decision Screen – shown BEFORE quiz for interactive series */}
+              {showBranchDecision && branchOptions && branchOptions.length > 0 && !branchChosen && (
+                <div className="mt-8 pt-8 border-t-2 border-[#F0E8E0]">
+                  <BranchDecisionScreen
+                    options={branchOptions}
+                    onSelect={handleBranchSelect}
+                    isLoading={false}
+                  />
+                </div>
+              )}
+
               {/* Comprehension Quiz Section */}
               {showQuiz && !quizCompleted && (
                 <div className="mt-8 pt-8 border-t-2 border-[#F0E8E0]">
@@ -1677,13 +1728,28 @@ const ReadingPage = () => {
                   {/* Series continuation after quiz – Ep1-4 */}
                   {(story?.series_id || story?.episode_number) && (story?.episode_number || 0) >= 1 && (story?.episode_number || 0) < 5 && (
                     <div className="mt-6 pt-6 border-t border-border">
-                      {/* Interactive Series: Branch Decision Screen */}
-                      {branchOptions && branchOptions.length > 0 ? (
-                        <BranchDecisionScreen
-                          options={branchOptions}
-                          onSelect={handleBranchDecision}
-                          isLoading={isGeneratingContinuation}
-                        />
+                      {/* Interactive Series: branch was already chosen before quiz → generate next episode */}
+                      {branchChosen ? (
+                        <Button
+                          onClick={() => handleGenerateInteractiveEpisode()}
+                          disabled={isGeneratingContinuation}
+                          className="w-full btn-primary-kid flex items-center justify-center gap-3 text-lg py-5"
+                        >
+                          {isGeneratingContinuation ? (
+                            <>
+                              <Loader2 className="h-5 w-5 animate-spin" />
+                              {readingLabels[textLang]?.generatingSeriesContinuation || readingLabels[textLang]?.generatingContinuation || "Creating..."}
+                            </>
+                          ) : (
+                            <>
+                              <Sparkles className="h-5 w-5" />
+                              {readingLabels[textLang]?.continueStory || "What happens next?"} 
+                              <span className="text-sm opacity-80">
+                                ({readingLabels[textLang]?.episode || "Episode"} {(story.episode_number || 1) + 1})
+                              </span>
+                            </>
+                          )}
+                        </Button>
                       ) : (
                         /* Normal Series: Continue Button */
                         <Button
@@ -1749,18 +1815,9 @@ const ReadingPage = () => {
                 </div>
               )}
               
-              {/* Series continuation for stories without quiz – Ep1-4 */}
-              {!showQuiz && !hasQuestions && (story?.series_id || story?.episode_number) && (story?.episode_number || 0) >= 1 && (story?.episode_number || 0) < 5 && (
+              {/* Series continuation for stories without quiz – Ep1-4 (normal series only; interactive uses the decision screen above) */}
+              {!showQuiz && !hasQuestions && !showBranchDecision && !branchChosen && (story?.series_id || story?.episode_number) && (story?.episode_number || 0) >= 1 && (story?.episode_number || 0) < 5 && !(branchOptions && branchOptions.length > 0) && (
                 <div className="mt-8 pt-6 border-t border-border">
-                  {/* Interactive Series: Branch Decision Screen */}
-                  {branchOptions && branchOptions.length > 0 ? (
-                    <BranchDecisionScreen
-                      options={branchOptions}
-                      onSelect={handleBranchDecision}
-                      isLoading={isGeneratingContinuation}
-                    />
-                  ) : (
-                    /* Normal Series: Continue Button */
                     <div className="flex flex-col items-center gap-4">
                       <p className="text-muted-foreground text-center">
                         {textLang === 'de' ? 'Diese Geschichte ist Teil einer Serie!' : 
@@ -1792,7 +1849,6 @@ const ReadingPage = () => {
                         )}
                       </Button>
                     </div>
-                  )}
                 </div>
               )}
             </div>
@@ -1881,12 +1937,21 @@ const ReadingPage = () => {
           onClose={() => {
             const wasStoryDone = fablinoReaction.type === 'celebrate' && fablinoReaction.message === t.fablinoStoryDone;
             setFablinoReaction(null);
-            // After story celebration: show quiz or go back
+            // After story celebration: interactive series → decision screen first, then quiz
             if (wasStoryDone) {
-              if (hasQuestions) {
+              const isInteractiveSeries = branchOptions && branchOptions.length > 0 && (story?.episode_number || 0) < 5;
+              if (isInteractiveSeries) {
+                // Show branch decision screen BEFORE quiz
+                setShowBranchDecision(true);
+              } else if (hasQuestions) {
                 setShowQuiz(true);
               } else {
-                navigate("/stories");
+                // No quiz, no branch decision – check if series continuation is available
+                const isSeries = !!(story?.series_id || story?.episode_number) && (story?.episode_number || 0) >= 1 && (story?.episode_number || 0) < 5;
+                if (!isSeries) {
+                  navigate("/stories");
+                }
+                // If series: stay on page, continuation buttons are already rendered below
               }
             }
           }}
