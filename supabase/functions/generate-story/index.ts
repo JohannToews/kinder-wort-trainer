@@ -1007,7 +1007,34 @@ Deno.serve(async (req) => {
     }
 
     // ── Modus B: Resolve series mode ──
-    const seriesMode: string | undefined = seriesModeParam || undefined;
+    // If not sent in request, load from Episode 1 of the series (ensures Ep2+ inherit it)
+    let seriesMode: string | undefined = seriesModeParam || undefined;
+    if (!seriesMode && seriesId) {
+      try {
+        const { data: ep1 } = await supabase
+          .from('stories')
+          .select('series_mode')
+          .eq('series_id', seriesId)
+          .eq('episode_number', 1)
+          .maybeSingle();
+        if (!ep1) {
+          // Fallback: Episode 1 may have series_id = its own id (self-ref)
+          const { data: ep1Self } = await supabase
+            .from('stories')
+            .select('series_mode')
+            .eq('id', seriesId)
+            .maybeSingle();
+          if (ep1Self?.series_mode) seriesMode = ep1Self.series_mode;
+        } else if (ep1.series_mode) {
+          seriesMode = ep1.series_mode;
+        }
+        if (seriesMode) {
+          console.log(`[generate-story] series_mode loaded from DB: ${seriesMode}`);
+        }
+      } catch (e) {
+        console.warn('[generate-story] Failed to load series_mode from DB:', e);
+      }
+    }
 
     // ── Modus B (C.2): Load chosen option from previous episode ──
     let branchChosenTitle: string | undefined;
@@ -2083,6 +2110,8 @@ Antworte NUR mit dem erweiterten Text (ohne Titel, ohne JSON-Format).`;
       visual_style_sheet: visualStyleSheet ?? safeParseJson(story.visual_style_sheet) ?? null,
       // Modus B: Branch options for interactive series (Ep1-4)
       branch_options: branchOptionsParsed ?? null,
+      // Modus B: Pass series_mode back so frontend can store it on the new episode
+      series_mode: seriesMode || null,
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

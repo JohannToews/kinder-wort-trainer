@@ -608,7 +608,7 @@ const ReadingPage = () => {
           ending_type: nextEpisodeNumber >= 5 ? "A" : "C",
           episode_number: nextEpisodeNumber,
           series_id: story.series_id || story.id, // Backward compat: old Episode 1 has null series_id
-          series_mode: story.series_mode || null,
+          series_mode: data.series_mode || story.series_mode || null,
           // Phase 2: Series context fields from generate-story response
           episode_summary: data.episode_summary ?? null,
           continuity_state: data.continuity_state ?? null,

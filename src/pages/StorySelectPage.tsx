@@ -181,6 +181,7 @@ const StorySelectPage = () => {
           // Modular prompt system: CORE + KINDER-MODUL + SERIEN-MODUL
           source: 'kid',
           isSeries: true,
+          seriesMode: lastEpisode.series_mode || undefined,
           kidName: selectedProfile.name,
           kidHobbies: selectedProfile.hobbies,
           // Phase 2: Pass kid profile ID + language for new prompt path & series context
@@ -259,7 +260,7 @@ const StorySelectPage = () => {
           ending_type: endingType,
           episode_number: nextEpisodeNumber,
           series_id: series.seriesId,
-          series_mode: lastEpisode.series_mode || null,
+          series_mode: data.series_mode || lastEpisode.series_mode || null,
           // Phase 2: Series context fields from generate-story response
           episode_summary: data.episode_summary ?? null,
           continuity_state: data.continuity_state ?? null,
