@@ -132,6 +132,11 @@ export function buildImagePrompts(
 ): ImagePromptResult[] {
   const results: ImagePromptResult[] = [];
 
+  console.log('[IMAGE-PROMPTS] buildImagePrompts called:', JSON.stringify({
+    hasSeriesContext: !!seriesContext,
+    scenesCount: imagePlan?.scenes?.length ?? 0
+  }));
+
   // ═══ Age modifier (fine-grained, per year) ═══
   const ageModifier = getAgeModifier(childAge);
 
@@ -205,14 +210,13 @@ export function buildImagePrompts(
     });
   }
 
-  console.log('[IMAGE-PROMPTS] Generated prompts:',
+  console.log('[IMAGE-PROMPTS] Final prompts:', JSON.stringify(
     results.map((r, i) => ({
       index: i,
       type: i === 0 ? 'COVER' : 'SCENE',
-      promptPreview: r.prompt.substring(0, 300),
-      hasSeriesContext: !!seriesContext
+      first300chars: r.prompt?.substring(0, 300) ?? 'NO PROMPT'
     }))
-  );
+  ));
 
   return results;
 }

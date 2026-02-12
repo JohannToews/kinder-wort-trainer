@@ -1433,10 +1433,11 @@ Antworte NUR mit dem erweiterten Text (ohne Titel, ohne JSON-Format).`;
         }
       }
 
-      console.log('[IMAGE-PIPELINE] Calling buildImagePrompts with:', {
+      console.log('[IMAGE-PIPELINE] Calling buildImagePrompts:', JSON.stringify({
         hasSeriesContext: !!seriesImageCtx,
-        episodeNumber: seriesImageCtx?.episodeNumber,
-      });
+        episodeNumber: seriesImageCtx?.episodeNumber ?? null,
+        hasStyleSheet: !!seriesImageCtx?.visualStyleSheet
+      }));
       imagePrompts = buildImagePrompts(imagePlan, imageAgeRules, imageThemeRules, childAge, seriesImageCtx);
     } else {
       // ═══ FALLBACK: Simple cover prompt (previous behavior) ═══
