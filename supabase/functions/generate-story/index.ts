@@ -1631,7 +1631,7 @@ Antworte NUR mit dem erweiterten Text (ohne Titel, ohne JSON-Format).`;
     // ── Modus B (C.1): Parse and store branch_options from LLM response ──
     let branchOptionsParsed: any[] | null = null;
     if (seriesMode === 'interactive' && episodeNumber && episodeNumber < 5) {
-      const rawBranchOptions = story.branch_options;
+      const rawBranchOptions = (story as any).branch_options;
       if (rawBranchOptions && Array.isArray(rawBranchOptions) && rawBranchOptions.length === 3) {
         const validOptions = rawBranchOptions.every((opt: any) =>
           opt.option_id && opt.title && opt.preview && opt.direction && opt.image_hint

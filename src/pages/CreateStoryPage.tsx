@@ -242,7 +242,7 @@ const CreateStoryPage = () => {
 
         // For interactive series (educational): save branch options
         if (isSeries && (storySettings?.seriesMode === 'interactive') && data.branch_options && savedStory) {
-          await supabase.from("story_branches").insert({
+          await (supabase as any).from("story_branches").insert({
             story_id: savedStory.id,
             series_id: savedStory.id,
             episode_number: 1,
@@ -530,7 +530,7 @@ const CreateStoryPage = () => {
 
         // For interactive series (fiction): save branch options
         if (isSeries && seriesMode === 'interactive' && data.branch_options && savedStory) {
-          await supabase.from("story_branches").insert({
+          await (supabase as any).from("story_branches").insert({
             story_id: savedStory.id,
             series_id: savedStory.id,
             episode_number: 1,

@@ -436,14 +436,14 @@ const ReadingPage = () => {
       .single();
     
     if (data) {
-      setStory(data);
+      setStory(data as Story);
       if (data.completed) setIsMarkedAsRead(true);
       if (data.prompt) {
         setStoryPrompt(data.prompt);
       }
       // Load branch options for interactive series (Ep1-4)
-      if (data.series_mode === 'interactive' && (data.episode_number || 0) >= 1 && (data.episode_number || 0) < 5) {
-        const { data: branchData } = await supabase
+      if ((data as any).series_mode === 'interactive' && (data.episode_number || 0) >= 1 && (data.episode_number || 0) < 5) {
+        const { data: branchData } = await (supabase as any)
           .from("story_branches")
           .select("id, options, chosen_option_id")
           .eq("story_id", data.id)
@@ -457,8 +457,8 @@ const ReadingPage = () => {
         }
       }
       // Load branch history for interactive series finale (Ep5)
-      if (data.series_mode === 'interactive' && (data.episode_number || 0) >= 5 && data.series_id) {
-        const { data: allBranches } = await supabase
+      if ((data as any).series_mode === 'interactive' && (data.episode_number || 0) >= 5 && data.series_id) {
+        const { data: allBranches } = await (supabase as any)
           .from("story_branches")
           .select("episode_number, options, chosen_option_id")
           .eq("series_id", data.series_id)
@@ -745,7 +745,7 @@ const ReadingPage = () => {
 
     try {
       // 1. Update story_branches: save the chosen option
-      await supabase
+      await (supabase as any)
         .from("story_branches")
         .update({
           chosen_option_id: option.option_id,
@@ -754,7 +754,7 @@ const ReadingPage = () => {
         .eq("id", branchId);
 
       // 2. Update story: save branch_chosen
-      await supabase
+      await (supabase as any)
         .from("stories")
         .update({ branch_chosen: option.title })
         .eq("id", story.id);
@@ -824,7 +824,7 @@ const ReadingPage = () => {
 
         // Save branch options for the new episode (if not Episode 5)
         if (genData.branch_options && newStory && nextEpisodeNumber < 5) {
-          await supabase.from("story_branches").insert({
+          await (supabase as any).from("story_branches").insert({
             story_id: newStory.id,
             series_id: story.series_id || story.id,
             episode_number: nextEpisodeNumber,
