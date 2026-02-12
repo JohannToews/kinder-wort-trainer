@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import { useKidProfile } from "@/hooks/useKidProfile";
 import { useColorPalette } from "@/hooks/useColorPalette";
 import { useAuth } from "@/hooks/useAuth";
@@ -86,6 +87,7 @@ const getEducationalDescription = (
 
 const CreateStoryPage = () => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { user } = useAuth();
   const { kidAppLanguage, kidReadingLanguage, kidExplanationLanguage, kidHomeLanguages, kidStoryLanguages, selectedProfile } = useKidProfile();
   const { colors: paletteColors } = useColorPalette();
@@ -327,6 +329,9 @@ const CreateStoryPage = () => {
         }
 
         toast.success(t.toastStoryCreated);
+
+        // Invalidate stories cache so the new story appears in the list
+        queryClient.invalidateQueries({ queryKey: ['stories'] });
 
         // For admin: delay navigation to show performance breakdown
         const delayMs = user?.role === 'admin' && performanceData ? 4000 : 0;
@@ -667,6 +672,9 @@ const CreateStoryPage = () => {
         }
 
         toast.success(t.toastStoryCreated);
+
+        // Invalidate stories cache so the new story appears in the list
+        queryClient.invalidateQueries({ queryKey: ['stories'] });
 
         // Navigate to reading page
         navigate(`/read/${savedStory.id}`);
