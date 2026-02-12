@@ -59,6 +59,19 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Block legacy login for migrated users – they must use email + auth password
+    if (user.auth_migrated && user.auth_id) {
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'Account migrated. Please sign in with your email address and the password you set during migration.',
+          migrated: true,
+          email: user.email 
+        }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const { data: roleData } = await supabase
       .from('user_roles')
       .select('role')

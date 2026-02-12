@@ -281,6 +281,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         return { success: false, error: 'Login fehlgeschlagen' };
       }
 
+      // If user is migrated, block legacy login and show hint
+      if (data?.migrated) {
+        const emailHint = data.email ? ` (${data.email})` : '';
+        return { success: false, error: `This account has been migrated. Please sign in with your email address${emailHint} and the password you set during migration.` };
+      }
+
       if (data?.success && data?.user) {
         const userData: UserSettings = {
           id: data.user.id,
