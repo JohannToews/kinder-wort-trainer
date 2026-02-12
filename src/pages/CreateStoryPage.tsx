@@ -191,11 +191,17 @@ const CreateStoryPage = () => {
         const storyDifficulty = storySettings?.difficulty || difficulty;
         const isSeries = storySettings?.isSeries || false;
 
-        // Helper to upload base64 image to Supabase Storage
-        const uploadBase64Image = async (base64: string | undefined | null, prefix: string): Promise<string | null> => {
-          if (!base64 || typeof base64 !== 'string') return null;
+        // Helper: if already a URL (from backend Storage upload), use directly; else upload base64
+        const resolveImageUrl = async (imgData: string | undefined | null, prefix: string): Promise<string | null> => {
+          if (!imgData || typeof imgData !== 'string') return null;
+          // Already a URL (backend uploaded to Storage) → use directly
+          if (imgData.startsWith('http://') || imgData.startsWith('https://')) {
+            console.log(`[CreateStory] ${prefix}: Already a URL, using directly`);
+            return imgData;
+          }
+          // Fallback: upload base64 client-side
           try {
-            let b64Data = base64;
+            let b64Data = imgData;
             if (b64Data.includes(',')) b64Data = b64Data.split(',')[1];
             b64Data = b64Data.replace(/\s/g, '');
             if (!b64Data || b64Data.length === 0) return null;
@@ -216,16 +222,16 @@ const CreateStoryPage = () => {
           return null;
         };
 
-        // Upload images to Storage before saving
+        // Resolve images: backend now returns Storage URLs, fallback to client-side upload for base64
         let coverImageUrl: string | null = null;
         if (data.coverImageBase64) {
-          coverImageUrl = await uploadBase64Image(data.coverImageBase64, "cover");
+          coverImageUrl = await resolveImageUrl(data.coverImageBase64, "cover");
         }
         let storyImageUrls: string[] | null = null;
         if (data.storyImages && Array.isArray(data.storyImages)) {
           const urls: string[] = [];
           for (let i = 0; i < data.storyImages.length; i++) {
-            const url = await uploadBase64Image(data.storyImages[i], `story-${i}`);
+            const url = await resolveImageUrl(data.storyImages[i], `story-${i}`);
             if (url) urls.push(url);
           }
           if (urls.length > 0) storyImageUrls = urls;
@@ -534,11 +540,15 @@ const CreateStoryPage = () => {
         // Capture performance data for admin display
         if (data.performance) setPerformanceData(data.performance);
 
-        // Helper to upload base64 image to Supabase Storage
-        const uploadBase64ImageFiction = async (base64: string | undefined | null, prefix: string): Promise<string | null> => {
-          if (!base64 || typeof base64 !== 'string') return null;
+        // Helper: if already a URL (from backend Storage upload), use directly; else upload base64
+        const resolveImageUrlFiction = async (imgData: string | undefined | null, prefix: string): Promise<string | null> => {
+          if (!imgData || typeof imgData !== 'string') return null;
+          if (imgData.startsWith('http://') || imgData.startsWith('https://')) {
+            console.log(`[CreateStory-Fiction] ${prefix}: Already a URL, using directly`);
+            return imgData;
+          }
           try {
-            let b64Data = base64;
+            let b64Data = imgData;
             if (b64Data.includes(',')) b64Data = b64Data.split(',')[1];
             b64Data = b64Data.replace(/\s/g, '');
             if (!b64Data || b64Data.length === 0) return null;
@@ -559,16 +569,16 @@ const CreateStoryPage = () => {
           return null;
         };
 
-        // Upload images to Storage before saving
+        // Resolve images: backend now returns Storage URLs, fallback to client-side upload for base64
         let coverImageUrlFiction: string | null = null;
         if (data.coverImageBase64) {
-          coverImageUrlFiction = await uploadBase64ImageFiction(data.coverImageBase64, "cover");
+          coverImageUrlFiction = await resolveImageUrlFiction(data.coverImageBase64, "cover");
         }
         let storyImageUrlsFiction: string[] | null = null;
         if (data.storyImages && Array.isArray(data.storyImages)) {
           const urls: string[] = [];
           for (let i = 0; i < data.storyImages.length; i++) {
-            const url = await uploadBase64ImageFiction(data.storyImages[i], `story-${i}`);
+            const url = await resolveImageUrlFiction(data.storyImages[i], `story-${i}`);
             if (url) urls.push(url);
           }
           if (urls.length > 0) storyImageUrlsFiction = urls;

@@ -192,10 +192,13 @@ const StorySelectPage = () => {
       
       if (error) throw error;
       
-      // Helper to upload base64 image to storage
-      const uploadBase64Image = async (base64: string, prefix: string): Promise<string | null> => {
+      // Helper: if already a URL (from backend Storage upload), use directly; else upload base64
+      const resolveImageUrl = async (imgData: string, prefix: string): Promise<string | null> => {
+        if (imgData.startsWith('http://') || imgData.startsWith('https://')) {
+          return imgData; // Already a Storage URL
+        }
         try {
-          let b64Data = base64;
+          let b64Data = imgData;
           if (b64Data.startsWith('data:')) {
             b64Data = b64Data.split(',')[1];
           }
@@ -217,17 +220,17 @@ const StorySelectPage = () => {
         return null;
       };
 
-      // Upload cover image if present
+      // Resolve images: backend now returns Storage URLs, fallback to client-side upload for base64
       let coverImageUrl = null;
       if (data.coverImageBase64) {
-        coverImageUrl = await uploadBase64Image(data.coverImageBase64, "cover");
+        coverImageUrl = await resolveImageUrl(data.coverImageBase64, "cover");
       }
       
-      // Upload story images if present
+      // Resolve story images
       const storyImageUrls: string[] = [];
       if (data.storyImages && Array.isArray(data.storyImages)) {
         for (let i = 0; i < data.storyImages.length; i++) {
-          const url = await uploadBase64Image(data.storyImages[i], `story-${i}`);
+          const url = await resolveImageUrl(data.storyImages[i], `story-${i}`);
           if (url) storyImageUrls.push(url);
         }
       }

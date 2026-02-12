@@ -631,23 +631,26 @@ const ReadingPage = () => {
         return;
       }
 
-      // Helper to upload base64 image - with robust error handling
-      const uploadBase64Image = async (base64: string | undefined | null, prefix: string): Promise<string | null> => {
-        if (!base64 || typeof base64 !== 'string') {
-          console.log(`${prefix}: No valid base64 data provided`);
+      // Helper: if already a URL (from backend Storage upload), use directly; else upload base64
+      const resolveImageUrl = async (imgData: string | undefined | null, prefix: string): Promise<string | null> => {
+        if (!imgData || typeof imgData !== 'string') {
+          console.log(`${prefix}: No valid image data provided`);
           return null;
         }
+        // Already a URL (backend uploaded to Storage) → use directly
+        if (imgData.startsWith('http://') || imgData.startsWith('https://')) {
+          console.log(`${prefix}: Already a URL, using directly`);
+          return imgData;
+        }
+        // Fallback: upload base64 client-side
         try {
-          console.log(`Uploading ${prefix} image (length: ${base64.length})...`);
-          let b64Data = base64;
-          // Remove data URL prefix if present
+          console.log(`Uploading ${prefix} image (length: ${imgData.length})...`);
+          let b64Data = imgData;
           if (b64Data.includes(',')) {
             b64Data = b64Data.split(',')[1];
           }
-          // Remove any whitespace
           b64Data = b64Data.replace(/\s/g, '');
           
-          // Validate base64
           if (!b64Data || b64Data.length === 0) {
             console.error(`${prefix}: Empty base64 after processing`);
             return null;
@@ -671,19 +674,18 @@ const ReadingPage = () => {
         return null;
       };
 
-      // THEN: Upload images in background (non-blocking)
+      // Resolve images: backend now returns Storage URLs, fallback to client-side upload for base64
       try {
         let coverUrl = null;
         if (data.coverImageBase64) {
-          console.log("Uploading cover image...");
-          coverUrl = await uploadBase64Image(data.coverImageBase64, "cover");
+          coverUrl = await resolveImageUrl(data.coverImageBase64, "cover");
         }
 
         const storyImageUrls: string[] = [];
         if (data.storyImages && Array.isArray(data.storyImages)) {
-          console.log(`Uploading ${data.storyImages.length} story images...`);
+          console.log(`Resolving ${data.storyImages.length} story images...`);
           for (let i = 0; i < data.storyImages.length; i++) {
-            const url = await uploadBase64Image(data.storyImages[i], `story-${i}`);
+            const url = await resolveImageUrl(data.storyImages[i], `story-${i}`);
             if (url) storyImageUrls.push(url);
           }
         }
@@ -835,11 +837,14 @@ const ReadingPage = () => {
       }
 
       if (genData?.title && genData?.content) {
-        // Helper to upload base64 image to Supabase Storage
-        const uploadBase64ImageInteractive = async (base64: string | undefined | null, prefix: string): Promise<string | null> => {
-          if (!base64 || typeof base64 !== 'string') return null;
+        // Helper: if already a URL (from backend Storage upload), use directly; else upload base64
+        const resolveImageUrlInteractive = async (imgData: string | undefined | null, prefix: string): Promise<string | null> => {
+          if (!imgData || typeof imgData !== 'string') return null;
+          if (imgData.startsWith('http://') || imgData.startsWith('https://')) {
+            return imgData; // Already a Storage URL
+          }
           try {
-            let b64Data = base64;
+            let b64Data = imgData;
             if (b64Data.includes(',')) b64Data = b64Data.split(',')[1];
             b64Data = b64Data.replace(/\s/g, '');
             if (!b64Data || b64Data.length === 0) return null;
@@ -860,16 +865,16 @@ const ReadingPage = () => {
           return null;
         };
 
-        // Upload images to Storage
+        // Resolve images: backend now returns Storage URLs, fallback to client-side upload for base64
         let coverUrl: string | null = null;
         if (genData.coverImageBase64) {
-          coverUrl = await uploadBase64ImageInteractive(genData.coverImageBase64, "cover");
+          coverUrl = await resolveImageUrlInteractive(genData.coverImageBase64, "cover");
         }
         let storyImageUrls: string[] | null = null;
         if (genData.storyImages && Array.isArray(genData.storyImages)) {
           const urls: string[] = [];
           for (let i = 0; i < genData.storyImages.length; i++) {
-            const url = await uploadBase64ImageInteractive(genData.storyImages[i], `story-${i}`);
+            const url = await resolveImageUrlInteractive(genData.storyImages[i], `story-${i}`);
             if (url) urls.push(url);
           }
           if (urls.length > 0) storyImageUrls = urls;

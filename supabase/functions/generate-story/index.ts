@@ -2384,7 +2384,79 @@ Antworte NUR mit dem erweiterten Text (ohne Titel, ohne JSON-Format).`;
       console.log('[generate-story] Using first scene image as cover fallback');
     }
 
-    console.log(`[generate-story] Final images: cover=${!!coverImageBase64}, scenes=${storyImages.length}`);
+    console.log(`[generate-story] Final images (pre-upload): cover=${!!coverImageBase64}, scenes=${storyImages.length}`);
+
+    // ── Upload base64 images to Supabase Storage → return public URLs ──
+    const uploadImageToStorage = async (
+      base64DataUrl: string,
+      bucket: string,
+      prefix: string,
+    ): Promise<string | null> => {
+      try {
+        // Parse data URL: "data:image/png;base64,AAAA..."
+        let mimeType = 'image/png';
+        let rawBase64 = base64DataUrl;
+        if (base64DataUrl.startsWith('data:')) {
+          const match = base64DataUrl.match(/^data:([^;]+);base64,(.+)$/);
+          if (match) {
+            mimeType = match[1];
+            rawBase64 = match[2];
+          } else {
+            // Strip prefix without regex match
+            rawBase64 = base64DataUrl.split(',')[1] || base64DataUrl;
+          }
+        }
+
+        // Decode base64 to binary
+        const binaryStr = atob(rawBase64);
+        const bytes = new Uint8Array(binaryStr.length);
+        for (let i = 0; i < binaryStr.length; i++) {
+          bytes[i] = binaryStr.charCodeAt(i);
+        }
+
+        const ext = mimeType.includes('webp') ? 'webp' : mimeType.includes('jpeg') ? 'jpg' : 'png';
+        const fileName = `${prefix}-${Date.now()}-${crypto.randomUUID()}.${ext}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from(bucket)
+          .upload(fileName, bytes, { contentType: mimeType, upsert: false });
+
+        if (uploadError) {
+          console.error(`[IMAGE-UPLOAD] Upload error (${bucket}/${fileName}):`, uploadError.message);
+          return null;
+        }
+
+        const { data: urlData } = supabase.storage.from(bucket).getPublicUrl(fileName);
+        console.log(`[IMAGE-UPLOAD] Uploaded ${prefix} → ${urlData.publicUrl.substring(0, 80)}...`);
+        return urlData.publicUrl;
+      } catch (err) {
+        console.error(`[IMAGE-UPLOAD] Exception uploading ${prefix}:`, err);
+        return null;
+      }
+    };
+
+    // Upload cover image
+    let coverImageUrl: string | null = null;
+    if (coverImageBase64) {
+      coverImageUrl = await uploadImageToStorage(coverImageBase64, 'covers', 'cover');
+      if (!coverImageUrl) {
+        console.warn('[IMAGE-UPLOAD] Cover upload failed, falling back to base64 data URL');
+        coverImageUrl = coverImageBase64; // Fallback: still return base64 so frontend can try client-side upload
+      }
+    }
+
+    // Upload scene images
+    const storyImageUrls: string[] = [];
+    for (let i = 0; i < storyImages.length; i++) {
+      const url = await uploadImageToStorage(storyImages[i], 'covers', `scene-${i}`);
+      if (url) {
+        storyImageUrls.push(url);
+      } else {
+        storyImageUrls.push(storyImages[i]); // Fallback to base64
+      }
+    }
+
+    console.log(`[generate-story] Final images (post-upload): cover=${coverImageUrl ? 'URL' : 'null'}, scenes=${storyImageUrls.length}`);
 
     // ================== END PARALLEL EXECUTION ==================
 
@@ -2395,9 +2467,9 @@ Antworte NUR mit dem erweiterten Text (ohne Titel, ohne JSON-Format).`;
     const finalWordCount = countWords(story.content);
     console.log(`Final story delivered with ${finalWordCount} words (min: ${minWordCount})`);
 
-    const imageWarning = !coverImageBase64
+    const imageWarning = !coverImageUrl
       ? "cover_generation_failed"
-      : (imagePrompts.length > 1 && storyImages.length < (imagePrompts.length - 1))
+      : (imagePrompts.length > 1 && storyImageUrls.length < (imagePrompts.length - 1))
         ? "some_scene_images_failed"
         : null;
 
@@ -2432,10 +2504,10 @@ Antworte NUR mit dem erweiterten Text (ohne Titel, ohne JSON-Format).`;
       summary: summary,
       learning_theme_applied: learningThemeApplied,
       parent_prompt_text: learningThemeResponse?.parent_prompt_text || null,
-      // Block 2.4: Image results
-      coverImageBase64,
-      storyImages,
-      image_count: 1 + storyImages.length,
+      // Block 2.4: Image results (Storage URLs, not base64)
+      coverImageBase64: coverImageUrl,
+      storyImages: storyImageUrls,
+      image_count: 1 + storyImageUrls.length,
       imageWarning,
       generationTimeMs: totalTime,
       performance: {
