@@ -231,8 +231,8 @@ const StorySelectPage = () => {
           difficulty: lastEpisode.difficulty || "medium",
           text_type: lastEpisode.text_type || "fiction",
           text_language: appLang,
-          ending_type: "C",
-          episode_number: (lastEpisode.episode_number || 1) + 1,
+          ending_type: endingType,
+          episode_number: nextEpisodeNumber,
           series_id: series.seriesId,
         })
         .select()

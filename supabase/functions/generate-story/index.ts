@@ -708,6 +708,15 @@ Deno.serve(async (req) => {
     console.log('[generate-story] surprise_characters:', surpriseCharactersParam);
     console.log('[generate-story] storyType:', storyType);
 
+    // ── Phase 0.2: Auto-finalize series at Episode 5 ──
+    // Override ending_type to 'A' (complete) for Episode 5+, regardless of what frontend sends.
+    // This ensures no cliffhanger is generated for the final episode.
+    let resolvedEndingType = endingType;
+    if (seriesId && episodeNumber && episodeNumber >= 5) {
+      console.log(`[generate-story] Series finale override: Episode ${episodeNumber} → ending_type 'A' (was '${endingType}')`);
+      resolvedEndingType = 'A';
+    }
+
     // Initialize Supabase client
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -966,7 +975,7 @@ Bevor du antwortest:
 - Dies ist Episode ${episodeNumber} einer fortlaufenden Serie
 - Führe die Geschichte nahtlos fort, behalte dieselben Charaktere und den Stil bei
 - Der Text in "description" enthält den Kontext der vorherigen Episode
-- Das Ende sollte ${endingType === 'C' ? 'ein Cliffhanger sein, der Spannung für die nächste Episode aufbaut' : endingType === 'B' ? 'offen sein' : 'abgeschlossen sein'}`
+- Das Ende sollte ${resolvedEndingType === 'C' ? 'ein Cliffhanger sein, der Spannung für die nächste Episode aufbaut' : resolvedEndingType === 'B' ? 'offen sein' : 'abgeschlossen sein'}${resolvedEndingType === 'A' && episodeNumber >= 5 ? '\n- WICHTIG: Dies ist das FINALE der Serie. Kein Cliffhanger. Alle offenen Fäden auflösen. Ein befriedigendes Ende schreiben.' : ''}`
         : '';
 
       userPrompt = `Erstelle ${textType === "non-fiction" ? "einen Sachtext" : "eine Geschichte"} basierend auf dieser Beschreibung: "${description}"

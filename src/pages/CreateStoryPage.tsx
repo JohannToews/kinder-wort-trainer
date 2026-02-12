@@ -203,7 +203,7 @@ const CreateStoryPage = () => {
             generation_status: "verified",
             ending_type: isSeries ? 'C' : 'A',
             episode_number: isSeries ? 1 : null,
-            series_id: null,
+            series_id: isSeries ? crypto.randomUUID() : null, // Generate UUID for series from Episode 1
             // Block 2.3c: Story classification metadata
             structure_beginning: data.structure_beginning ?? null,
             structure_middle: data.structure_middle ?? null,
@@ -467,9 +467,9 @@ const CreateStoryPage = () => {
             kid_profile_id: selectedProfile?.id,
             generation_status: "verified",
             ending_type: isSeries ? 'C' : 'A',
-            // Series setup: first episode is the series root
+            // Series setup: generate UUID for series_id from Episode 1 (no more self-reference)
             episode_number: isSeries ? 1 : null,
-            series_id: null, // First episode doesn't have a series_id - it IS the series
+            series_id: isSeries ? crypto.randomUUID() : null,
             // Block 2.3c: Story classification metadata
             structure_beginning: data.structure_beginning ?? null,
             structure_middle: data.structure_middle ?? null,

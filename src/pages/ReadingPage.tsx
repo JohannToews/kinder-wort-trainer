@@ -400,7 +400,9 @@ const ReadingPage = () => {
       toast.error("Bitte melde dich erneut an");
       return;
     }
-    if (!story || !story.series_id) return;
+    // Allow continuation from Episode 1 (series_id is null, but episode_number is 1)
+    if (!story) return;
+    if (!story.series_id && !story.episode_number) return;
 
     setIsGeneratingContinuation(true);
     toast.info(readingLabels[textLang]?.generatingContinuation || "Creating continuation...");
@@ -426,10 +428,10 @@ const ReadingPage = () => {
           textType: story.text_type || "fiction",
           textLanguage: (story.text_language || "de").toUpperCase(),
           customSystemPrompt,
-          endingType: "C", // Keep as cliffhanger for continuing series
+          endingType: nextEpisodeNumber >= 5 ? "A" : "C", // Finale at Episode 5
           episodeNumber: nextEpisodeNumber,
           previousStoryId: story.id,
-          seriesId: story.series_id,
+          seriesId: story.series_id || story.id, // First episode uses own id as series_id
           userId: user?.id,
         },
       });
@@ -473,7 +475,8 @@ const ReadingPage = () => {
         user_id: user.id,
         kid_profile_id: story.kid_profile_id,
         episode_number: nextEpisodeNumber,
-        series_id: story.series_id,
+        series_id: story.series_id || story.id,
+        ending_type: nextEpisodeNumber >= 5 ? "A" : "C",
       });
       
       const { data: newStory, error: storyError } = await supabase
@@ -491,9 +494,9 @@ const ReadingPage = () => {
           story_images_status: 'pending',
           user_id: user.id,
           kid_profile_id: story.kid_profile_id,
-          ending_type: "C",
+          ending_type: nextEpisodeNumber >= 5 ? "A" : "C",
           episode_number: nextEpisodeNumber,
-          series_id: story.series_id,
+          series_id: story.series_id || story.id, // Backward compat: old Episode 1 has null series_id
         })
         .select()
         .single();
@@ -1435,8 +1438,8 @@ const ReadingPage = () => {
                     onContinue={() => navigate("/stories")}
                   />
                   
-                  {/* Continue Series Button - shown for series with cliffhanger ending */}
-                  {story?.ending_type === 'C' && story?.series_id && (
+                  {/* Continue Series Button - shown for series with cliffhanger ending, hidden at Episode 5+ */}
+                  {story?.ending_type === 'C' && (story?.series_id || story?.episode_number) && (story?.episode_number || 1) < 5 && (
                     <div className="mt-6 pt-6 border-t border-border">
                       <Button
                         onClick={handleContinueSeries}
@@ -1460,11 +1463,32 @@ const ReadingPage = () => {
                       </Button>
                     </div>
                   )}
+
+                  {/* Series completed message for Episode 5+ */}
+                  {(story?.series_id || story?.episode_number) && (story?.episode_number || 0) >= 5 && (
+                    <div className="mt-6 pt-6 border-t border-border text-center">
+                      <p className="text-lg font-semibold text-primary">
+                        {textLang === 'de' ? 'Serie abgeschlossen! 🎉' :
+                         textLang === 'fr' ? 'Série terminée ! 🎉' :
+                         textLang === 'es' ? '¡Serie completada! 🎉' :
+                         'Series completed! 🎉'}
+                      </p>
+                      <Button
+                        onClick={() => navigate("/stories")}
+                        className="mt-3 btn-primary-kid"
+                      >
+                        {textLang === 'de' ? 'Zurück zur Bibliothek' :
+                         textLang === 'fr' ? 'Retour à la bibliothèque' :
+                         textLang === 'es' ? 'Volver a la biblioteca' :
+                         'Back to library'}
+                      </Button>
+                    </div>
+                  )}
                 </div>
               )}
               
               {/* Series continuation for stories without quiz */}
-              {!showQuiz && !hasQuestions && story?.ending_type === 'C' && story?.series_id && (
+              {!showQuiz && !hasQuestions && story?.ending_type === 'C' && (story?.series_id || story?.episode_number) && (story?.episode_number || 1) < 5 && (
                 <div className="mt-8 pt-6 border-t border-border flex flex-col items-center gap-4">
                   <p className="text-muted-foreground text-center">
                     {textLang === 'de' ? 'Diese Geschichte ist Teil einer Serie!' : 

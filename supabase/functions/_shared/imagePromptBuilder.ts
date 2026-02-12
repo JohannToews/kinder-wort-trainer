@@ -19,15 +19,16 @@ export interface ImagePlan {
 }
 
 export interface ImageStyleRules {
-  style_prompt?: string;
-  negative_prompt?: string;
-  color_palette?: string;
-  character_style?: string;
-  complexity_level?: string;
-  forbidden_elements?: string;
+  style_prompt?: string;      // From image_style_rules.style_prompt (exists in DB)
+  negative_prompt?: string;   // From image_style_rules.negative_prompt (exists in DB)
+  color_palette?: string;     // From image_style_rules.color_palette (exists in DB)
+  // Removed: character_style, complexity_level, forbidden_elements – not in DB schema
 }
 
 export interface ThemeImageRules {
+  // These columns don't exist in theme_rules yet (planned for Phase 1.3).
+  // Kept as optional interface fields so the code compiles, but they will
+  // always be undefined/null until the DB migration adds them.
   image_style_prompt?: string;
   image_negative_prompt?: string;
   image_color_palette?: string;
@@ -80,18 +81,15 @@ export function buildImagePrompts(
 
   // ═══ Shared style parts (same for ALL images) ═══
   const styleBlock = [
-    ageModifier,  // ← Age modifier first (highest priority)
-    themeImageRules.image_style_prompt,
-    ageStyleRules.style_prompt,
-    ageStyleRules.character_style,
-    ageStyleRules.complexity_level,
-    themeImageRules.image_color_palette || ageStyleRules.color_palette,
+    ageModifier,                                      // Age modifier first (highest priority)
+    themeImageRules.image_style_prompt,                // Theme-specific style (null until Phase 1.3)
+    ageStyleRules.style_prompt,                        // DB: image_style_rules.style_prompt
+    themeImageRules.image_color_palette || ageStyleRules.color_palette,  // Color palette
   ].filter(Boolean).join('. ');
 
   const negativeBlock = [
-    themeImageRules.image_negative_prompt,
-    ageStyleRules.negative_prompt,
-    ageStyleRules.forbidden_elements,
+    themeImageRules.image_negative_prompt,              // Theme-specific negatives (null until Phase 1.3)
+    ageStyleRules.negative_prompt,                      // DB: image_style_rules.negative_prompt
     'text, letters, words, writing, labels, captions, speech bubbles, watermark, signature, blurry, deformed, ugly',
   ].filter(Boolean).join(', ');
 
@@ -148,13 +146,11 @@ export function buildFallbackImagePrompt(
   const styleBlock = [
     themeImageRules.image_style_prompt,
     ageStyleRules.style_prompt,
-    ageStyleRules.character_style,
   ].filter(Boolean).join('. ');
 
   const negativeBlock = [
     themeImageRules.image_negative_prompt,
     ageStyleRules.negative_prompt,
-    ageStyleRules.forbidden_elements,
     'text, letters, words, writing, labels, captions, speech bubbles, watermark, signature',
   ].filter(Boolean).join(', ');
 
@@ -194,15 +190,24 @@ export async function loadImageRules(
     .maybeSingle();
 
   // 2. theme_rules image columns (by theme_key + language)
-  let themeData = null;
+  // NOTE: image_style_prompt, image_negative_prompt, image_color_palette don't exist
+  // in theme_rules yet (planned for Phase 1.3). This query will return null for those
+  // columns but won't error since Supabase ignores missing columns in select.
+  // Once the migration adds these columns, this query will automatically pick them up.
+  let themeData: ThemeImageRules = {};
   if (themeKey && themeKey !== 'surprise') {
-    const { data } = await supabase
-      .from('theme_rules')
-      .select('image_style_prompt, image_negative_prompt, image_color_palette')
-      .eq('theme_key', themeKey)
-      .eq('language', language)
-      .maybeSingle();
-    themeData = data;
+    try {
+      const { data } = await supabase
+        .from('theme_rules')
+        .select('image_style_prompt, image_negative_prompt, image_color_palette')
+        .eq('theme_key', themeKey)
+        .eq('language', language)
+        .maybeSingle();
+      themeData = data || {};
+    } catch {
+      // Columns don't exist yet – expected until Phase 1.3 migration
+      themeData = {};
+    }
   }
 
   return {
