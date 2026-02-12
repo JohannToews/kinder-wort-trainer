@@ -801,12 +801,22 @@ Deno.serve(async (req) => {
     const effectiveStoryLanguage = storyLanguageParam
       || (textLanguage ? textLanguage.toLowerCase() : 'fr');
 
-    // ── Phase 2: Series context (declared outside inner try so it's accessible later for images) ──
+    // ── Phase 2: Load series context for episodes 2+ (MUST be outside try/catch for image pipeline) ──
     let seriesContextData: {
       previousEpisodes: Array<{ episode_number: number; title: string; episode_summary?: string }>;
       lastContinuityState: any | null;
       visualStyleSheet: any | null;
     } = { previousEpisodes: [], lastContinuityState: null, visualStyleSheet: null };
+
+    if (seriesId && episodeNumber && episodeNumber > 1) {
+      console.log(`[generate-story] Loading series context for series=${seriesId}, episode=${episodeNumber}`);
+      seriesContextData = await loadSeriesContext(supabase, seriesId, episodeNumber);
+      console.log(`[generate-story] Series context loaded: ${seriesContextData.previousEpisodes.length} previous episodes, continuity=${!!seriesContextData.lastContinuityState}, styleSheet=${!!seriesContextData.visualStyleSheet}`);
+    }
+
+    // Determine the resolved ending type from EPISODE_CONFIG (Phase 2 override)
+    const episodeConfig = episodeNumber ? EPISODE_CONFIG[episodeNumber] || EPISODE_CONFIG[5] : null;
+    const seriesEndingType = episodeConfig?.ending_type_db || resolvedEndingType || 'A';
 
     try {
       // 1. Load CORE Slim v2
@@ -841,25 +851,38 @@ Deno.serve(async (req) => {
       };
       const resolvedLength = storyLength || lengthMapping[length] || 'medium';
 
-      // ── Phase 2: Load series context for episodes 2+ ──
+      // ── Load kid profile from DB if we have kidProfileId but missing details ──
+      let resolvedKidAge = kidAge;
+      let resolvedKidName = kidName;
+      let resolvedDifficultyLevel = difficultyLevel;
+      let resolvedContentSafetyLevel = contentSafetyLevel;
 
-      if (seriesId && episodeNumber && episodeNumber > 1) {
-        console.log(`[generate-story] Loading series context for series=${seriesId}, episode=${episodeNumber}`);
-        seriesContextData = await loadSeriesContext(supabase, seriesId, episodeNumber);
-        console.log(`[generate-story] Series context loaded: ${seriesContextData.previousEpisodes.length} previous episodes, continuity=${!!seriesContextData.lastContinuityState}, styleSheet=${!!seriesContextData.visualStyleSheet}`);
+      if (kidProfileId && (!kidAge || !kidName)) {
+        try {
+          const { data: kidProfile } = await supabase
+            .from('kid_profiles')
+            .select('first_name, age, difficulty_level, content_safety_level')
+            .eq('id', kidProfileId)
+            .maybeSingle();
+          if (kidProfile) {
+            resolvedKidAge = kidAge || kidProfile.age;
+            resolvedKidName = kidName || kidProfile.first_name;
+            resolvedDifficultyLevel = difficultyLevel || kidProfile.difficulty_level;
+            resolvedContentSafetyLevel = contentSafetyLevel || kidProfile.content_safety_level;
+            console.log(`[generate-story] Loaded kid profile: ${resolvedKidName}, age=${resolvedKidAge}, diff=${resolvedDifficultyLevel}`);
+          }
+        } catch (profileErr: any) {
+          console.warn('[generate-story] Could not load kid profile:', profileErr.message);
+        }
       }
-
-      // Determine the resolved ending type from EPISODE_CONFIG (Phase 2 override)
-      const episodeConfig = episodeNumber ? EPISODE_CONFIG[episodeNumber] || EPISODE_CONFIG[5] : null;
-      const seriesEndingType = episodeConfig?.ending_type_db || resolvedEndingType || 'A';
 
       const storyRequest: StoryRequest = {
         kid_profile: {
           id: kidProfileId || userId || 'unknown',
-          first_name: kidName || 'Child',
-          age: kidAge || 8,
-          difficulty_level: difficultyLevel || 2,
-          content_safety_level: contentSafetyLevel || 2,
+          first_name: resolvedKidName || 'Child',
+          age: resolvedKidAge || 8,
+          difficulty_level: resolvedDifficultyLevel || 2,
+          content_safety_level: resolvedContentSafetyLevel || 2,
         },
         story_language: effectiveStoryLanguage,
         theme_key: resolvedThemeKey,
@@ -1052,12 +1075,51 @@ Bevor du antwortest:
         ? `${baseSystemPrompt}\n${dynamicContext}`
         : dynamicContext;
 
-      const oldSeriesContext = episodeNumber && episodeNumber > 1 
-        ? `\n\n**SERIEN-KONTEXT:**
-- Dies ist Episode ${episodeNumber} einer fortlaufenden Serie
+      // Build series context for fallback path (enhanced with Phase 2 data)
+      let oldSeriesContext = '';
+      if (episodeNumber && episodeNumber > 1) {
+        const endingHint = resolvedEndingType === 'C'
+          ? 'ein Cliffhanger sein, der Spannung für die nächste Episode aufbaut'
+          : resolvedEndingType === 'B' ? 'offen sein' : 'abgeschlossen sein';
+        const finaleHint = resolvedEndingType === 'A' && episodeNumber >= 5
+          ? '\n- WICHTIG: Dies ist das FINALE der Serie. Kein Cliffhanger. Alle offenen Fäden auflösen. Ein befriedigendes Ende schreiben.'
+          : '';
+
+        // Include previous episode summaries if available (Phase 2)
+        let previousEpBlock = '';
+        if (seriesContextData.previousEpisodes.length > 0) {
+          const epLines = seriesContextData.previousEpisodes
+            .map(ep => `- Episode ${ep.episode_number}: "${ep.title}" – ${ep.episode_summary || '(keine Zusammenfassung)'}`)
+            .join('\n');
+          previousEpBlock = `\n\nBISHERIGER VERLAUF:\n${epLines}`;
+        }
+
+        // Include continuity state if available (Phase 2)
+        let continuityBlock = '';
+        const cs = seriesContextData.lastContinuityState;
+        if (cs) {
+          const parts: string[] = [];
+          if (cs.established_facts?.length) parts.push(`Etablierte Fakten: ${cs.established_facts.join('; ')}`);
+          if (cs.open_threads?.length) parts.push(`Offene Fäden: ${cs.open_threads.join('; ')}`);
+          if (cs.character_states) {
+            const charLines = Object.entries(cs.character_states).map(([n, s]) => `${n}: ${s}`).join(', ');
+            if (charLines) parts.push(`Charakter-Entwicklung: ${charLines}`);
+          }
+          if (parts.length > 0) continuityBlock = `\n\nKONTINUITÄTS-STATE:\n${parts.join('\n')}`;
+        }
+
+        oldSeriesContext = `\n\n**SERIEN-KONTEXT:**
+- Dies ist Episode ${episodeNumber} einer fortlaufenden Serie (5 Episoden)
 - Führe die Geschichte nahtlos fort, behalte dieselben Charaktere und den Stil bei
 - Der Text in "description" enthält den Kontext der vorherigen Episode
-- Das Ende sollte ${resolvedEndingType === 'C' ? 'ein Cliffhanger sein, der Spannung für die nächste Episode aufbaut' : resolvedEndingType === 'B' ? 'offen sein' : 'abgeschlossen sein'}${resolvedEndingType === 'A' && episodeNumber >= 5 ? '\n- WICHTIG: Dies ist das FINALE der Serie. Kein Cliffhanger. Alle offenen Fäden auflösen. Ein befriedigendes Ende schreiben.' : ''}`
+- Das Ende sollte ${endingHint}${finaleHint}${previousEpBlock}${continuityBlock}`;
+      }
+
+      // Series output instructions (for both new series Ep1 and continuations Ep2+)
+      const seriesOutputInstructions = (isSeries || seriesId)
+        ? `\n\nSERIEN-OUTPUT (PFLICHT - als zusätzliche JSON-Felder):
+- "episode_summary": Zusammenfassung dieser Episode in max 80 Wörtern (nur Plot-Punkte, keine Stilbeschreibung)
+- "continuity_state": {"established_facts": [...], "open_threads": [...], "character_states": {"Name": "Zustand"}, "world_rules": [...], "signature_element": {"description": "...", "usage_history": [...]}}${(!episodeNumber || episodeNumber === 1) ? '\n- "visual_style_sheet": {"characters": {"Name": "englische Beschreibung für Bildgenerierung"}, "world_style": "englische Stil-Beschreibung", "recurring_visual": "visuelles Signature Element"}' : ''}`
         : '';
 
       userPrompt = `Erstelle ${textType === "non-fiction" ? "einen Sachtext" : "eine Geschichte"} basierend auf dieser Beschreibung: "${description}"
@@ -1068,7 +1130,7 @@ ${oldSeriesContext}
 
 Antworte NUR mit einem validen JSON-Objekt.
 Erstelle genau ${questionCount} Multiple-Choice Fragen.
-Wähle genau 10 Vokabelwörter aus.`;
+Wähle genau 10 Vokabelwörter aus.${seriesOutputInstructions}`;
     }
 
     console.log("Generating story with Lovable AI Gateway:", {
