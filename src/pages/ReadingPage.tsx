@@ -29,6 +29,7 @@ const readingLabels: Record<string, {
   explain: string;
   touchWord: string;
   finishedReading: string;
+  alreadyRead: string;
   listeningMode: string;
   comprehensionQuestions: string;
   storyCompleted: string;
@@ -45,6 +46,7 @@ const readingLabels: Record<string, {
     explain: "Erklären",
     touchWord: "Tippe auf ein Wort, um seine Bedeutung zu erfahren",
     finishedReading: "Fertig gelesen",
+    alreadyRead: "Bereits gelesen ✓",
     listeningMode: "Höre die Geschichte...",
     comprehensionQuestions: "Verständnisfragen",
     storyCompleted: "Super! Du hast fertig gelesen!",
@@ -61,6 +63,7 @@ const readingLabels: Record<string, {
     explain: "Expliquer",
     touchWord: "Touche un mot pour découvrir sa signification",
     finishedReading: "J'ai fini de lire",
+    alreadyRead: "Déjà lu ✓",
     listeningMode: "Écoute l'histoire...",
     comprehensionQuestions: "Questions de compréhension",
     storyCompleted: "Super! Tu as fini de lire!",
@@ -77,6 +80,7 @@ const readingLabels: Record<string, {
     explain: "Explain",
     touchWord: "Tap a word to discover its meaning",
     finishedReading: "I finished reading",
+    alreadyRead: "Already read ✓",
     listeningMode: "Listen to the story...",
     comprehensionQuestions: "Comprehension questions",
     storyCompleted: "Great! You finished reading!",
@@ -93,6 +97,7 @@ const readingLabels: Record<string, {
     explain: "Explicar",
     touchWord: "Toca una palabra para descubrir su significado",
     finishedReading: "Terminé de leer",
+    alreadyRead: "Ya leído ✓",
     listeningMode: "Escucha la historia...",
     comprehensionQuestions: "Preguntas de comprensión",
     storyCompleted: "¡Genial! ¡Terminaste de leer!",
@@ -109,6 +114,7 @@ const readingLabels: Record<string, {
     explain: "Uitleggen",
     touchWord: "Tik op een woord om de betekenis te ontdekken",
     finishedReading: "Ik ben klaar met lezen",
+    alreadyRead: "Al gelezen ✓",
     listeningMode: "Luister naar het verhaal...",
     comprehensionQuestions: "Begripsvragen",
     storyCompleted: "Super! Je bent klaar met lezen!",
@@ -125,6 +131,7 @@ const readingLabels: Record<string, {
     explain: "Spiega",
     touchWord: "Tocca una parola per scoprire il suo significato",
     finishedReading: "Ho finito di leggere",
+    alreadyRead: "Già letto ✓",
     listeningMode: "Ascolta la storia...",
     comprehensionQuestions: "Domande di comprensione",
     storyCompleted: "Fantastico! Hai finito di leggere!",
@@ -141,6 +148,7 @@ const readingLabels: Record<string, {
     explain: "Objasni",
     touchWord: "Dodirni riječ da saznaš njeno značenje",
     finishedReading: "Završio/la sam čitanje",
+    alreadyRead: "Već pročitano ✓",
     listeningMode: "Slušaj priču...",
     comprehensionQuestions: "Pitanja razumijevanja",
     storyCompleted: "Super! Završio/la si čitanje!",
@@ -164,6 +172,7 @@ interface Story {
   episode_number?: number | null;
   series_id?: string | null;
   kid_profile_id?: string | null;
+  completed?: boolean | null;
 }
 
 // French stop words that should not be marked/highlighted
@@ -251,6 +260,8 @@ const ReadingPage = () => {
   const [syllableMode, setSyllableMode] = useState(false);
   // Badge celebration
   const [pendingBadges, setPendingBadges] = useState<EarnedBadge[]>([]);
+  // Track if story is already marked as read
+  const [isMarkedAsRead, setIsMarkedAsRead] = useState(false);
   // Series continuation state
   const [isGeneratingContinuation, setIsGeneratingContinuation] = useState(false);
   // System prompt for story generation
@@ -384,6 +395,7 @@ const ReadingPage = () => {
     
     if (data) {
       setStory(data);
+      if (data.completed) setIsMarkedAsRead(true);
       if (data.prompt) {
         setStoryPrompt(data.prompt);
       }
@@ -1276,15 +1288,23 @@ const ReadingPage = () => {
               {/* "Text fertig gelesen" button at the bottom */}
               <div className="mt-10 pt-6 border-t border-border flex justify-center">
                 <Button
-                  onClick={() => setShowFeedbackDialog(true)}
+                  onClick={() => !isMarkedAsRead && setShowFeedbackDialog(true)}
                   onTouchEnd={(e) => {
                     e.preventDefault();
-                    setShowFeedbackDialog(true);
+                    if (!isMarkedAsRead) setShowFeedbackDialog(true);
                   }}
-                  className="btn-accent-kid flex items-center gap-3 text-lg py-4 px-8 min-h-[56px] touch-manipulation"
+                  disabled={isMarkedAsRead}
+                  className={`flex items-center gap-3 text-lg py-4 px-8 min-h-[56px] touch-manipulation ${
+                    isMarkedAsRead 
+                      ? 'bg-green-500/20 text-green-700 border-green-300 cursor-default' 
+                      : 'btn-accent-kid'
+                  }`}
                 >
                   <CheckCircle2 className="h-6 w-6" />
-                  {readingLabels[textLang]?.finishedReading || readingLabels.fr.finishedReading}
+                  {isMarkedAsRead 
+                    ? (readingLabels[textLang]?.alreadyRead || readingLabels.fr.alreadyRead)
+                    : (readingLabels[textLang]?.finishedReading || readingLabels.fr.finishedReading)
+                  }
                 </Button>
               </div>
 
@@ -1300,6 +1320,7 @@ const ReadingPage = () => {
 
                     // Mark story as completed in stories table
                     await actions.markStoryComplete(id!);
+                    setIsMarkedAsRead(true);
 
                     // Log activity via RPC (handles stars, streak, badges, user_results)
                     try {
