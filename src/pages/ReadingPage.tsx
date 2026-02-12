@@ -442,8 +442,9 @@ const ReadingPage = () => {
         setStoryPrompt(data.prompt);
       }
       // Load branch options for interactive series (Ep1-4)
-      if ((data as any).series_mode === 'interactive' && (data.episode_number || 0) >= 1 && (data.episode_number || 0) < 5) {
-        const { data: branchData } = await (supabase as any)
+      // Check both series_mode AND story_branches table (defensive: series_mode may be null due to earlier bug)
+      if ((data.episode_number || 0) >= 1 && (data.episode_number || 0) < 5) {
+        const { data: branchData } = await supabase
           .from("story_branches")
           .select("id, options, chosen_option_id")
           .eq("story_id", data.id)
@@ -451,13 +452,15 @@ const ReadingPage = () => {
         if (branchData && branchData.options && !branchData.chosen_option_id) {
           setBranchOptions(branchData.options as BranchOption[]);
           setBranchId(branchData.id);
+          console.log('[ReadingPage] Loaded branch options for story', data.id, ':', (branchData.options as any[]).length, 'options');
         } else {
           setBranchOptions(null);
           setBranchId(null);
         }
       }
       // Load branch history for interactive series finale (Ep5)
-      if ((data as any).series_mode === 'interactive' && (data.episode_number || 0) >= 5 && data.series_id) {
+      const isInteractive = (data as any).series_mode === 'interactive';
+      if (isInteractive && (data.episode_number || 0) >= 5 && data.series_id) {
         const { data: allBranches } = await (supabase as any)
           .from("story_branches")
           .select("episode_number, options, chosen_option_id")
@@ -1671,40 +1674,39 @@ const ReadingPage = () => {
                     onContinue={() => navigate("/stories")}
                   />
                   
-                  {/* Interactive Series: Branch Decision Screen (Ep1-4 with branch options) */}
-                  {story?.series_mode === 'interactive' && branchOptions && branchOptions.length > 0 && (story?.episode_number || 1) < 5 && (
+                  {/* Series continuation after quiz – Ep1-4 */}
+                  {(story?.series_id || story?.episode_number) && (story?.episode_number || 0) >= 1 && (story?.episode_number || 0) < 5 && (
                     <div className="mt-6 pt-6 border-t border-border">
-                      <BranchDecisionScreen
-                        options={branchOptions}
-                        onSelect={handleBranchDecision}
-                        isLoading={isGeneratingContinuation}
-                      />
-                    </div>
-                  )}
-
-                  {/* Normal Series: Continue Button – shown for series with cliffhanger ending, hidden at Episode 5+ */}
-                  {story?.ending_type === 'C' && (story?.series_id || story?.episode_number) && (story?.episode_number || 1) < 5 && story?.series_mode !== 'interactive' && (
-                    <div className="mt-6 pt-6 border-t border-border">
-                      <Button
-                        onClick={handleContinueSeries}
-                        disabled={isGeneratingContinuation}
-                        className="w-full btn-primary-kid flex items-center justify-center gap-3 text-lg py-5"
-                      >
-                        {isGeneratingContinuation ? (
-                          <>
-                            <Loader2 className="h-5 w-5 animate-spin" />
-                            {readingLabels[textLang]?.generatingSeriesContinuation || readingLabels[textLang]?.generatingContinuation || "Creating..."}
-                          </>
-                        ) : (
-                          <>
-                            <Sparkles className="h-5 w-5" />
-                            {readingLabels[textLang]?.continueStory || "What happens next?"} 
-                            <span className="text-sm opacity-80">
-                              ({readingLabels[textLang]?.episode || "Episode"} {(story.episode_number || 1) + 1})
-                            </span>
-                          </>
-                        )}
-                      </Button>
+                      {/* Interactive Series: Branch Decision Screen */}
+                      {branchOptions && branchOptions.length > 0 ? (
+                        <BranchDecisionScreen
+                          options={branchOptions}
+                          onSelect={handleBranchDecision}
+                          isLoading={isGeneratingContinuation}
+                        />
+                      ) : (
+                        /* Normal Series: Continue Button */
+                        <Button
+                          onClick={handleContinueSeries}
+                          disabled={isGeneratingContinuation}
+                          className="w-full btn-primary-kid flex items-center justify-center gap-3 text-lg py-5"
+                        >
+                          {isGeneratingContinuation ? (
+                            <>
+                              <Loader2 className="h-5 w-5 animate-spin" />
+                              {readingLabels[textLang]?.generatingSeriesContinuation || readingLabels[textLang]?.generatingContinuation || "Creating..."}
+                            </>
+                          ) : (
+                            <>
+                              <Sparkles className="h-5 w-5" />
+                              {readingLabels[textLang]?.continueStory || "What happens next?"} 
+                              <span className="text-sm opacity-80">
+                                ({readingLabels[textLang]?.episode || "Episode"} {(story.episode_number || 1) + 1})
+                              </span>
+                            </>
+                          )}
+                        </Button>
+                      )}
                     </div>
                   )}
 
@@ -1747,49 +1749,50 @@ const ReadingPage = () => {
                 </div>
               )}
               
-              {/* Interactive Series: inline Branch Decision for stories without quiz */}
-              {!showQuiz && !hasQuestions && story?.series_mode === 'interactive' && branchOptions && branchOptions.length > 0 && (story?.episode_number || 1) < 5 && (
+              {/* Series continuation for stories without quiz – Ep1-4 */}
+              {!showQuiz && !hasQuestions && (story?.series_id || story?.episode_number) && (story?.episode_number || 0) >= 1 && (story?.episode_number || 0) < 5 && (
                 <div className="mt-8 pt-6 border-t border-border">
-                  <BranchDecisionScreen
-                    options={branchOptions}
-                    onSelect={handleBranchDecision}
-                    isLoading={isGeneratingContinuation}
-                  />
-                </div>
-              )}
-
-              {/* Normal Series continuation for stories without quiz */}
-              {!showQuiz && !hasQuestions && story?.ending_type === 'C' && (story?.series_id || story?.episode_number) && (story?.episode_number || 1) < 5 && story?.series_mode !== 'interactive' && (
-                <div className="mt-8 pt-6 border-t border-border flex flex-col items-center gap-4">
-                  <p className="text-muted-foreground text-center">
-                    {textLang === 'de' ? 'Diese Geschichte ist Teil einer Serie!' : 
-                     textLang === 'fr' ? 'Cette histoire fait partie d\'une série!' :
-                     textLang === 'es' ? '¡Esta historia es parte de una serie!' :
-                     textLang === 'nl' ? 'Dit verhaal is onderdeel van een serie!' :
-                     textLang === 'it' ? 'Questa storia fa parte di una serie!' :
-                     textLang === 'bs' ? 'Ova priča je dio serije!' :
-                     'This story is part of a series!'}
-                  </p>
-                  <Button
-                    onClick={handleContinueSeries}
-                    disabled={isGeneratingContinuation}
-                    className="btn-primary-kid flex items-center justify-center gap-3 text-lg py-5 px-8"
-                  >
-                    {isGeneratingContinuation ? (
-                      <>
-                        <Loader2 className="h-5 w-5 animate-spin" />
-                        {readingLabels[textLang]?.generatingSeriesContinuation || readingLabels[textLang]?.generatingContinuation || "Creating..."}
-                      </>
-                    ) : (
-                      <>
-                        <Sparkles className="h-5 w-5" />
-                        {readingLabels[textLang]?.continueStory || "What happens next?"} 
-                        <span className="text-sm opacity-80">
-                          ({readingLabels[textLang]?.episode || "Episode"} {(story.episode_number || 1) + 1})
-                        </span>
-                      </>
-                    )}
-                  </Button>
+                  {/* Interactive Series: Branch Decision Screen */}
+                  {branchOptions && branchOptions.length > 0 ? (
+                    <BranchDecisionScreen
+                      options={branchOptions}
+                      onSelect={handleBranchDecision}
+                      isLoading={isGeneratingContinuation}
+                    />
+                  ) : (
+                    /* Normal Series: Continue Button */
+                    <div className="flex flex-col items-center gap-4">
+                      <p className="text-muted-foreground text-center">
+                        {textLang === 'de' ? 'Diese Geschichte ist Teil einer Serie!' : 
+                         textLang === 'fr' ? 'Cette histoire fait partie d\'une série!' :
+                         textLang === 'es' ? '¡Esta historia es parte de una serie!' :
+                         textLang === 'nl' ? 'Dit verhaal is onderdeel van een serie!' :
+                         textLang === 'it' ? 'Questa storia fa parte di una serie!' :
+                         textLang === 'bs' ? 'Ova priča je dio serije!' :
+                         'This story is part of a series!'}
+                      </p>
+                      <Button
+                        onClick={handleContinueSeries}
+                        disabled={isGeneratingContinuation}
+                        className="btn-primary-kid flex items-center justify-center gap-3 text-lg py-5 px-8"
+                      >
+                        {isGeneratingContinuation ? (
+                          <>
+                            <Loader2 className="h-5 w-5 animate-spin" />
+                            {readingLabels[textLang]?.generatingSeriesContinuation || readingLabels[textLang]?.generatingContinuation || "Creating..."}
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles className="h-5 w-5" />
+                            {readingLabels[textLang]?.continueStory || "What happens next?"} 
+                            <span className="text-sm opacity-80">
+                              ({readingLabels[textLang]?.episode || "Episode"} {(story.episode_number || 1) + 1})
+                            </span>
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
