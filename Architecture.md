@@ -15,7 +15,10 @@
 7. [Database Schema](#database-schema)
 8. [Services & Hooks](#services--hooks)
 9. [Reusable UI Components](#reusable-ui-components)
-10. [Technical Debt & Code Smells](#technical-debt--code-smells)
+10. [Dynamic Prompt Engine](#dynamic-prompt-engine-block-23c)
+11. [Series Feature (Modus A)](#series-feature-modus-a--linear-5-episode-series)
+12. [Voice Input Feature](#voice-input-feature)
+13. [Technical Debt & Code Smells](#technical-debt--code-smells)
 
 ---
 
@@ -28,7 +31,7 @@
 | State | React Context, TanStack React Query 5 (stories cache: 5min stale / 10min GC) |
 | Backend | Supabase (Edge Functions, PostgreSQL, Storage, Realtime) |
 | AI / LLM | Google Gemini (2.0 Flash, 2.5 Flash, 3 Flash Preview), Lovable AI Gateway |
-| Speech | ElevenLabs (TTS + STT) |
+| Speech | ElevenLabs (TTS), Gladia V2 (STT) |
 | Routing | React Router v6 |
 | PWA | Installable via vite-plugin-pwa + InstallPage |
 | Testing | Vitest, Testing Library |
@@ -54,7 +57,7 @@ kinder-wort-trainer/
 │   ├── components/
 │   │   ├── ui/                        # 50+ shadcn/ui components
 │   │   ├── gamification/              # PointsDisplay, LevelBadge, LevelUpModal, StreakFlame, CollectibleModal
-│   │   ├── story-creation/            # 13 files – multi-step story creation wizard (incl. SavedCharactersModal)
+│   │   ├── story-creation/            # 15 files – multi-step story creation wizard (incl. SavedCharactersModal, VoiceRecordButton, WaveformVisualizer)
 │   │   ├── story-sharing/             # 5 files – QR code sharing, import/export
 │   │   ├── ConsistencyCheckStats.tsx  # Admin: consistency check result stats (delete, refresh, selection)
 │   │   ├── BadgeCelebrationModal.tsx  # Fullscreen modal celebrating new badges (confetti, animations)
@@ -75,7 +78,7 @@ kinder-wort-trainer/
 │   │   ├── ProtectedRoute.tsx         # Route guard
 │   │   ├── QuizCompletionResult.tsx   # Result display after quiz
 │   │   ├── ReadingSettings.tsx        # Font size, line spacing, syllable mode
-│   │   ├── SeriesGrid.tsx             # Series display grid
+│   │   ├── SeriesGrid.tsx             # Series display grid (episode badges, progress bar, next-episode placeholder)
 │   │   ├── StoryAudioPlayer.tsx       # Audio player for TTS narration
 │   │   ├── StoryFeedbackDialog.tsx    # Story feedback dialog (rating, weakest part)
 │   │   ├── StoryGenerator.tsx         # Admin: story generation with custom prompts
@@ -85,7 +88,7 @@ kinder-wort-trainer/
 │   │   ├── VoiceInputField.tsx        # Voice input via Web Speech API
 │   │   └── MigrationBanner.tsx        # Migration notification banner
 │   ├── config/
-│   │   └── features.ts                # Feature flags (NEW_FABLINO_HOME: true)
+│   │   └── features.ts                # Feature flags (NEW_FABLINO_HOME, SERIES_ENABLED, isSeriesEnabled())
 │   ├── constants/
 │   │   └── design-tokens.ts           # FABLINO_COLORS, FABLINO_SIZES, FABLINO_STYLES
 │   ├── hooks/
@@ -97,6 +100,7 @@ kinder-wort-trainer/
 │   │   ├── useColorPalette.tsx        # Color themes per kid (ocean, sunset, forest, lavender, sunshine)
 │   │   ├── useEdgeFunctionHeaders.tsx # Headers for edge function requests
 │   │   ├── useStoryRealtime.tsx       # Supabase realtime subscriptions
+│   │   ├── useVoiceRecorder.ts        # MediaRecorder + Gladia STT (states: idle/recording/processing/result/error)
 │   │   ├── use-mobile.tsx             # Mobile detection (768px breakpoint)
 │   │   └── use-toast.ts              # Toast notifications
 │   ├── integrations/
@@ -119,16 +123,16 @@ kinder-wort-trainer/
 ├── supabase/
 │   ├── functions/                     # 17 Edge Functions
 │   │   ├── _shared/                   # Shared modules
-│   │   │   ├── promptBuilder.ts       # Block 2.3c: Dynamic prompt builder
-│   │   │   ├── imagePromptBuilder.ts  # Block 2.4: Image prompt construction
+│   │   │   ├── promptBuilder.ts       # Block 2.3c: Dynamic prompt builder + Series context (EPISODE_CONFIG, buildSeriesContextBlock)
+│   │   │   ├── imagePromptBuilder.ts  # Block 2.4: Image prompt construction + Series visual pipeline (VisualStyleSheet, EPISODE_MOOD)
 │   │   │   ├── learningThemeRotation.ts # Block 2.3c: Learning theme rotation
 │   │   │   ├── auth.ts                # Supabase + legacy auth (x-legacy-token/x-legacy-user-id)
 │   │   │   └── cors.ts               # CORS logic (Lovable + allowed origins)
-│   │   ├── generate-story/            # Main story generation (~1409 lines)
+│   │   ├── generate-story/            # Main story generation (~1600+ lines, incl. series consistency check)
 │   │   ├── migrate-covers/            # Migrates cover images to story-images bucket
 │   │   ├── migrate-user-auth/         # Auth migration (called from MigrationBanner)
 │   │   └── …                          # 14 more Edge Functions
-│   └── migrations/                    # 77 SQL migrations (incl. 7 Gamification Phase 1 + 3 performance/storage)
+│   └── migrations/                    # 78+ SQL migrations (incl. 7 Gamification Phase 1 + 3 performance/storage + Series Phase 1)
 ├── Architecture.md                    # This file
 ├── package.json
 ├── vite.config.ts
@@ -269,8 +273,10 @@ CreateStoryPage.tsx (Wizard – Entry + 3-4 screens)
            + "Überrasch mich" tile – exclusive, fictional-only
            + "Ich" tile with kid name + age
            + Expandable category tiles with saved kid_characters as checkboxes
-  Screen 3: Special Effects (attributes) + Optional free text
+  Screen 3: Special Effects (attributes) + Optional free text + Voice input (VoiceRecordButton)
            + Always shows length/difficulty/series/language settings
+           + Series toggle (admin only via isSeriesEnabled())
+           + When isSeries: button text "Episode 1 erstellen" + series hint
   Screen 4: Generation progress animation
         │
         ▼
@@ -329,7 +335,10 @@ ReadingPage.tsx loads story by ID
         │     • Sends 'story_read' + 'quiz_complete' (Phase 2 fix applied)
         │     • Triggers badge check → BadgeCelebrationModal
         │
-        └── Series continuation (if ending_type === 'C')
+        └── Series continuation (if ending_type === 'C' and episode < 5)
+              • "Fablino schreibt das nächste Kapitel..." loading text (7 languages)
+              • Episode 5: "Serie abgeschlossen! 🦊🎉" + back to library
+              • Passes series_id + episode_number + continuity_state to generate-story
 ```
 
 ### 3. Vocabulary Quiz Flow
@@ -448,12 +457,17 @@ Phase 2 fixes applied (2026-02-10):
 | Service | Model | Details |
 |---------|-------|---------|
 | Text-to-Speech | `eleven_multilingual_v2` | Voice: Alice (`Xb7hH8MSUJpSbSDYk0k2`), speed: 0.88 |
-| Speech-to-Text | `scribe_v2` | Supports: DE, FR, EN, ES, NL, IT |
+
+### Gladia
+
+| Service | API Version | Details |
+|---------|-------------|---------|
+| Speech-to-Text | V2 (EU) | Upload → transcribe → poll. Custom vocabulary for kids' words. Max 5MB, 30s. Languages: DE, FR, EN, ES, NL, IT |
 
 ### Supabase
 
 - **Database**: PostgreSQL with RLS
-- **Edge Functions**: 15 Deno functions
+- **Edge Functions**: 17 Deno functions
 - **Storage**: `covers` bucket for story/profile images, `story-images` bucket (public) for migrated images
 - **Realtime**: Enabled for `stories` table (generation status updates)
 - **RPC Functions**: `log_activity`, `check_and_award_badges`, `get_results_page` (all 3 rewritten in Gamification Phase 1), `get_my_stories_list` (performance: server-side filtered story list), `get_my_results` (user results)
@@ -509,7 +523,7 @@ difficulty_rules             ← Block 2.2b (9 entries: 3 levels × 3 langs)
 | `user_profiles` | User accounts | username, password_hash, display_name, admin_language, app_language, text_language |
 | `kid_profiles` | Child profiles (multi per user) | name, hobbies, school_system, school_class, color_palette, image_style, gender, age, ui_language, reading_language, explanation_language, home_languages[], story_languages[], content_safety_level (1-4), difficulty_level (1-3) |
 | `user_roles` | Role assignments | user_id, role (admin/standard) |
-| `stories` | Story content and metadata | title, content, cover_image_url, story_images[], difficulty, text_language, generation_status, series_id, episode_number, ending_type, structure ratings, learning_theme_applied, parent_prompt_text, humor_level (1-5), emotional_depth (1-3), moral_topic, concrete_theme, image_count, **is_favorite** (boolean, default false) |
+| `stories` | Story content and metadata | title, content, cover_image_url, story_images[], difficulty, text_language, generation_status, series_id, episode_number, ending_type, structure ratings, learning_theme_applied, parent_prompt_text, humor_level (1-5), emotional_depth (1-3), moral_topic, concrete_theme, image_count, **is_favorite** (boolean, default false), **episode_summary** (TEXT), **continuity_state** (JSONB), **visual_style_sheet** (JSONB) |
 | `kid_characters` | Recurring story figures per kid | kid_profile_id (FK CASCADE), name, role (family/friend/known_figure), age, relation, description, is_active, sort_order |
 | `marked_words` | Vocabulary words with explanations | word, explanation, story_id, quiz_history[], is_learned, difficulty, word_language, explanation_language |
 | `comprehension_questions` | Story comprehension questions | question, expected_answer, options[], story_id, question_language |
@@ -613,6 +627,7 @@ useKidProfile.tsx → getKidLanguage(school_system)
 | `useColorPalette` | Color theme per kid profile | Derived from kid_profiles.color_palette |
 | `useEdgeFunctionHeaders` | Headers for edge function requests | Auth session |
 | `useStoryRealtime` | Live story generation status | Supabase Realtime subscription |
+| `useVoiceRecorder` | Audio recording + Gladia STT transcription. States: idle/recording/processing/result/error. MediaRecorder with 30s max. Exposes AnalyserNode for waveform visualization. Retry logic (2 attempts). | MediaRecorder API + `speech-to-text` Edge Function |
 | `use-mobile` | Mobile device detection | Window resize listener (768px) |
 | `use-toast` | Toast notifications | React state |
 
@@ -620,7 +635,7 @@ useKidProfile.tsx → getKidLanguage(school_system)
 
 | Function | External API | DB Tables |
 |----------|-------------|-----------|
-| `generate-story` | Gemini 3 Flash (text), Gemini 2.5 Flash (images), Lovable Gateway | reads: app_settings, image_cache, age_rules, difficulty_rules, theme_rules, emotion_rules, image_style_rules, content_themes_by_level, parent_learning_config, learning_themes, stories; writes: stories, image_cache, consistency_check_results |
+| `generate-story` | Gemini 3 Flash (text), Gemini 2.5 Flash (images), Lovable Gateway | reads: app_settings, image_cache, age_rules, difficulty_rules, theme_rules, emotion_rules, image_style_rules, content_themes_by_level, parent_learning_config, learning_themes, stories, kid_profiles; writes: stories, image_cache, consistency_check_results. **Series**: loads series context, builds EPISODE_CONFIG-based prompts, series consistency check, Visual Style Sheet image pipeline. |
 | `explain-word` | Gemini 2.0 Flash, Lovable Gateway (fallback) | reads: app_settings |
 | `generate-quiz` | Gemini 2.0 Flash | — |
 | `evaluate-answer` | Gemini 2.0 Flash | — |
@@ -628,7 +643,7 @@ useKidProfile.tsx → getKidLanguage(school_system)
 | `analyze-text` | Gemini 2.0 Flash | — |
 | `generate-profile-cover` | Lovable Gateway (Gemini 2.5 Flash Image) | — |
 | `text-to-speech` | ElevenLabs TTS | — |
-| `speech-to-text` | ElevenLabs STT | — |
+| `speech-to-text` | Gladia V2 (EU) | — |
 | `verify-login` | — | reads: user_profiles |
 | `register-user` | — | reads/writes: user_profiles |
 | `manage-users` | — | reads/writes: user_profiles, user_roles, app_settings, kid_profiles, stories, marked_words, comprehension_questions, user_results |
@@ -668,6 +683,8 @@ useKidProfile.tsx → getKidLanguage(school_system)
 | `SiblingInputModal` | Modal for adding siblings |
 | `SavedCharactersModal` | Modal for selecting saved kid_characters with checkboxes (used in CharacterSelectionScreen) |
 | `SelectionSummary` | Summary of selected characters |
+| `VoiceRecordButton` | Mic button → recording UI (timer + waveform + transcript preview + confirm/retry). Labels in 6 languages (de/fr/es/en/nl/it). Uses `useVoiceRecorder` hook. |
+| `WaveformVisualizer` | Canvas-based 35-bar audio waveform. RMS amplitude from `getByteTimeDomainData`, 80ms capture interval. Uses FABLINO_COLORS. |
 | `SettingSelectionScreen` | Story setting selection (currently unused in main flow) |
 | `types.ts` | TypeScript types + translation maps for wizard |
 
@@ -679,8 +696,8 @@ useKidProfile.tsx → getKidLanguage(school_system)
 
 | Module | Purpose |
 |--------|---------|
-| `promptBuilder.ts` | Builds dynamic user message by querying rule tables (age_rules, difficulty_rules, theme_rules, emotion_rules). Handles surprise theme/characters, character relationships, learning themes, image plan instructions. |
-| `imagePromptBuilder.ts` | Constructs image prompts from LLM image_plan + DB style rules. Age-specific modifiers (per year 5-12+). Cover + scene prompts. |
+| `promptBuilder.ts` | Builds dynamic user message by querying rule tables (age_rules, difficulty_rules, theme_rules, emotion_rules). Handles surprise theme/characters, character relationships, learning themes, image plan instructions. **Series**: exports `EPISODE_CONFIG` (5-episode definitions), `buildSeriesContextBlock()` (episode function, requirements, structure constraints, continuity state, output extensions). Extended `StoryRequest` interface with series fields. |
+| `imagePromptBuilder.ts` | Constructs image prompts from LLM image_plan + DB style rules. Age-specific modifiers (per year 5-12+). Cover + scene prompts. **Series**: exports `VisualStyleSheet`/`SeriesImageContext` interfaces, `EPISODE_MOOD` (5 mood strings), `buildSeriesStylePrefix()`. Conditional styleBlock: series uses world_style + episode mood (no style_prompt collision). |
 | `learningThemeRotation.ts` | Determines if a learning theme should be applied based on parent_learning_config frequency and round-robin rotation. |
 
 ### Prompt Architecture
@@ -697,6 +714,131 @@ OLD PATH (Fallback – used if NEW PATH throws):
   System Prompt = Composite of 4 modular prompts from app_settings (~30k tokens)
   User Message  = Inline dynamic context
 ```
+
+---
+
+## Series Feature (Modus A – Linear 5-Episode Series)
+
+### Architecture
+
+```
+Episode 1: Create → generate-story (isSeries=true)
+  → LLM generates story + episode_summary + continuity_state + visual_style_sheet
+  → Saved to stories table (series_id = story.id, episode_number = 1, ending_type = 'C')
+
+Episode 2-4: Continue → generate-story (series_id, episode_number, previous context)
+  → loadSeriesContext() fetches all previous episodes' summaries + continuity_state + visual_style_sheet
+  → promptBuilder.ts injects SERIES CONTEXT block (episode function, requirements, continuity state)
+  → imagePromptBuilder.ts uses VisualStyleSheet for visual consistency across episodes
+  → Series consistency check validates cross-episode continuity
+  → ending_type = 'C' (cliffhanger)
+
+Episode 5: Final → generate-story (same flow)
+  → ending_type = 'A' (complete resolution)
+  → No continuation button shown in UI
+```
+
+### EPISODE_CONFIG (promptBuilder.ts)
+
+| Episode | Function | Ending Type | Key Requirements |
+|---------|----------|-------------|-----------------|
+| 1 | Introduction & World Building | C (cliffhanger) | Establish characters, world, signature element |
+| 2 | Deepening & First Challenge | C | Deepen relationships, introduce main conflict |
+| 3 | Turning Point & Surprise | C | Unexpected twist, raise stakes |
+| 4 | Climax & Crucial Decision | C | Maximum tension, protagonist faces biggest challenge |
+| 5 | Resolution & Farewell | A (complete) | Resolve all threads, satisfying conclusion |
+
+### Series Continuity State (JSONB)
+
+```json
+{
+  "established_facts": ["Mikel is 7 years old", "The magic forest has talking trees"],
+  "open_threads": ["The missing crystal", "The mysterious stranger"],
+  "character_states": { "Mikel": "brave but worried", "Lina": "discovered her power" },
+  "world_rules": ["Magic only works at night", "Animals can speak in the forest"],
+  "signature_element": {
+    "description": "A glowing blue feather that appears when danger is near",
+    "usage_history": ["Ep1: Found in the cave", "Ep2: Glowed during the storm"]
+  }
+}
+```
+
+### Visual Style Sheet (JSONB, generated in Episode 1)
+
+```json
+{
+  "characters": { "Mikel": "7-year-old boy with brown curly hair and green eyes" },
+  "world_style": "Watercolor forest with soft morning light and mushroom houses",
+  "recurring_visual": "Glowing blue feather appears in every scene"
+}
+```
+
+### Image Pipeline for Series (imagePromptBuilder.ts)
+
+- **EPISODE_MOOD**: Per-episode mood modifier (wonder → tension → dramatic → darker → triumphant)
+- **buildSeriesStylePrefix()**: Prepends character descriptions + world style + "CRITICAL: Maintain EXACT character appearances"
+- **styleBlock for series**: Uses `ageModifier + world_style + color_palette + EPISODE_MOOD` (excludes `style_prompt` to avoid collision)
+- **Cover hint**: "Maintain exact same visual style as all other episode covers"
+
+### Series Consistency Check (generate-story/index.ts)
+
+- **buildSeriesConsistencyPrompt()**: Validates LOGIC, GRAMMAR, AGE, CHARACTER, CONTINUITY, EPISODE_FUNCTION, SIGNATURE
+- **performSeriesConsistencyCheck()**: Calls LLM, returns structured errors with severity (CRITICAL/MEDIUM/LOW)
+- **correctStoryFromSeriesErrors()**: Uses continuity_state as "canon reference" for corrections
+- **CRITICAL CONTINUITY errors**: Mandatory correction (up to 2 attempts)
+
+### Frontend Components
+
+- **Feature Flag**: `isSeriesEnabled(role)` in `config/features.ts` – admin-only (set `SERIES_ENABLED: true` for all users)
+- **Series Toggle**: Shown in SpecialEffectsScreen + StoryTypeSelectionScreen when `isAdmin` prop is true
+- **SeriesGrid** (`src/components/SeriesGrid.tsx`):
+  - Groups stories by series_id
+  - Episode badge ("Ep. 1") on each cover
+  - 5-slot progress bar (green=completed, primary=exists, muted=empty) + "X/5" counter
+  - Green checkmark for completed episodes
+  - "Next episode" placeholder (disabled until last episode read)
+- **ReadingPage**: Series continuation button (hidden at Ep 5), Fablino loading text, series-completed message (7 languages)
+
+### Database Columns on `stories`
+
+| Column | Type | Purpose |
+|--------|------|---------|
+| `series_id` | UUID | Links episodes (Episode 1 uses its own ID) |
+| `episode_number` | INTEGER | 1-5 |
+| `ending_type` | TEXT (A/B/C) | A=complete, B=open, C=cliffhanger |
+| `episode_summary` | TEXT | ~100 word summary for next-episode context |
+| `continuity_state` | JSONB | Cross-episode state (facts, threads, characters, world rules, signature element) |
+| `visual_style_sheet` | JSONB | Visual consistency (characters, world_style, recurring_visual) |
+
+---
+
+## Voice Input Feature
+
+### Architecture
+
+```
+VoiceRecordButton (UI) → useVoiceRecorder (hook) → speech-to-text (Edge Function) → Gladia V2 API
+```
+
+### Components
+
+| Component | File | Description |
+|-----------|------|-------------|
+| `useVoiceRecorder` | `src/hooks/useVoiceRecorder.ts` | MediaRecorder hook with states (idle/recording/processing/result/error). Max 30s recording. Base64 → Supabase Edge Function. Exposes AnalyserNode for waveform. Retry logic (2 attempts). |
+| `VoiceRecordButton` | `src/components/story-creation/VoiceRecordButton.tsx` | Mic button with recording UI (timer, waveform, transcript preview, confirm/retry). Labels in 6 languages (de/fr/es/en/nl/it). |
+| `WaveformVisualizer` | `src/components/story-creation/WaveformVisualizer.tsx` | Canvas-based 35-bar waveform. RMS amplitude from `getByteTimeDomainData`. 80ms capture interval. Uses FABLINO_COLORS. |
+
+### Speech-to-Text Edge Function (Gladia V2)
+
+| Detail | Value |
+|--------|-------|
+| API | Gladia V2 (EU endpoint) |
+| Flow | Upload audio → create transcription → poll result (500ms intervals, max 30 attempts) |
+| Input | JSON body (`audio` base64, `mimeType`, `language`) or FormData |
+| Languages | de, fr, en, es, nl, it |
+| Custom vocabulary | Fablino, Drache, Einhorn, etc. |
+| Max file size | 5 MB |
+| Output | `{ text, language, duration }` |
 
 ---
 
@@ -717,7 +859,7 @@ OLD PATH (Fallback – used if NEW PATH throws):
 
 | Issue | Location | Impact |
 |-------|----------|--------|
-| **Oversized components** | `ReadingPage.tsx` (~1618 lines), `FeedbackStatsPage.tsx` (~1576 lines), `VocabularyQuizPage.tsx` (~954 lines), `generate-story/index.ts` (1409 lines) | Hard to maintain, test, review |
+| **Oversized components** | `ReadingPage.tsx` (~1700+ lines), `FeedbackStatsPage.tsx` (~1576 lines), `VocabularyQuizPage.tsx` (~954 lines), `generate-story/index.ts` (~1600+ lines) | Hard to maintain, test, review |
 | **Remaining inline translations** | `ReadingPage.tsx`, `VocabularyQuizPage.tsx`, `ResultsPage.tsx`, `HomeFablino.tsx` | Page-specific translation objects not yet in `lib/translations.ts` |
 | **Many `any` types** | Various files | `supabase: any`, `data: any` reduce type safety |
 | **No error boundaries** | React app | API failures can crash entire app |
@@ -767,6 +909,12 @@ OLD PATH (Fallback – used if NEW PATH throws):
 | `20260210_06_rpc_check_and_award_badges.sql` | Full rewrite: 4 categories, 8 condition types, repeatable weekly badges, bonus stars |
 | `20260210_07_rpc_get_results_page.sql` | Full rewrite: comprehensive response with all counters, levels, 23 badges with earned/times_earned |
 
+### Series Feature Migration (2026-02-12)
+
+| File | Purpose |
+|------|---------|
+| `20260212_series_feature_phase1.sql` | Adds `episode_summary` (TEXT), `continuity_state` (JSONB), `visual_style_sheet` (JSONB) to `stories` table. All nullable, existing stories unchanged. |
+
 ### Performance & Storage Migrations (2026-02-11)
 
 | File | Purpose |
@@ -803,4 +951,4 @@ OLD PATH (Fallback – used if NEW PATH throws):
 
 ---
 
-*Last updated: 2026-02-11. Covers: Block 1 (multilingual DB), Block 2.1 (learning themes + guardrails), Block 2.2/2.2b (rule tables + difficulty_rules), Block 2.3a (story classifications + kid_characters), Block 2.3c (dynamic prompt engine), Block 2.3d (story_languages, wizard character management), Block 2.3e (dual-path wizard, surprise theme/characters), Block 2.4 (intelligent image generation), Phase 5 (star-based gamification, badges, BadgeCelebrationModal, ResultsPage), UI harmonization complete (design-tokens.ts, FablinoMascot sm=64/md=100/lg=130, SpeechBubble, FablinoPageHeader on all screens, compact SpecialEffectsScreen, theme/character Vite imports), **Gamification Phase 1 backend complete** (7 migrations), **Gamification Phase 2 frontend fixes complete** (total_stars insert, activity types story_read/quiz_complete, allBadgeCount=23), **Performance optimizations** (React Query caching on StorySelectPage, server-side story list RPC, image thumbnails via getThumbnailUrl, lazy loading), **New infrastructure** (story-images storage bucket, edgeFunctionHelper with legacy auth, migrate-covers + migrate-user-auth edge functions, SavedCharactersModal, ConsistencyCheckStats, stories.is_favorite).*
+*Last updated: 2026-02-12. Covers: Block 1 (multilingual DB), Block 2.1 (learning themes + guardrails), Block 2.2/2.2b (rule tables + difficulty_rules), Block 2.3a (story classifications + kid_characters), Block 2.3c (dynamic prompt engine), Block 2.3d (story_languages, wizard character management), Block 2.3e (dual-path wizard, surprise theme/characters), Block 2.4 (intelligent image generation), Phase 5 (star-based gamification, badges, BadgeCelebrationModal, ResultsPage), UI harmonization complete (design-tokens.ts, FablinoMascot sm=64/md=100/lg=130, SpeechBubble, FablinoPageHeader on all screens, compact SpecialEffectsScreen, theme/character Vite imports), **Gamification Phase 1 backend complete** (7 migrations), **Gamification Phase 2 frontend fixes complete** (total_stars insert, activity types story_read/quiz_complete, allBadgeCount=23), **Performance optimizations** (React Query caching on StorySelectPage, server-side story list RPC, image thumbnails via getThumbnailUrl, lazy loading), **New infrastructure** (story-images storage bucket, edgeFunctionHelper with legacy auth, migrate-covers + migrate-user-auth edge functions, SavedCharactersModal, ConsistencyCheckStats, stories.is_favorite), **Series Feature Modus A complete** (Phase 0-5: DB migration for episode_summary/continuity_state/visual_style_sheet, EPISODE_CONFIG with 5-episode structure, buildSeriesContextBlock in promptBuilder.ts, Visual Style Sheet image pipeline with EPISODE_MOOD in imagePromptBuilder.ts, series-aware consistency check with CRITICAL CONTINUITY error retry, feature flag isSeriesEnabled() admin-only, SeriesGrid with episode badges/progress bar, ReadingPage series continuation with Fablino loading text, SpecialEffectsScreen series button text + hint), **Voice Input** (useVoiceRecorder hook + VoiceRecordButton + WaveformVisualizer, integrated in SpecialEffectsScreen), **Speech-to-Text rewrite** (ElevenLabs → Gladia V2 API with custom vocabulary).*
