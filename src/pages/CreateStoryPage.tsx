@@ -206,6 +206,7 @@ const CreateStoryPage = () => {
             ending_type: isSeries ? 'C' : 'A',
             episode_number: isSeries ? 1 : null,
             series_id: null, // Will self-reference after insert for series
+            series_mode: isSeries ? (storySettings?.seriesMode || 'normal') : null,
             // Block 2.3c: Story classification metadata
             structure_beginning: data.structure_beginning ?? null,
             structure_middle: data.structure_middle ?? null,
@@ -237,6 +238,16 @@ const CreateStoryPage = () => {
         // For series: set series_id to the story's own ID (self-reference)
         if (isSeries && savedStory) {
           await supabase.from("stories").update({ series_id: savedStory.id }).eq("id", savedStory.id);
+        }
+
+        // For interactive series (educational): save branch options
+        if (isSeries && (storySettings?.seriesMode === 'interactive') && data.branch_options && savedStory) {
+          await supabase.from("story_branches").insert({
+            story_id: savedStory.id,
+            series_id: savedStory.id,
+            episode_number: 1,
+            options: data.branch_options,
+          });
         }
 
         // Save comprehension questions if available
@@ -333,6 +344,7 @@ const CreateStoryPage = () => {
         length: settingsFromEffects.length,
         difficulty: settingsFromEffects.difficulty,
         isSeries: settingsFromEffects.isSeries,
+        seriesMode: settingsFromEffects.seriesMode,
         storyLanguage: settingsFromEffects.storyLanguage,
       });
     }
@@ -396,6 +408,7 @@ const CreateStoryPage = () => {
       const storyLength = settingsOverride?.length || storySettings?.length || "medium";
       const storyDifficulty = settingsOverride?.difficulty || storySettings?.difficulty || difficulty;
       const isSeries = settingsOverride?.isSeries || storySettings?.isSeries || false;
+      const seriesMode = settingsOverride?.seriesMode || storySettings?.seriesMode || 'normal';
 
       // Determine include_self from character selection
       const includeSelf = selectedCharacters.some(c => c.type === "me");
@@ -431,6 +444,7 @@ const CreateStoryPage = () => {
           kidName: selectedProfile?.name,
           kidHobbies: selectedProfile?.hobbies,
           // Series settings
+          seriesMode: isSeries ? seriesMode : undefined,
           endingType: isSeries ? 'C' : 'A', // Cliffhanger for series, closed for standalone
           // Block 2.3d: New wizard parameters (camelCase to match Edge Function)
           storyLanguage: effectiveLanguage,
@@ -480,6 +494,7 @@ const CreateStoryPage = () => {
             ending_type: isSeries ? 'C' : 'A',
             episode_number: isSeries ? 1 : null,
             series_id: null, // Will self-reference after insert for series
+            series_mode: isSeries ? seriesMode : null,
             // Block 2.3c: Story classification metadata
             structure_beginning: data.structure_beginning ?? null,
             structure_middle: data.structure_middle ?? null,
@@ -511,6 +526,16 @@ const CreateStoryPage = () => {
         // For series: set series_id to the story's own ID (self-reference)
         if (isSeries && savedStory) {
           await supabase.from("stories").update({ series_id: savedStory.id }).eq("id", savedStory.id);
+        }
+
+        // For interactive series (fiction): save branch options
+        if (isSeries && seriesMode === 'interactive' && data.branch_options && savedStory) {
+          await supabase.from("story_branches").insert({
+            story_id: savedStory.id,
+            series_id: savedStory.id,
+            episode_number: 1,
+            options: data.branch_options,
+          });
         }
 
         // Save comprehension questions if available

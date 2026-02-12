@@ -13,6 +13,8 @@ interface Story {
   series_id: string | null;
   episode_number: number | null;
   ending_type: string | null;
+  series_mode?: string | null;
+  branch_chosen?: string | null;
 }
 
 interface Series {
@@ -114,9 +116,16 @@ const SeriesGrid = ({
               
               {/* Series Info */}
               <div className="flex-1 min-w-0">
-                <h3 className="font-baloo text-xl font-bold text-foreground mb-1 truncate">
-                  {firstEpisode?.title?.split(' - ')[0] || firstEpisode?.title}
-                </h3>
+                <div className="flex items-center gap-2 mb-1">
+                  <h3 className="font-baloo text-xl font-bold text-foreground truncate">
+                    {firstEpisode?.title?.split(' - ')[0] || firstEpisode?.title}
+                  </h3>
+                  {firstEpisode?.series_mode === 'interactive' && (
+                    <span className="shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full bg-gradient-to-r from-amber-400 to-orange-400 text-white">
+                      ✨ Mitgestalten
+                    </span>
+                  )}
+                </div>
                 <p className="text-sm text-muted-foreground">
                   {series.episodes.length} {series.episodes.length === 1 ? t.seriesEpisode : `${t.seriesEpisode}n`}
                 </p>
@@ -185,6 +194,12 @@ const SeriesGrid = ({
                     <p className="text-xs text-center mt-1 font-medium text-muted-foreground group-hover:text-foreground transition-colors">
                       {t.seriesEpisode} {episode.episode_number || 1}
                     </p>
+                    {/* Show branch choice for interactive series */}
+                    {episode.branch_chosen && (
+                      <p className="text-[10px] text-center text-[#E8863A] truncate mt-0.5" title={episode.branch_chosen}>
+                        → {episode.branch_chosen}
+                      </p>
+                    )}
                   </div>
                 );
               })}

@@ -25,6 +25,8 @@ interface Story {
   series_id: string | null;
   episode_number: number | null;
   ending_type: string | null;
+  series_mode?: string | null;
+  branch_chosen?: string | null;
   completed?: boolean | null;
 }
 
@@ -257,6 +259,7 @@ const StorySelectPage = () => {
           ending_type: endingType,
           episode_number: nextEpisodeNumber,
           series_id: series.seriesId,
+          series_mode: lastEpisode.series_mode || null,
           // Phase 2: Series context fields from generate-story response
           episode_summary: data.episode_summary ?? null,
           continuity_state: data.continuity_state ?? null,

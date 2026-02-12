@@ -38,6 +38,7 @@ export interface StorySettings {
   length: StoryLength;
   difficulty: StoryDifficulty;
   isSeries: boolean;
+  seriesMode?: 'normal' | 'interactive';
   storyLanguage: string;
 }
 
@@ -82,6 +83,7 @@ const StoryTypeSelectionScreen = ({
   const [storyLength, setStoryLength] = useState<StoryLength>("medium");
   const [storyDifficulty, setStoryDifficulty] = useState<StoryDifficulty>("medium");
   const [isSeries, setIsSeries] = useState(false);
+  const [seriesMode, setSeriesMode] = useState<'normal' | 'interactive'>('normal');
   const [storyLanguage, setStoryLanguage] = useState<string>(defaultLanguage);
 
   const mainCategoryTiles = [
@@ -118,6 +120,7 @@ const StoryTypeSelectionScreen = ({
         length: storyLength,
         difficulty: storyDifficulty,
         isSeries,
+        seriesMode: isSeries ? seriesMode : undefined,
         storyLanguage,
       };
       onComplete(type, settings, undefined, undefined, undefined, []);
@@ -131,6 +134,7 @@ const StoryTypeSelectionScreen = ({
       length: storyLength,
       difficulty: storyDifficulty,
       isSeries,
+      seriesMode: isSeries ? seriesMode : undefined,
       storyLanguage,
     };
     
@@ -163,6 +167,7 @@ const StoryTypeSelectionScreen = ({
       length: storyLength,
       difficulty: storyDifficulty,
       isSeries,
+      seriesMode: isSeries ? seriesMode : undefined,
       storyLanguage,
     };
     
@@ -250,6 +255,51 @@ const StoryTypeSelectionScreen = ({
                 ))}
               </div>
             </div>
+          </div>
+        )}
+
+        {/* Series Mode Toggle (normal vs interactive, visible when series is enabled) */}
+        {viewState === "main" && isAdmin && isSeries && (
+          <div className="w-full space-y-2 animate-fade-in">
+            {/* Normal Series */}
+            <button
+              onClick={() => setSeriesMode('normal')}
+              className={cn(
+                "w-full text-left p-3 rounded-2xl border-2 transition-all duration-200",
+                seriesMode === 'normal'
+                  ? "border-[#E8863A] bg-white shadow-md"
+                  : "border-orange-100 bg-white/70 hover:border-orange-200"
+              )}
+            >
+              <div className="flex items-start gap-2">
+                <span className="text-lg mt-0.5">📖</span>
+                <div>
+                  <p className="text-sm font-semibold text-[#2D1810]">{translations.seriesModeNormal}</p>
+                  <p className="text-xs text-[#2D1810]/60 mt-0.5">{translations.seriesModeNormalDesc}</p>
+                </div>
+              </div>
+            </button>
+            {/* Interactive Series (Premium) */}
+            <button
+              onClick={() => setSeriesMode('interactive')}
+              className={cn(
+                "w-full text-left p-3 rounded-2xl border-2 transition-all duration-200",
+                seriesMode === 'interactive'
+                  ? "border-[#E8863A] bg-white shadow-md"
+                  : "border-orange-100 bg-white/70 hover:border-orange-200"
+              )}
+            >
+              <div className="flex items-start gap-2">
+                <span className="text-lg mt-0.5">✨</span>
+                <div>
+                  <p className="text-sm font-semibold text-[#2D1810]">
+                    {translations.seriesModeInteractive}
+                    <span className="ml-1.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-gradient-to-r from-amber-400 to-orange-400 text-white">Premium</span>
+                  </p>
+                  <p className="text-xs text-[#2D1810]/60 mt-0.5">{translations.seriesModeInteractiveDesc}</p>
+                </div>
+              </div>
+            </button>
           </div>
         )}
 

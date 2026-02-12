@@ -328,6 +328,11 @@ export interface StoryTypeSelectionTranslations {
   seriesLabel: string;
   seriesYes: string;
   seriesNo: string;
+  seriesModeNormal: string;
+  seriesModeNormalDesc: string;
+  seriesModeInteractive: string;
+  seriesModeInteractiveDesc: string;
+  seriesModeInteractiveLocked: string;
   storyLanguageLabel: string;
   // Main categories
   fantasy: string;
@@ -418,6 +423,11 @@ export const storyTypeSelectionTranslations: Record<Language, StoryTypeSelection
     seriesLabel: "Serie",
     seriesYes: "Ja",
     seriesNo: "Nein",
+    seriesModeNormal: "Normale Serie",
+    seriesModeNormalDesc: "Die Geschichte fließt von Episode zu Episode",
+    seriesModeInteractive: "Mitgestalten",
+    seriesModeInteractiveDesc: "Dein Kind entscheidet am Ende jeder Episode wie es weitergeht",
+    seriesModeInteractiveLocked: "Ab Premium-Plan verfügbar",
     storyLanguageLabel: "Sprache",
     // Main categories
     fantasy: "Märchen & Fantasie",
@@ -506,6 +516,11 @@ export const storyTypeSelectionTranslations: Record<Language, StoryTypeSelection
     seriesLabel: "Série",
     seriesYes: "Oui",
     seriesNo: "Non",
+    seriesModeNormal: "Série normale",
+    seriesModeNormalDesc: "L'histoire suit son cours d'épisode en épisode",
+    seriesModeInteractive: "Participer",
+    seriesModeInteractiveDesc: "Ton enfant décide à la fin de chaque épisode comment l'histoire continue",
+    seriesModeInteractiveLocked: "Disponible avec le plan Premium",
     storyLanguageLabel: "Langue",
     fantasy: "Contes & Fantaisie",
     action: "Aventure & Action",
@@ -585,6 +600,11 @@ export const storyTypeSelectionTranslations: Record<Language, StoryTypeSelection
     seriesLabel: "Series",
     seriesYes: "Yes",
     seriesNo: "No",
+    seriesModeNormal: "Normal Series",
+    seriesModeNormalDesc: "The story flows from episode to episode",
+    seriesModeInteractive: "Co-create",
+    seriesModeInteractiveDesc: "Your child decides at the end of each episode how the story continues",
+    seriesModeInteractiveLocked: "Available with Premium plan",
     storyLanguageLabel: "Language",
     fantasy: "Fairy Tales & Fantasy",
     action: "Adventure & Action",
@@ -664,6 +684,11 @@ export const storyTypeSelectionTranslations: Record<Language, StoryTypeSelection
     seriesLabel: "Serie",
     seriesYes: "Sí",
     seriesNo: "No",
+    seriesModeNormal: "Serie normal",
+    seriesModeNormalDesc: "La historia fluye de episodio en episodio",
+    seriesModeInteractive: "Co-crear",
+    seriesModeInteractiveDesc: "Tu hijo decide al final de cada episodio cómo continúa la historia",
+    seriesModeInteractiveLocked: "Disponible con el plan Premium",
     storyLanguageLabel: "Idioma",
     fantasy: "Cuentos & Fantasía",
     action: "Aventura & Acción",
@@ -743,6 +768,11 @@ export const storyTypeSelectionTranslations: Record<Language, StoryTypeSelection
     seriesLabel: "Serie",
     seriesYes: "Ja",
     seriesNo: "Nee",
+    seriesModeNormal: "Normale serie",
+    seriesModeNormalDesc: "Het verhaal vloeit van aflevering naar aflevering",
+    seriesModeInteractive: "Meebeslissen",
+    seriesModeInteractiveDesc: "Je kind beslist aan het einde van elke aflevering hoe het verder gaat",
+    seriesModeInteractiveLocked: "Beschikbaar met Premium-plan",
     storyLanguageLabel: "Taal",
     fantasy: "Sprookjes & Fantasie",
     action: "Avontuur & Actie",
@@ -822,6 +852,11 @@ export const storyTypeSelectionTranslations: Record<Language, StoryTypeSelection
     seriesLabel: "Serie",
     seriesYes: "Sì",
     seriesNo: "No",
+    seriesModeNormal: "Serie normale",
+    seriesModeNormalDesc: "La storia scorre da episodio a episodio",
+    seriesModeInteractive: "Co-creare",
+    seriesModeInteractiveDesc: "Il tuo bambino decide alla fine di ogni episodio come continua la storia",
+    seriesModeInteractiveLocked: "Disponibile con il piano Premium",
     storyLanguageLabel: "Lingua",
     fantasy: "Fiabe & Fantasia",
     action: "Avventura & Azione",
@@ -901,6 +936,11 @@ export const storyTypeSelectionTranslations: Record<Language, StoryTypeSelection
     seriesLabel: "Serija",
     seriesYes: "Da",
     seriesNo: "Ne",
+    seriesModeNormal: "Normalna serija",
+    seriesModeNormalDesc: "Priča teče od epizode do epizode",
+    seriesModeInteractive: "Sustvaranje",
+    seriesModeInteractiveDesc: "Tvoje dijete odlučuje na kraju svake epizode kako priča nastavlja",
+    seriesModeInteractiveLocked: "Dostupno s Premium planom",
     storyLanguageLabel: "Jezik",
     fantasy: "Bajke & Fantazija",
     action: "Avantura & Akcija",

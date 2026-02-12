@@ -19,6 +19,8 @@ import FablinoReaction from "@/components/FablinoReaction";
 import BadgeCelebrationModal, { EarnedBadge } from "@/components/BadgeCelebrationModal";
 import PageHeader from "@/components/PageHeader";
 import { Language, getTranslations } from "@/lib/translations";
+import BranchDecisionScreen from "@/components/story-creation/BranchDecisionScreen";
+import type { BranchOption as BranchOptionType } from "@/components/story-creation/BranchDecisionScreen";
 
 // UI labels for word explanation popup in different languages
 const readingLabels: Record<string, {
@@ -196,8 +198,17 @@ interface Story {
   ending_type?: 'A' | 'B' | 'C' | null;
   episode_number?: number | null;
   series_id?: string | null;
+  series_mode?: 'normal' | 'interactive' | null;
   kid_profile_id?: string | null;
   completed?: boolean | null;
+}
+
+interface BranchOption {
+  option_id: string;
+  title: string;
+  preview: string;
+  direction: string;
+  image_hint?: string;
 }
 
 // French stop words that should not be marked/highlighted
@@ -290,6 +301,11 @@ const ReadingPage = () => {
   const [isMarkedAsRead, setIsMarkedAsRead] = useState(false);
   // Series continuation state
   const [isGeneratingContinuation, setIsGeneratingContinuation] = useState(false);
+  // Interactive series: branch options for current episode
+  const [branchOptions, setBranchOptions] = useState<BranchOption[] | null>(null);
+  const [branchId, setBranchId] = useState<string | null>(null); // story_branches row id
+  // Interactive series finale: all past choices for recap
+  const [branchHistory, setBranchHistory] = useState<{ episode_number: number; chosen_title: string }[]>([]);
   // System prompt for story generation
   const [customSystemPrompt, setCustomSystemPrompt] = useState("");
   // Fablino feedback overlay
@@ -425,6 +441,42 @@ const ReadingPage = () => {
       if (data.prompt) {
         setStoryPrompt(data.prompt);
       }
+      // Load branch options for interactive series (Ep1-4)
+      if (data.series_mode === 'interactive' && (data.episode_number || 0) >= 1 && (data.episode_number || 0) < 5) {
+        const { data: branchData } = await supabase
+          .from("story_branches")
+          .select("id, options, chosen_option_id")
+          .eq("story_id", data.id)
+          .maybeSingle();
+        if (branchData && branchData.options && !branchData.chosen_option_id) {
+          setBranchOptions(branchData.options as BranchOption[]);
+          setBranchId(branchData.id);
+        } else {
+          setBranchOptions(null);
+          setBranchId(null);
+        }
+      }
+      // Load branch history for interactive series finale (Ep5)
+      if (data.series_mode === 'interactive' && (data.episode_number || 0) >= 5 && data.series_id) {
+        const { data: allBranches } = await supabase
+          .from("story_branches")
+          .select("episode_number, options, chosen_option_id")
+          .eq("series_id", data.series_id)
+          .order("episode_number", { ascending: true });
+        if (allBranches) {
+          const history = allBranches
+            .filter((b: any) => b.chosen_option_id && b.options)
+            .map((b: any) => {
+              const opts = b.options as BranchOption[];
+              const chosen = opts.find((o) => o.option_id === b.chosen_option_id);
+              return {
+                episode_number: b.episode_number,
+                chosen_title: chosen?.title || b.chosen_option_id,
+              };
+            });
+          setBranchHistory(history);
+        }
+      }
     } else {
       toast.error("Histoire non trouvée");
       navigate("/stories");
@@ -473,6 +525,7 @@ const ReadingPage = () => {
           userId: user?.id,
           // Phase 2: Pass series flag + kid profile for new prompt path
           isSeries: true,
+          seriesMode: story.series_mode || 'normal',
           storyLanguage: story.text_language || "de",
           kidProfileId: story.kid_profile_id,
         },
@@ -555,6 +608,7 @@ const ReadingPage = () => {
           ending_type: nextEpisodeNumber >= 5 ? "A" : "C",
           episode_number: nextEpisodeNumber,
           series_id: story.series_id || story.id, // Backward compat: old Episode 1 has null series_id
+          series_mode: story.series_mode || null,
           // Phase 2: Series context fields from generate-story response
           episode_summary: data.episode_summary ?? null,
           continuity_state: data.continuity_state ?? null,
@@ -670,6 +724,112 @@ const ReadingPage = () => {
           }));
 
           await supabase.from("marked_words").insert(wordsToInsert);
+        }
+
+        toast.success(`Episode ${nextEpisodeNumber} erstellt! 🎉`);
+        navigate(`/read/${newStory.id}`);
+      }
+    } catch (err) {
+      console.error("Error:", err);
+      toast.error("Fehler beim Erstellen der Fortsetzung");
+    } finally {
+      setIsGeneratingContinuation(false);
+    }
+  };
+
+  // Handle interactive series branch decision
+  const handleBranchDecision = async (option: BranchOption) => {
+    if (!story || !branchId) return;
+
+    setIsGeneratingContinuation(true);
+
+    try {
+      // 1. Update story_branches: save the chosen option
+      await supabase
+        .from("story_branches")
+        .update({
+          chosen_option_id: option.option_id,
+          chosen_at: new Date().toISOString(),
+        })
+        .eq("id", branchId);
+
+      // 2. Update story: save branch_chosen
+      await supabase
+        .from("stories")
+        .update({ branch_chosen: option.title })
+        .eq("id", story.id);
+
+      // 3. Generate next episode with branch context
+      const nextEpisodeNumber = (story.episode_number || 1) + 1;
+      const continuationPrompt = `Fortsetzung von "${story.title}" (Episode ${story.episode_number || 1}):\n\nVorherige Geschichte (Zusammenfassung):\n${story.content.slice(0, 500)}...\n\nUrsprüngliche Idee: ${story.prompt || ""}`;
+
+      const { data: genData, error } = await supabase.functions.invoke("generate-story", {
+        body: {
+          length: "medium",
+          difficulty: story.difficulty || "medium",
+          description: continuationPrompt,
+          textType: story.text_type || "fiction",
+          textLanguage: (story.text_language || "de").toUpperCase(),
+          customSystemPrompt,
+          endingType: nextEpisodeNumber >= 5 ? "A" : "C",
+          episodeNumber: nextEpisodeNumber,
+          previousStoryId: story.id,
+          seriesId: story.series_id || story.id,
+          userId: user?.id,
+          isSeries: true,
+          seriesMode: 'interactive',
+          branchChosen: option.title,
+          storyLanguage: story.text_language || "de",
+          kidProfileId: story.kid_profile_id,
+        },
+      });
+
+      if (error || genData?.error) {
+        console.error("Generation error:", error || genData?.error);
+        toast.error("Fehler beim Erstellen der Fortsetzung");
+        return;
+      }
+
+      if (genData?.title && genData?.content) {
+        // Save new episode
+        const { data: newStory, error: storyError } = await supabase
+          .from("stories")
+          .insert({
+            title: genData.title,
+            content: genData.content,
+            difficulty: story.difficulty,
+            text_type: story.text_type || "fiction",
+            text_language: story.text_language,
+            prompt: story.prompt,
+            cover_image_url: genData.coverImageBase64 || null,
+            story_images: genData.storyImages || null,
+            user_id: user?.id,
+            kid_profile_id: story.kid_profile_id,
+            ending_type: nextEpisodeNumber >= 5 ? "A" : "C",
+            episode_number: nextEpisodeNumber,
+            series_id: story.series_id || story.id,
+            series_mode: 'interactive',
+            episode_summary: genData.episode_summary ?? null,
+            continuity_state: genData.continuity_state ?? null,
+            visual_style_sheet: genData.visual_style_sheet ?? null,
+          })
+          .select()
+          .single();
+
+        if (storyError) {
+          console.error("Save error:", storyError);
+          toast.error("Fehler beim Speichern");
+          return;
+        }
+
+        // Save branch options for the new episode (if not Episode 5)
+        if (genData.branch_options && newStory && nextEpisodeNumber < 5) {
+          await supabase.from("story_branches").insert({
+            story_id: newStory.id,
+            series_id: story.series_id || story.id,
+            episode_number: nextEpisodeNumber,
+            options: genData.branch_options,
+          });
         }
 
         toast.success(`Episode ${nextEpisodeNumber} erstellt! 🎉`);
@@ -1511,8 +1671,19 @@ const ReadingPage = () => {
                     onContinue={() => navigate("/stories")}
                   />
                   
-                  {/* Continue Series Button - shown for series with cliffhanger ending, hidden at Episode 5+ */}
-                  {story?.ending_type === 'C' && (story?.series_id || story?.episode_number) && (story?.episode_number || 1) < 5 && (
+                  {/* Interactive Series: Branch Decision Screen (Ep1-4 with branch options) */}
+                  {story?.series_mode === 'interactive' && branchOptions && branchOptions.length > 0 && (story?.episode_number || 1) < 5 && (
+                    <div className="mt-6 pt-6 border-t border-border">
+                      <BranchDecisionScreen
+                        options={branchOptions}
+                        onSelect={handleBranchDecision}
+                        isLoading={isGeneratingContinuation}
+                      />
+                    </div>
+                  )}
+
+                  {/* Normal Series: Continue Button – shown for series with cliffhanger ending, hidden at Episode 5+ */}
+                  {story?.ending_type === 'C' && (story?.series_id || story?.episode_number) && (story?.episode_number || 1) < 5 && story?.series_mode !== 'interactive' && (
                     <div className="mt-6 pt-6 border-t border-border">
                       <Button
                         onClick={handleContinueSeries}
@@ -1543,6 +1714,28 @@ const ReadingPage = () => {
                       <p className="text-lg font-semibold text-primary">
                         {readingLabels[textLang]?.seriesCompleted || "Series completed! 🦊🎉"}
                       </p>
+                      {/* Interactive series: recap of all branch choices */}
+                      {story?.series_mode === 'interactive' && branchHistory.length > 0 && (
+                        <div className="mt-4 bg-gradient-to-b from-[#FFF8F0] to-[#FEF1E1] rounded-2xl p-4 text-left">
+                          <p className="text-sm font-semibold text-[#92400E] mb-2">
+                            {textLang === 'de' ? 'Deine Entscheidungen:' :
+                             textLang === 'fr' ? 'Tes choix :' :
+                             textLang === 'es' ? 'Tus decisiones:' :
+                             textLang === 'nl' ? 'Jouw keuzes:' :
+                             textLang === 'it' ? 'Le tue scelte:' :
+                             textLang === 'bs' ? 'Tvoji izbori:' :
+                             'Your choices:'}
+                          </p>
+                          <ul className="space-y-1.5">
+                            {branchHistory.map((b) => (
+                              <li key={b.episode_number} className="flex items-start gap-2 text-xs text-[#2D1810]/70">
+                                <span className="font-bold text-[#E8863A] shrink-0">Ep.{b.episode_number}:</span>
+                                <span>{b.chosen_title}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
                       <Button
                         onClick={() => navigate("/stories")}
                         className="mt-3 btn-primary-kid"
@@ -1554,8 +1747,19 @@ const ReadingPage = () => {
                 </div>
               )}
               
-              {/* Series continuation for stories without quiz */}
-              {!showQuiz && !hasQuestions && story?.ending_type === 'C' && (story?.series_id || story?.episode_number) && (story?.episode_number || 1) < 5 && (
+              {/* Interactive Series: inline Branch Decision for stories without quiz */}
+              {!showQuiz && !hasQuestions && story?.series_mode === 'interactive' && branchOptions && branchOptions.length > 0 && (story?.episode_number || 1) < 5 && (
+                <div className="mt-8 pt-6 border-t border-border">
+                  <BranchDecisionScreen
+                    options={branchOptions}
+                    onSelect={handleBranchDecision}
+                    isLoading={isGeneratingContinuation}
+                  />
+                </div>
+              )}
+
+              {/* Normal Series continuation for stories without quiz */}
+              {!showQuiz && !hasQuestions && story?.ending_type === 'C' && (story?.series_id || story?.episode_number) && (story?.episode_number || 1) < 5 && story?.series_mode !== 'interactive' && (
                 <div className="mt-8 pt-6 border-t border-border flex flex-col items-center gap-4">
                   <p className="text-muted-foreground text-center">
                     {textLang === 'de' ? 'Diese Geschichte ist Teil einer Serie!' : 
