@@ -74,17 +74,12 @@ function buildSeriesStylePrefix(ctx: SeriesImageContext): string {
 
   lines.push(`SERIES VISUAL CONSISTENCY (Episode ${ctx.episodeNumber} of 5):`);
 
-  // Character descriptions
+  // Character descriptions (the core purpose of this prefix)
   if (vss.characters && Object.keys(vss.characters).length > 0) {
     const charDescs = Object.entries(vss.characters)
       .map(([name, desc]) => `${name} is ${desc}`)
       .join('. ');
     lines.push(`Characters: ${charDescs}`);
-  }
-
-  // World style
-  if (vss.world_style) {
-    lines.push(`World style: ${vss.world_style}`);
   }
 
   // Recurring visual element
@@ -94,9 +89,7 @@ function buildSeriesStylePrefix(ctx: SeriesImageContext): string {
 
   lines.push('Maintain exact character appearances and world style across all images.');
 
-  // Episode mood
-  const mood = EPISODE_MOOD[ctx.episodeNumber] || EPISODE_MOOD[5];
-  lines.push(`Episode mood: ${mood}`);
+  // NOTE: world_style and EPISODE_MOOD are now in the styleBlock (not duplicated here)
 
   return lines.join('\n');
 }
@@ -145,13 +138,23 @@ export function buildImagePrompts(
   // ═══ Phase 3: Series visual consistency prefix ═══
   const seriesPrefix = seriesContext ? buildSeriesStylePrefix(seriesContext) : '';
 
-  // ═══ Shared style parts (same for ALL images) ═══
-  const styleBlock = [
-    ageModifier,                                      // Age modifier first (highest priority)
-    themeImageRules.image_style_prompt,                // Theme-specific style (null until Phase 1.3)
-    ageStyleRules.style_prompt,                        // DB: image_style_rules.style_prompt
-    themeImageRules.image_color_palette || ageStyleRules.color_palette,  // Color palette
-  ].filter(Boolean).join('. ');
+  // ═══ Shared style parts ═══
+  // For series: ageModifier + world_style from StyleSheet + color palette + episode mood
+  //   → SKIP ageStyleRules.style_prompt (e.g. "Peppa Pig") which clashes with the StyleSheet
+  // For single stories: full stack as before
+  const styleBlock = seriesContext
+    ? [
+        ageModifier,                                        // ✅ Fine-grained per year (e.g. "Cute but not babyish")
+        seriesContext.visualStyleSheet.world_style,          // ✅ Series world style from Ep1 StyleSheet
+        ageStyleRules.color_palette,                         // ✅ Color palette is safe
+        EPISODE_MOOD[seriesContext.episodeNumber] || EPISODE_MOOD[5], // ✅ Episode mood
+      ].filter(Boolean).join('. ')
+    : [
+        ageModifier,                                        // Age modifier first (highest priority)
+        themeImageRules.image_style_prompt,                  // Theme-specific style (null until Phase 1.3)
+        ageStyleRules.style_prompt,                          // DB: image_style_rules.style_prompt
+        themeImageRules.image_color_palette || ageStyleRules.color_palette,  // Color palette
+      ].filter(Boolean).join('. ');
 
   const negativeBlock = [
     themeImageRules.image_negative_prompt,              // Theme-specific negatives (null until Phase 1.3)
