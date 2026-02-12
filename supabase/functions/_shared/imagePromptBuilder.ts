@@ -205,6 +205,15 @@ export function buildImagePrompts(
     });
   }
 
+  console.log('[IMAGE-PROMPTS] Generated prompts:',
+    results.map((r, i) => ({
+      index: i,
+      type: i === 0 ? 'COVER' : 'SCENE',
+      promptPreview: r.prompt.substring(0, 300),
+      hasSeriesContext: !!seriesContext
+    }))
+  );
+
   return results;
 }
 

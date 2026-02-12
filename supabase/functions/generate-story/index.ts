@@ -1433,6 +1433,10 @@ Antworte NUR mit dem erweiterten Text (ohne Titel, ohne JSON-Format).`;
         }
       }
 
+      console.log('[IMAGE-PIPELINE] Calling buildImagePrompts with:', {
+        hasSeriesContext: !!seriesImageCtx,
+        episodeNumber: seriesImageCtx?.episodeNumber,
+      });
       imagePrompts = buildImagePrompts(imagePlan, imageAgeRules, imageThemeRules, childAge, seriesImageCtx);
     } else {
       // ═══ FALLBACK: Simple cover prompt (previous behavior) ═══
