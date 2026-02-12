@@ -55,6 +55,9 @@ interface PerformanceEntry {
   story_generation_ms: number | null;
   image_generation_ms: number | null;
   consistency_check_ms: number | null;
+  generation_status: string | null;
+  cover_image_status: string | null;
+  story_images_status: string | null;
 }
 
 interface StoryStats {
@@ -628,6 +631,9 @@ const FeedbackStatsPage = () => {
         story_generation_ms,
         image_generation_ms,
         consistency_check_ms,
+        generation_status,
+        cover_image_status,
+        story_images_status,
         kid_profiles (
           name,
           school_class,
@@ -759,6 +765,9 @@ const FeedbackStatsPage = () => {
         story_generation_ms: story.story_generation_ms,
         image_generation_ms: story.image_generation_ms,
         consistency_check_ms: story.consistency_check_ms,
+        generation_status: story.generation_status,
+        cover_image_status: story.cover_image_status,
+        story_images_status: story.story_images_status,
       }));
       setPerformanceData(perfData);
     }
@@ -1651,6 +1660,8 @@ const FeedbackStatsPage = () => {
                         <TableHead>{t.language}</TableHead>
                         <TableHead>{t.textType}</TableHead>
                         <TableHead>Episode</TableHead>
+                        <TableHead className="text-center">✓ Text</TableHead>
+                        <TableHead className="text-center">✓ Bilder</TableHead>
                         <TableHead className="cursor-pointer text-right" onClick={() => handlePerfSort("story_generation_ms")}>
                           <div className="flex items-center justify-end">⏱️ Story<PerfSortIcon column="story_generation_ms" /></div>
                         </TableHead>
@@ -1678,6 +1689,13 @@ const FeedbackStatsPage = () => {
                           </TableCell>
                           <TableCell className="text-xs">
                             {item.episode_number ?? '-'}
+                          </TableCell>
+                          <TableCell className="text-xs text-center">
+                            {item.generation_status === 'verified' ? '✅' : item.generation_status === 'generating' ? '⏳' : '❌'}
+                          </TableCell>
+                          <TableCell className="text-xs text-center">
+                            {item.cover_image_status === 'complete' && item.story_images_status === 'complete' ? '✅' : 
+                             item.cover_image_status === 'pending' || item.story_images_status === 'pending' ? '❌' : '⏳'}
                           </TableCell>
                           <TableCell className="text-xs text-right font-mono">{fmtMs(item.story_generation_ms)}</TableCell>
                           <TableCell className="text-xs text-right font-mono">{fmtMs(item.image_generation_ms)}</TableCell>
