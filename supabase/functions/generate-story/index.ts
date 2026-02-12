@@ -1201,6 +1201,16 @@ Wähle genau 10 Vokabelwörter aus.${seriesOutputInstructions}`;
 
       story = JSON.parse(jsonMatch[0]);
 
+      // ── DEBUG: Log raw LLM response for series episodes ──
+      if (isSeries || seriesId) {
+        console.log(`[generate-story] [SERIES-DEBUG] Raw LLM response keys: ${Object.keys(story).join(', ')}`);
+        console.log(`[generate-story] [SERIES-DEBUG] Has episode_summary: ${!!story.episode_summary}, type: ${typeof story.episode_summary}`);
+        console.log(`[generate-story] [SERIES-DEBUG] Has continuity_state: ${!!story.continuity_state}, type: ${typeof story.continuity_state}`);
+        console.log(`[generate-story] [SERIES-DEBUG] Has visual_style_sheet: ${!!story.visual_style_sheet}, type: ${typeof story.visual_style_sheet}`);
+        if (story.episode_summary) console.log(`[generate-story] [SERIES-DEBUG] episode_summary value: ${JSON.stringify(story.episode_summary).substring(0, 200)}`);
+        if (story.continuity_state) console.log(`[generate-story] [SERIES-DEBUG] continuity_state value: ${JSON.stringify(story.continuity_state).substring(0, 500)}`);
+      }
+
       // Quality check: Count words in the story content
       const wordCountActual = countWords(story.content);
       console.log(`Story word count: ${wordCountActual}, minimum required: ${minWordCount}`);
@@ -1623,6 +1633,16 @@ Antworte NUR mit dem erweiterten Text (ohne Titel, ohne JSON-Format).`;
     console.log(`Story generated with ${story.vocabulary?.length || 0} vocabulary words`);
     console.log(`Structure classification: beginning=${structureBeginning}, middle=${structureMiddle}, ending=${structureEnding}`);
     console.log(`Emotional coloring: ${emotionalColoring}/${emotionalSecondary}, humor=${humorLevel}, depth=${emotionalDepth}`);
+
+    // ── DEBUG: Log final series values before response ──
+    if (isSeries || seriesId) {
+      console.log(`[generate-story] [SERIES-DEBUG] FINAL values for DB storage:`);
+      console.log(`[generate-story] [SERIES-DEBUG]   episodeSummary: ${episodeSummary ? episodeSummary.substring(0, 100) + '...' : 'NULL'}`);
+      console.log(`[generate-story] [SERIES-DEBUG]   continuityState: ${continuityState ? JSON.stringify(continuityState).substring(0, 300) : 'NULL'}`);
+      console.log(`[generate-story] [SERIES-DEBUG]   visualStyleSheet: ${visualStyleSheet ? JSON.stringify(visualStyleSheet).substring(0, 300) : 'NULL'}`);
+      console.log(`[generate-story] [SERIES-DEBUG]   isSeries=${isSeries}, seriesId=${seriesId}, episodeNumber=${episodeNumber}`);
+      console.log(`[generate-story] [SERIES-DEBUG]   usedNewPromptPath=${usedNewPromptPath}`);
+    }
 
     return new Response(JSON.stringify({
       ...story,
