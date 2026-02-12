@@ -5,7 +5,8 @@ import { buildImagePrompts, buildFallbackImagePrompt, loadImageRules, ImagePromp
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-legacy-token, x-legacy-user-id, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+  "Access-Control-Allow-Methods": "POST, GET, OPTIONS, PUT, DELETE",
 };
 
 // API endpoints
@@ -650,9 +651,102 @@ async function callLovableImageEdit(
   return null;
 }
 
-// Helper function to call Vertex AI for image generation (via Lovable's OAuth2 token fetch)
+// ── JWT Signing for Google Service Account → OAuth2 Access Token ──
+
+// Base64url encode helper
+function base64urlEncode(data: Uint8Array): string {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+  let result = '';
+  for (let i = 0; i < data.length; i += 3) {
+    const a = data[i], b = data[i + 1] ?? 0, c = data[i + 2] ?? 0;
+    result += chars[a >> 2] + chars[((a & 3) << 4) | (b >> 4)] +
+      (i + 1 < data.length ? chars[((b & 15) << 2) | (c >> 6)] : '=') +
+      (i + 2 < data.length ? chars[c & 63] : '=');
+  }
+  return result.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+function base64urlEncodeString(str: string): string {
+  return base64urlEncode(new TextEncoder().encode(str));
+}
+
+// Parse PEM private key to CryptoKey
+async function importPrivateKey(pem: string): Promise<CryptoKey> {
+  const pemBody = pem
+    .replace(/-----BEGIN (RSA )?PRIVATE KEY-----/g, '')
+    .replace(/-----END (RSA )?PRIVATE KEY-----/g, '')
+    .replace(/\s/g, '');
+  const binaryString = atob(pemBody);
+  const bytes = new Uint8Array(binaryString.length);
+  for (let i = 0; i < binaryString.length; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
+  }
+  return crypto.subtle.importKey(
+    'pkcs8',
+    bytes.buffer,
+    { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
+    false,
+    ['sign']
+  );
+}
+
+// Cache for OAuth2 access tokens (avoid re-signing JWT every call)
+let cachedAccessToken: { token: string; expiresAt: number } | null = null;
+
+async function getVertexAccessToken(serviceAccountJson: string): Promise<string> {
+  // Check cache (with 60s buffer)
+  if (cachedAccessToken && Date.now() < cachedAccessToken.expiresAt - 60000) {
+    return cachedAccessToken.token;
+  }
+
+  const sa = JSON.parse(serviceAccountJson);
+  const now = Math.floor(Date.now() / 1000);
+  const exp = now + 3600;
+
+  const header = base64urlEncodeString(JSON.stringify({ alg: 'RS256', typ: 'JWT' }));
+  const payload = base64urlEncodeString(JSON.stringify({
+    iss: sa.client_email,
+    scope: 'https://www.googleapis.com/auth/cloud-platform',
+    aud: 'https://oauth2.googleapis.com/token',
+    iat: now,
+    exp,
+  }));
+
+  const signingInput = `${header}.${payload}`;
+  const key = await importPrivateKey(sa.private_key);
+  const signature = await crypto.subtle.sign(
+    'RSASSA-PKCS1-v1_5',
+    key,
+    new TextEncoder().encode(signingInput)
+  );
+  const sig = base64urlEncode(new Uint8Array(signature));
+  const jwt = `${signingInput}.${sig}`;
+
+  // Exchange JWT for access token
+  const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: `grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer&assertion=${jwt}`,
+  });
+
+  if (!tokenResponse.ok) {
+    const err = await tokenResponse.text();
+    console.error('[VERTEX-AUTH] Token exchange failed:', err);
+    throw new Error(`Vertex OAuth2 token exchange failed: ${tokenResponse.status}`);
+  }
+
+  const tokenData = await tokenResponse.json();
+  cachedAccessToken = {
+    token: tokenData.access_token,
+    expiresAt: Date.now() + (tokenData.expires_in || 3600) * 1000,
+  };
+  console.log('[VERTEX-AUTH] Successfully obtained OAuth2 access token');
+  return cachedAccessToken.token;
+}
+
+// Helper function to call Vertex AI for image generation (proper OAuth2 auth)
 async function callVertexImageAPI(
-  vertexApiKey: string,
+  serviceAccountJson: string,
   prompt: string,
   maxRetries: number = 3
 ): Promise<string | null> {
@@ -666,17 +760,17 @@ async function callVertexImageAPI(
     }
     
     try {
-      // Vertex AI endpoint: uses the Service Account key to generate OAuth2 token
-      // This implementation assumes GOOGLE_VERTEX_AI_KEY contains a full Service Account JSON
-      const projectId = vertexApiKey.split('"project_id":"')[1]?.split('"')[0] || "fablino-prod";
-      const vertexUrl = `https://us-central1-aiplatform.googleapis.com/v1/projects/${projectId}/locations/us-central1/endpoints/openapi/models/gemini-2.5-flash:generateContent`;
+      const sa = JSON.parse(serviceAccountJson);
+      const projectId = sa.project_id || "fablino-prod";
+      const accessToken = await getVertexAccessToken(serviceAccountJson);
       
-      // Use JWT bearer token flow (simplified: assumes API key is valid for direct auth)
+      const vertexUrl = `https://us-central1-aiplatform.googleapis.com/v1/projects/${projectId}/locations/us-central1/publishers/google/models/gemini-2.0-flash-exp:generateContent`;
+      
       const response = await fetch(vertexUrl, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${vertexApiKey}`,
+          "Authorization": `Bearer ${accessToken}`,
         },
         body: JSON.stringify({
           contents: [
@@ -686,7 +780,7 @@ async function callVertexImageAPI(
             }
           ],
           generationConfig: {
-            responseModalities: ["image", "text"],
+            responseModalities: ["IMAGE", "TEXT"],
           },
         }),
       });
@@ -700,7 +794,9 @@ async function callVertexImageAPI(
       if (response.status === 403 || response.status === 401) {
         const errorText = await response.text();
         console.error(`[VERTEX-IMAGE] Auth error (${response.status}):`, errorText);
-        return null; // Don't retry auth errors
+        // Invalidate cached token on auth errors
+        cachedAccessToken = null;
+        return null;
       }
 
       if (!response.ok) {
@@ -726,6 +822,9 @@ async function callVertexImageAPI(
       return null;
     } catch (error) {
       console.error("[VERTEX-IMAGE] Request error:", error);
+      if (error instanceof Error && error.message.includes("OAuth2")) {
+        cachedAccessToken = null; // Reset on auth errors
+      }
       return null;
     }
   }
@@ -806,7 +905,7 @@ async function callGeminiImageAPI(
 
 // Helper function to call Vertex AI for image editing (with reference image)
 async function callVertexImageEditAPI(
-  vertexApiKey: string,
+  serviceAccountJson: string,
   prompt: string,
   referenceImageBase64: string,
   maxRetries: number = 3
@@ -828,14 +927,17 @@ async function callVertexImageEditAPI(
     }
     
     try {
-      const projectId = vertexApiKey.split('"project_id":"')[1]?.split('"')[0] || "fablino-prod";
-      const vertexUrl = `https://us-central1-aiplatform.googleapis.com/v1/projects/${projectId}/locations/us-central1/endpoints/openapi/models/gemini-2.5-flash:generateContent`;
+      const sa = JSON.parse(serviceAccountJson);
+      const projectId = sa.project_id || "fablino-prod";
+      const accessToken = await getVertexAccessToken(serviceAccountJson);
+      
+      const vertexUrl = `https://us-central1-aiplatform.googleapis.com/v1/projects/${projectId}/locations/us-central1/publishers/google/models/gemini-2.0-flash-exp:generateContent`;
       
       const response = await fetch(vertexUrl, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${vertexApiKey}`,
+          "Authorization": `Bearer ${accessToken}`,
         },
         body: JSON.stringify({
           contents: [
@@ -853,7 +955,7 @@ async function callVertexImageEditAPI(
             }
           ],
           generationConfig: {
-            responseModalities: ["image", "text"],
+            responseModalities: ["IMAGE", "TEXT"],
           },
         }),
       });
@@ -866,7 +968,8 @@ async function callVertexImageEditAPI(
       if (response.status === 403 || response.status === 401) {
         const errorText = await response.text();
         console.error(`[VERTEX-EDIT] Auth error (${response.status}):`, errorText);
-        return null; // Don't retry auth errors
+        cachedAccessToken = null;
+        return null;
       }
 
       if (!response.ok) {
@@ -877,7 +980,6 @@ async function callVertexImageEditAPI(
 
       const data = await response.json();
       
-      // Look for inline_data with image in the response
       const parts = data.candidates?.[0]?.content?.parts || [];
       for (const part of parts) {
         if (part.inlineData?.mimeType?.startsWith("image/")) {
