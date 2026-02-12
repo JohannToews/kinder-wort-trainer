@@ -820,22 +820,26 @@ async function generateImageWithCache(
     return cached;
   }
 
-  // Generate new image — Lovable Gateway FIRST (bypasses regional blocks), Gemini direct as fallback
+  // Generate new image — Gemini Direct (Vertex AI key) FIRST, Lovable Gateway as fallback
   let imageUrl: string | null = null;
   
   if (useEdit && referenceImage) {
-    // Try Lovable Gateway first for edits
-    imageUrl = await callLovableImageEdit(lovableKey, prompt, referenceImage);
-    if (!imageUrl) {
-      console.log('[IMAGE-PIPELINE] Lovable edit failed, trying direct Gemini API...');
+    // Try Gemini direct first for edits
+    if (geminiKey) {
       imageUrl = await callGeminiImageEditAPI(geminiKey, prompt, referenceImage);
     }
-  } else {
-    // Try Lovable Gateway first for generation
-    imageUrl = await callLovableImageGenerate(lovableKey, prompt);
     if (!imageUrl) {
-      console.log('[IMAGE-PIPELINE] Lovable generate failed, trying direct Gemini API...');
+      console.log('[IMAGE-PIPELINE] Gemini edit failed, trying Lovable Gateway...');
+      imageUrl = await callLovableImageEdit(lovableKey, prompt, referenceImage);
+    }
+  } else {
+    // Try Gemini direct first for generation
+    if (geminiKey) {
       imageUrl = await callGeminiImageAPI(geminiKey, prompt);
+    }
+    if (!imageUrl) {
+      console.log('[IMAGE-PIPELINE] Gemini generate failed, trying Lovable Gateway...');
+      imageUrl = await callLovableImageGenerate(lovableKey, prompt);
     }
   }
 
@@ -1986,20 +1990,22 @@ Antworte NUR mit dem erweiterten Text (ohne Titel, ohne JSON-Format).`;
           }
           console.log(`[generate-story] Cache MISS for ${imgPrompt.label}`);
 
-          // 2. Generate image (Lovable Gateway FIRST → Gemini direct fallback)
+          // 2. Generate image (Gemini Direct FIRST → Lovable Gateway fallback)
           let imageUrl: string | null = null;
 
-          try {
-            imageUrl = await callLovableImageGenerate(LOVABLE_API_KEY!, imgPrompt.prompt);
-          } catch (lovableError) {
-            console.log(`[IMAGE-PIPELINE] Lovable Gateway failed for ${imgPrompt.label}, trying direct Gemini`);
-          }
-
-          if (!imageUrl && GEMINI_API_KEY) {
+          if (GEMINI_API_KEY) {
             try {
               imageUrl = await callGeminiImageAPI(GEMINI_API_KEY, imgPrompt.prompt);
             } catch (geminiError) {
-              console.error(`[IMAGE-PIPELINE] Gemini direct also failed for ${imgPrompt.label}:`, geminiError);
+              console.log(`[IMAGE-PIPELINE] Gemini direct failed for ${imgPrompt.label}, trying Lovable Gateway`);
+            }
+          }
+
+          if (!imageUrl) {
+            try {
+              imageUrl = await callLovableImageGenerate(LOVABLE_API_KEY!, imgPrompt.prompt);
+            } catch (lovableError) {
+              console.error(`[IMAGE-PIPELINE] Lovable Gateway also failed for ${imgPrompt.label}:`, lovableError);
             }
           }
 
