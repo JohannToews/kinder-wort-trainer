@@ -25,6 +25,7 @@ interface Story {
   series_id: string | null;
   episode_number: number | null;
   ending_type: string | null;
+  completed?: boolean | null;
 }
 
 // Difficulty, tab, and status labels are now in lib/translations.ts
@@ -67,6 +68,15 @@ const StorySelectPage = () => {
 
       const storyIdSet = new Set(storiesData.map((s: any) => s.id));
       const statusMap = new Map<string, boolean>();
+      
+      // Check stories.completed field first
+      storiesData.forEach((s: any) => {
+        if (s.completed) {
+          statusMap.set(s.id, true);
+        }
+      });
+      
+      // Also check user_results for completion status
       completionsResult.data?.forEach((r: any) => {
         if (r.reference_id && storyIdSet.has(r.reference_id)) {
           const matches = !selectedProfileId ||
