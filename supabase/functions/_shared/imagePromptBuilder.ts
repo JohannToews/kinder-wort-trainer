@@ -47,12 +47,12 @@ const NO_TEXT_INSTRUCTION = 'NO TEXT, NO LETTERS, NO WORDS, NO WRITING, NO NUMBE
 
 /**
  * Age-specific style modifier based on the EXACT age of the child.
- * The DB provides age groups (4-5, 6, 7-9, 10-12) and this function adds
- * per-year fine-tuning on top of those DB rules.
+ * The DB provides broad age groups (4-6, 7-9, 10-12), but a 6-year-old
+ * should see different images than a 9-year-old.
  */
 function getAgeModifier(age: number): string {
   if (age <= 5) return 'Art style: soft picture book for very young children. Extremely cute, round, simple. Bright cheerful colors. Everything looks safe and friendly.';
-  if (age === 6) return 'Art style: modern children book illustration for early readers. Characters look curious and adventurous with natural proportions. Expressive but realistic faces. Rich warm colors with some detail in backgrounds. Style similar to modern Pixar concept art. NOT cute, NOT chibi, NOT babyish.';
+  if (age === 6) return 'Art style: colorful picture book illustration. Cute but not babyish. Friendly characters with big eyes. Warm bright colors.';
   if (age === 7) return 'Art style: modern children book illustration. Characters look capable and curious. Slightly dynamic poses. Vibrant rich colors.';
   if (age === 8) return 'Art style: adventure cartoon illustration. Characters look confident and cool. Action-ready poses. Bold dynamic colors with good contrast. NOT cute or babyish.';
   if (age === 9) return 'Art style: detailed cartoon with comic book influence. Characters look brave and independent. Dynamic exciting compositions. Strong confident expressions. Cool factor high.';

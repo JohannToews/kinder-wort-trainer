@@ -13,8 +13,7 @@ const LOVABLE_AI_GATEWAY = "https://ai.gateway.lovable.dev/v1/chat/completions";
 const GEMINI_IMAGE_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent";
 
 // Helper function to count words in a text
-function countWords(text: string | undefined | null): number {
-  if (!text) return 0;
+function countWords(text: string): number {
   return text.trim().split(/\s+/).filter(word => word.length > 0).length;
 }
 
@@ -174,116 +173,35 @@ async function callLovableAI(
   throw lastError || new Error("Max retries exceeded");
 }
 
-// Interface for consistency check result (v2 format)
-interface ConsistencyCheckResultV2 {
-  errors_found: boolean;
-  summary: string;
-  errors: Array<{
-    category: string;
-    severity: string;
-    original: string;
-    problem: string;
-    fix: string;
-  }>;
-  stats: { critical: number; medium: number; low: number };
-}
-
-// Old interface for backwards compatibility
+// Interface for consistency check result
 interface ConsistencyCheckResult {
   hasIssues: boolean;
   issues: string[];
   suggestedFixes: string;
 }
 
-// Helper function to fetch consistency check prompts (v2 or fallback to old)
-async function getConsistencyCheckPromptV2(supabase: any): Promise<{ basePrompt: string | null; seriesAddon: string | null }> {
-  try {
-    // Fetch both v2 prompts
-    const { data: prompts } = await supabase
-      .from("app_settings")
-      .select("key, value")
-      .in("key", ["consistency_check_prompt_v2", "consistency_check_series_addon_v2"]);
-    
-    const basePrompt = prompts?.find((p: any) => p.key === "consistency_check_prompt_v2")?.value || null;
-    const seriesAddon = prompts?.find((p: any) => p.key === "consistency_check_series_addon_v2")?.value || null;
-    
-    return { basePrompt, seriesAddon };
-  } catch (error) {
-    console.error("Error fetching consistency check prompt v2:", error);
-    return { basePrompt: null, seriesAddon: null };
-  }
-}
-
-// Helper function to fetch OLD consistency check prompt from database (fallback)
-async function getConsistencyCheckPrompt(): Promise<string | null> {
+// Helper function to fetch consistency check prompt from database
+async function getConsistencyCheckPrompt(language: string): Promise<string | null> {
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
     
-    // First try the new universal prompt, fallback to German if not found
+    const promptKey = `system_prompt_consistency_check_${language}`;
     const { data } = await supabase
       .from("app_settings")
       .select("value")
-      .eq("key", "system_prompt_consistency_check")
+      .eq("key", promptKey)
       .maybeSingle();
     
-    if (data?.value) {
-      return data.value;
-    }
-    
-    // Fallback to old German prompt for backwards compatibility
-    const { data: fallback } = await supabase
-      .from("app_settings")
-      .select("value")
-      .eq("key", "system_prompt_consistency_check_de")
-      .maybeSingle();
-    
-    return fallback?.value || null;
+    return data?.value || null;
   } catch (error) {
     console.error("Error fetching consistency check prompt:", error);
     return null;
   }
 }
 
-// Helper function to perform consistency check with v2 prompt (all languages)
-async function performConsistencyCheckV2(
-  apiKey: string,
-  story: { title: string; content: string },
-  prompt: string
-): Promise<ConsistencyCheckResultV2> {
-  const userPrompt = `${prompt}
-
---- STORY TO CHECK ---
-
-TITLE: ${story.title}
-
-CONTENT:
-${story.content}`;
-
-  try {
-    const response = await callLovableAI(apiKey, "You are a children's story quality checker. Respond only with valid JSON.", userPrompt, 0.3);
-    
-    const jsonMatch = response.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      console.log("[Consistency V2] Could not parse response, assuming no issues");
-      return { errors_found: false, summary: "", errors: [], stats: { critical: 0, medium: 0, low: 0 } };
-    }
-    
-    const result = JSON.parse(jsonMatch[0]);
-    return {
-      errors_found: result.errors_found === true,
-      summary: result.summary || "",
-      errors: Array.isArray(result.errors) ? result.errors : [],
-      stats: result.stats || { critical: 0, medium: 0, low: 0 }
-    };
-  } catch (error) {
-    console.error("Error in consistency check v2:", error);
-    return { errors_found: false, summary: "", errors: [], stats: { critical: 0, medium: 0, low: 0 } };
-  }
-}
-
-// Helper function to perform consistency check on generated story (OLD - for fallback)
+// Helper function to perform consistency check on generated story
 async function performConsistencyCheck(
   apiKey: string,
   story: { title: string; content: string },
@@ -332,81 +250,7 @@ Falls keine Probleme gefunden: {"hasIssues": false, "issues": [], "suggestedFixe
   }
 }
 
-// Helper function to correct story based on consistency check results (v2 format)
-async function correctStoryV2(
-  apiKey: string,
-  story: { title: string; content: string; questions: any[]; vocabulary: any[] },
-  errors: ConsistencyCheckResultV2['errors'],
-  targetLanguage: string
-): Promise<{ title: string; content: string; questions: any[]; vocabulary: any[]; correctedCount: number }> {
-  // Build correction instructions from errors
-  const errorInstructions = errors.map((e, i) => 
-    `${i + 1}. [${e.severity}] ${e.category}: "${e.original}" → Problem: ${e.problem} → Fix: ${e.fix}`
-  ).join('\n');
-
-  const correctionPrompt = `You are a text editor. Correct the following text based on the found problems.
-
-IMPORTANT:
-- Keep the language (${targetLanguage})
-- Keep the style and structure
-- Correct ONLY the mentioned problems
-- The text must remain child-friendly`;
-
-  const userPrompt = `Correct this story:
-
-TITLE: ${story.title}
-
-CONTENT:
-${story.content}
-
-ERRORS TO FIX:
-${errorInstructions}
-
-Respond ONLY with a JSON object:
-{
-  "title": "Corrected title (or original if no issue)",
-  "content": "The fully corrected text"
-}`;
-
-  try {
-    const response = await callLovableAI(apiKey, correctionPrompt, userPrompt, 0.5);
-    
-    const jsonMatch = response.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      console.error("Could not parse correction response");
-      return { ...story, correctedCount: 0 };
-    }
-    
-    const corrected = JSON.parse(jsonMatch[0]);
-    
-    // Count how many errors were actually corrected by checking if content changed
-    let correctedCount = 0;
-    if (corrected.content && corrected.content !== story.content) {
-      // For each error, check if the original text is no longer present
-      for (const error of errors) {
-        if (error.original && !corrected.content.includes(error.original)) {
-          correctedCount++;
-        }
-      }
-    }
-    if (corrected.title && corrected.title !== story.title) {
-      correctedCount++;
-    }
-    
-    return {
-      title: corrected.title || story.title,
-      content: corrected.content || story.content,
-      questions: story.questions,
-      vocabulary: story.vocabulary,
-      correctedCount
-    };
-  } catch (error) {
-    console.error("Error correcting story:", error);
-    return { ...story, correctedCount: 0 };
-  }
-}
-
-// Helper function to correct story based on consistency check results (OLD - for fallback)
+// Helper function to correct story based on consistency check results
 async function correctStory(
   apiKey: string,
   story: { title: string; content: string; questions: any[]; vocabulary: any[] },
@@ -660,12 +504,7 @@ async function callGeminiImageAPI(
       if (!response.ok) {
         const errorText = await response.text();
         console.error("Gemini Image API error:", response.status, errorText);
-        // Don't retry on permanent errors (400 = region block, 403 = forbidden)
-        if (response.status === 400 || response.status === 403) {
-          return null;
-        }
-        lastError = new Error(`Gemini error ${response.status}`);
-        continue;
+        return null;
       }
 
       const data = await response.json();
@@ -815,25 +654,12 @@ async function generateImageWithCache(
   return imageUrl;
 }
 
-// Performance tracking interface
-interface PerfMetrics {
-  storyLLM: number;
-  parsing: number;
-  consistency: number | 'skipped';
-  imagePromptBuild: number;
-  imageGeneration: number;
-  imageProvider: string;
-  dbSave: number;
-  total: number;
-}
-
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   const startTime = Date.now();
-  const perf: Partial<PerfMetrics> = {};
 
   try {
     const { 
@@ -908,7 +734,7 @@ Deno.serve(async (req) => {
 
     // Resolve the effective story language (new param > textLanguage mapping > default)
     const effectiveStoryLanguage = storyLanguageParam
-      || (textLanguage ? textLanguage.toLowerCase() : 'de');
+      || (textLanguage ? textLanguage.toLowerCase() : 'fr');
 
     try {
       // 1. Load CORE Slim v2
@@ -1047,7 +873,6 @@ Deno.serve(async (req) => {
 
     const baseSystemPrompt = fullSystemPromptFinal;
 
-    // Determine how many images to generate based on length
     // Get API keys
     const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
@@ -1064,13 +889,8 @@ Deno.serve(async (req) => {
       DE: "Deutsch",
       FR: "Französisch",
       EN: "Englisch",
-      ES: "Spanisch",
-      IT: "Italienisch",
-      NL: "Niederländisch",
-      BS: "Bosnisch",
-      PT: "Portugiesisch",
     };
-    const targetLanguage = languageNames[textLanguage] || textLanguage || "Deutsch";
+    const targetLanguage = languageNames[textLanguage] || "Französisch";
 
     // Map length to approximate word count with explicit minimum
     const lengthMap: Record<string, { range: string; min: number; max: number }> = {
@@ -1213,94 +1033,22 @@ Wähle genau 10 Vokabelwörter aus.`;
         ? userPrompt 
         : `${userPrompt}\n\n**ACHTUNG:** Der vorherige Versuch hatte zu wenige Wörter. Schreibe einen LÄNGEREN Text mit mindestens ${minWordCount} Wörtern!`;
 
-      // [PERF] Story LLM call - START
-      const llmStart = Date.now();
       const content = await callLovableAI(LOVABLE_API_KEY, fullSystemPrompt, promptToUse, 0.8);
-      const llmDuration = Date.now() - llmStart;
-      perf.storyLLM = (perf.storyLLM || 0) + llmDuration;
-      console.log(`[generate-story] [PERF] Story LLM call: ${llmDuration}ms`);
-      // [PERF] Story LLM call - END
 
-      // [PERF] Response parsing - START
-      const parseStart = Date.now();
-      // Parse the JSON from the response - with robust error handling
+      // Parse the JSON from the response
       const jsonMatch = content.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {
-        console.error("Could not find JSON object in response:", content.substring(0, 500));
-        if (attempts < maxAttempts) {
-          console.log("Retrying story generation due to missing JSON...");
-          continue; // Try again
-        }
-        throw new Error("Could not parse story JSON - no JSON object found in response");
+        console.error("Could not parse story JSON from:", content);
+        throw new Error("Could not parse story JSON");
       }
 
-      // Try to parse JSON with error recovery for truncated responses
-      let jsonString = jsonMatch[0];
-      try {
-        story = JSON.parse(jsonString);
-      } catch (parseError) {
-        console.error("JSON parse error:", parseError instanceof Error ? parseError.message : parseError);
-        console.log("Attempting to fix truncated JSON...");
-        
-        // Try to fix common JSON issues:
-        // 1. Unclosed arrays/objects at the end
-        let fixedJson = jsonString;
-        
-        // Count open brackets to determine what's missing
-        const openBraces = (fixedJson.match(/\{/g) || []).length;
-        const closeBraces = (fixedJson.match(/\}/g) || []).length;
-        const openBrackets = (fixedJson.match(/\[/g) || []).length;
-        const closeBrackets = (fixedJson.match(/\]/g) || []).length;
-        
-        // Try to close unclosed structures
-        if (openBrackets > closeBrackets) {
-          // Remove incomplete array element (everything after last comma or bracket)
-          fixedJson = fixedJson.replace(/,\s*[^,\[\]{}]*$/, '');
-          for (let i = 0; i < openBrackets - closeBrackets; i++) {
-            fixedJson += ']';
-          }
-        }
-        if (openBraces > closeBraces) {
-          // Remove incomplete object property
-          fixedJson = fixedJson.replace(/,\s*"[^"]*"?\s*:?\s*[^,{}]*$/, '');
-          for (let i = 0; i < openBraces - closeBraces; i++) {
-            fixedJson += '}';
-          }
-        }
-        
-        try {
-          story = JSON.parse(fixedJson);
-          console.log("Successfully fixed and parsed truncated JSON");
-        } catch (secondParseError) {
-          console.error("Failed to fix JSON:", secondParseError instanceof Error ? secondParseError.message : secondParseError);
-          console.log("Raw JSON (first 1000 chars):", jsonString.substring(0, 1000));
-          
-          if (attempts < maxAttempts) {
-            console.log("Retrying story generation due to JSON parse error...");
-            continue; // Try again
-          }
-          throw new Error(`Could not parse story JSON: ${parseError instanceof Error ? parseError.message : 'Parse error'}`);
-        }
-      }
-      
-      const parseDuration = Date.now() - parseStart;
-      perf.parsing = (perf.parsing || 0) + parseDuration;
-      console.log(`[generate-story] [PERF] Response parsing: ${parseDuration}ms`);
-      // [PERF] Response parsing - END
-
-      // Ensure required fields exist after parsing
-      if (!story.title) story.title = "Untitled";
-      if (!story.content) story.content = "";
-      if (!Array.isArray(story.questions)) story.questions = [];
-      if (!Array.isArray(story.vocabulary)) story.vocabulary = [];
+      story = JSON.parse(jsonMatch[0]);
 
       // Quality check: Count words in the story content
       const wordCountActual = countWords(story.content);
       console.log(`Story word count: ${wordCountActual}, minimum required: ${minWordCount}`);
 
       if (wordCountActual >= minWordCount) {
-        console.log("Word count check PASSED");
-        break;
         console.log("Word count check PASSED");
         break;
       } else if (attempts < maxAttempts) {
@@ -1378,7 +1126,7 @@ Antworte NUR mit dem erweiterten Text (ohne Titel, ohne JSON-Format).`;
     console.log(`[generate-story] Classifications: structure=${structureBeginning}-${structureMiddle}-${structureEnding}, emotion=${emotionalColoring}/${emotionalSecondary}, humor=${humorLevel}, depth=${emotionalDepth}, theme=${concreteTheme}`);
 
     const storyGenerationTime = Date.now() - startTime;
-    console.log(`Story text generated in ${storyGenerationTime}ms`);
+    console.log(`[PERF] Story text generated in ${storyGenerationTime}ms`);
 
     // ================== Block 2.4: PARSE image_plan FROM LLM RESPONSE ==================
     let imagePlan: any = null;
@@ -1399,8 +1147,7 @@ Antworte NUR mit dem erweiterten Text (ohne Titel, ohne JSON-Format).`;
 
     // ================== Block 2.4: LOAD IMAGE RULES FROM DB ==================
     function getAgeGroup(age: number): string {
-      if (age <= 5) return '4-5';
-      if (age === 6) return '6';
+      if (age <= 6) return '4-6';
       if (age <= 9) return '7-9';
       return '10-12';
     }
@@ -1416,11 +1163,12 @@ Antworte NUR mit dem erweiterten Text (ohne Titel, ohne JSON-Format).`;
       resolvedThemeKeyForImages,
       effectiveStoryLanguage
     );
-    console.log(`[generate-story] [PERF] Image rules loaded in ${Date.now() - imageRulesStart}ms`);
+    console.log(`[PERF] Image rules loaded in ${Date.now() - imageRulesStart}ms`);
 
     // ================== Block 2.4: BUILD IMAGE PROMPTS ==================
-    const imagePromptStart = Date.now();
-    let imagePrompts: ImagePromptResult[] | undefined;
+    let imagePrompts: ImagePromptResult[];
+
+    // Generate character description for fallback path
     let characterDescription = "";
 
     if (imagePlan && imagePlan.character_anchor && imagePlan.scenes?.length > 0) {
@@ -1428,71 +1176,26 @@ Antworte NUR mit dem erweiterten Text (ohne Titel, ohne JSON-Format).`;
       console.log('[generate-story] Using NEW image path: structured image_plan');
       imagePrompts = buildImagePrompts(imagePlan, imageAgeRules, imageThemeRules, childAge);
     } else {
-      // ═══ FALLBACK: Generate image_plan via separate LLM call ═══
-      console.log('[generate-story] Using FALLBACK image path: generating image_plan from story content');
-      
-      // Determine how many scenes we need based on story length
-      const resolvedLength = storyLength || (lengthMap[length] ? length : 'medium');
-      const sceneCountMap: Record<string, number> = { very_short: 0, short: 0, medium: 1, long: 2, very_long: 3 };
-      const targetSceneCount = sceneCountMap[resolvedLength] ?? 1;
-      
+      // ═══ FALLBACK: Simple cover prompt (previous behavior) ═══
+      console.log('[generate-story] Using FALLBACK image path: simple cover prompt');
       try {
-        const imagePlanPrompt = `You are an image plan generator for children's book illustrations. Analyze the story and create an image_plan JSON.
-
-RULES:
-- ALL descriptions must be in ENGLISH
-- character_anchor: visual description of main character(s), 3-4 features (age appearance, hair, clothing with colors, 1 distinctive trait). Max 50 words.
-- world_anchor: visual description of environment (time of day, lighting, color mood, key features). Max 40 words.
-- scenes: exactly ${targetSceneCount} scene(s). Each scene max 60 words, showing a DIFFERENT moment with different action and emotion.
-- NEVER describe text, signs, or readable writing in scenes.
-
-Respond ONLY with valid JSON:
-{
-  "character_anchor": "...",
-  "world_anchor": "...",
-  "scenes": [{"scene_id": 1, "story_position": "middle", "description": "...", "emotion": "...", "key_elements": ["...", "..."]}]
-}`;
-
-        const storyContext = `Title: "${story.title}"\n\n${story.content.substring(0, 1500)}`;
-        const imagePlanResponse = await callLovableAI(LOVABLE_API_KEY, imagePlanPrompt, storyContext, 0.3);
-        
-        const planMatch = imagePlanResponse.match(/\{[\s\S]*\}/);
-        if (planMatch) {
-          const generatedPlan = JSON.parse(planMatch[0]);
-          if (generatedPlan.character_anchor && generatedPlan.scenes?.length > 0) {
-            imagePlan = generatedPlan;
-            console.log(`[generate-story] Fallback image_plan generated: ${generatedPlan.scenes.length} scenes`);
-            imagePrompts = buildImagePrompts(generatedPlan, imageAgeRules, imageThemeRules, childAge);
-          }
-        }
+        const characterDescriptionPrompt = `Analysiere diese Geschichte und erstelle eine kurze, präzise visuelle Beschreibung der Hauptcharaktere (Aussehen, Kleidung, besondere Merkmale). Maximal 100 Wörter. Antwort auf Englisch für den Bildgenerator.`;
+        const characterContext = `Geschichte: "${story.title}"\n${story.content.substring(0, 500)}...`;
+        characterDescription = await callLovableAI(LOVABLE_API_KEY, characterDescriptionPrompt, characterContext, 0.3);
+        console.log("Character description generated:", characterDescription.substring(0, 100));
       } catch (err) {
-        console.error("[generate-story] Error generating fallback image_plan:", err);
+        console.error("Error generating character description:", err);
       }
 
-      // If fallback image_plan also failed, use simple cover-only prompt
-      if (!imagePrompts || imagePrompts.length === 0) {
-        console.log('[generate-story] Fallback image_plan failed, using simple cover prompt');
-        try {
-          const characterDescriptionPrompt = `Analysiere diese Geschichte und erstelle eine kurze, präzise visuelle Beschreibung der Hauptcharaktere (Aussehen, Kleidung, besondere Merkmale). Maximal 100 Wörter. Antwort auf Englisch für den Bildgenerator.`;
-          const characterContext = `Geschichte: "${story.title}"\n${story.content.substring(0, 500)}...`;
-          characterDescription = await callLovableAI(LOVABLE_API_KEY, characterDescriptionPrompt, characterContext, 0.3);
-        } catch (err) {
-          console.error("Error generating character description:", err);
-        }
-
-        const fallbackPrompt = buildFallbackImagePrompt(
-          story.title,
-          characterDescription,
-          imageAgeRules,
-          imageThemeRules,
-        );
-        imagePrompts = [fallbackPrompt];
-      }
+      const fallbackPrompt = buildFallbackImagePrompt(
+        story.title,
+        characterDescription,
+        imageAgeRules,
+        imageThemeRules,
+      );
+      imagePrompts = [fallbackPrompt];
     }
 
-    const imagePromptDuration = Date.now() - imagePromptStart;
-    perf.imagePromptBuild = imagePromptDuration;
-    console.log(`[generate-story] [PERF] Image prompt build: ${imagePromptDuration}ms`);
     console.log('[generate-story] Image prompts built:', imagePrompts.length,
       'prompts:', imagePrompts.map(p => p.label).join(', '));
 
@@ -1507,108 +1210,56 @@ Respond ONLY with valid JSON:
     let totalIssuesCorrected = 0;
     let allIssueDetails: string[] = [];
 
-    // [PERF] Consistency check timing
-    let consistencyStart = 0;
-    let consistencyDuration: number | 'skipped' = 'skipped';
-
-    // ── Task 1: Consistency Check (v2) ──
+    // ── Task 1: Consistency Check ──
     const consistencyCheckTask = async () => {
-      // Load v2 consistency check prompts (with placeholders)
-      const { basePrompt: rawPrompt, seriesAddon } = await getConsistencyCheckPromptV2(supabase);
+      const consistencyCheckPrompt = await getConsistencyCheckPrompt(adminLanguage);
       
-      if (!rawPrompt) {
-        console.log("[generate-story] [PERF] Consistency check: skipped (no prompt)");
+      if (!consistencyCheckPrompt) {
+        console.log("No consistency check prompt configured, skipping check");
         return;
       }
       
-      consistencyStart = Date.now();
-      
-      // Determine age range from school level
-      const ageRanges: Record<string, { min: number; max: number }> = {
-        'cp': { min: 6, max: 7 }, '1e': { min: 6, max: 7 },
-        'ce1': { min: 7, max: 8 }, '2e': { min: 7, max: 8 },
-        'ce2': { min: 8, max: 9 }, '3e': { min: 8, max: 9 },
-        'cm1': { min: 9, max: 10 }, '4e': { min: 9, max: 10 },
-        'cm2': { min: 10, max: 11 }, '5e': { min: 10, max: 11 },
-        '6e': { min: 11, max: 12 },
-        // German
-        '1. klasse': { min: 6, max: 7 }, '2. klasse': { min: 7, max: 8 },
-        '3. klasse': { min: 8, max: 9 }, '4. klasse': { min: 9, max: 10 },
-        // English
-        'grade 1': { min: 6, max: 7 }, 'grade 2': { min: 7, max: 8 },
-        'grade 3': { min: 8, max: 9 }, 'grade 4': { min: 9, max: 10 },
-        'grade 5': { min: 10, max: 11 },
-      };
-      const effectiveSchoolLevelLower = (schoolLevel || 'ce2').toLowerCase();
-      const ageRange = ageRanges[effectiveSchoolLevelLower] || { min: 8, max: 9 };
-      
-      // Map text language code to full language name
-      const languageMap: Record<string, string> = {
-        'DE': 'German', 'FR': 'French', 'EN': 'English',
-        'ES': 'Spanish', 'IT': 'Italian', 'NL': 'Dutch',
-        'BS': 'Bosnian', 'PT': 'Portuguese'
-      };
-      const storyLanguage = languageMap[textLanguage] || textLanguage || 'German';
-      
-      // Replace placeholders in base prompt
-      let prompt = rawPrompt
-        .replace(/{story_language}/g, storyLanguage)
-        .replace(/{age_min}/g, String(ageRange.min))
-        .replace(/{age_max}/g, String(ageRange.max));
-      
-      // Add series addon if applicable
-      if (seriesId && episodeNumber && episodeNumber > 1 && seriesAddon) {
-        // Build series context from description (which contains previous episode info)
-        const seriesContext = description?.substring(0, 1500) || '';
-        prompt += '\n\n' + seriesAddon
-          .replace(/{episode_number}/g, String(episodeNumber))
-          .replace(/{series_context}/g, seriesContext);
-      }
-      
-      console.log(`[generate-story] Starting consistency check v2 (language: ${storyLanguage}, age: ${ageRange.min}-${ageRange.max})...`);
+      console.log("Starting consistency check...");
+      const seriesContextForCheck = episodeNumber && episodeNumber > 1 && description
+        ? { previousEpisode: description, episodeNumber }
+        : undefined;
       
       let correctionAttempts = 0;
       const maxCorrectionAttempts = 2;
       
       while (correctionAttempts < maxCorrectionAttempts) {
-        const checkResult = await performConsistencyCheckV2(
+        const checkResult = await performConsistencyCheck(
           LOVABLE_API_KEY,
           story,
-          prompt
+          consistencyCheckPrompt,
+          seriesContextForCheck
         );
         
-        if (!checkResult.errors_found || checkResult.errors.length === 0) {
-          console.log(`[generate-story] Consistency check passed${correctionAttempts > 0 ? ' after correction' : ''}`);
+        if (!checkResult.hasIssues) {
+          console.log(`Consistency check passed${correctionAttempts > 0 ? ' after correction' : ''}`);
           break;
         }
         
-        // Map errors to issue_details format: [SEVERITY] [CATEGORY] problem | Original: "..." | Fix: "..."
-        const newIssueDetails = checkResult.errors.map(e => 
-          `[${e.severity}] [${e.category}] ${e.problem} | Original: "${e.original}" | Fix: "${e.fix}"`
-        );
-        
-        totalIssuesFound += checkResult.errors.length;
-        allIssueDetails.push(...newIssueDetails);
+        totalIssuesFound += checkResult.issues.length;
+        allIssueDetails.push(...checkResult.issues);
         
         correctionAttempts++;
-        console.log(`[generate-story] Consistency check found ${checkResult.errors.length} issue(s) (${checkResult.stats.critical} critical, ${checkResult.stats.medium} medium, ${checkResult.stats.low} low), attempting correction ${correctionAttempts}/${maxCorrectionAttempts}...`);
-        console.log(`[generate-story] Summary: ${checkResult.summary}`);
+        console.log(`Consistency check found ${checkResult.issues.length} issue(s), attempting correction ${correctionAttempts}/${maxCorrectionAttempts}...`);
         
-        const correctedStory = await correctStoryV2(
+        const correctedStory = await correctStory(
           LOVABLE_API_KEY,
           story,
-          checkResult.errors,
-          storyLanguage
+          checkResult.issues,
+          checkResult.suggestedFixes,
+          targetLanguage
         );
         
         if (correctedStory.content !== story.content || correctedStory.title !== story.title) {
-          story.title = correctedStory.title;
-          story.content = correctedStory.content;
-          // Only count errors that were actually corrected
-          totalIssuesCorrected += correctedStory.correctedCount;
-          console.log(`[generate-story] Story corrected (${correctedStory.correctedCount}/${checkResult.errors.length} errors fixed), re-checking...`);
+          story = correctedStory;
+          totalIssuesCorrected += checkResult.issues.length;
+          console.log("Story corrected, re-checking...");
         } else {
-          console.log("[generate-story] No changes made in correction, stopping");
+          console.log("No changes made in correction, stopping");
           break;
         }
       }
@@ -1624,16 +1275,13 @@ Respond ONLY with valid JSON:
           issue_details: allIssueDetails,
           user_id: userId || null,
         });
-        console.log("[generate-story] Consistency check results saved");
+        console.log("Consistency check results saved");
       } catch (dbErr) {
-        console.error("[generate-story] Error saving consistency check results:", dbErr);
+        console.error("Error saving consistency check results:", dbErr);
       }
-      
-      consistencyDuration = Date.now() - consistencyStart;
-      console.log(`[generate-story] [PERF] Consistency check: ${consistencyDuration}ms`);
     };
 
-    // ── Task 2: Generate ALL images in parallel (Block 2.4) ──
+    // ── Task 2: Generate ALL images in parallel ──
     const generateAllImagesTask = async (): Promise<Array<{ label: string; url: string | null; cached: boolean }>> => {
       const imageGenerationStart = Date.now();
 
@@ -1649,22 +1297,20 @@ Respond ONLY with valid JSON:
           }
           console.log(`[generate-story] Cache MISS for ${imgPrompt.label}`);
 
-          // 2. Generate image (Lovable Gateway first → Gemini fallback)
+          // 2. Generate image (Gemini → Lovable Gateway fallback chain)
           let imageUrl: string | null = null;
 
-          // Try Lovable Gateway first (no regional restrictions)
           try {
-            imageUrl = await callLovableImageGenerate(LOVABLE_API_KEY!, imgPrompt.prompt);
-          } catch (lovableError) {
-            console.log(`[generate-story] Lovable Gateway failed for ${imgPrompt.label}:`, lovableError);
+            imageUrl = await callGeminiImageAPI(GEMINI_API_KEY!, imgPrompt.prompt);
+          } catch (geminiError) {
+            console.log(`[generate-story] Gemini failed for ${imgPrompt.label}, trying Lovable Gateway`);
           }
 
-          // Fallback to direct Gemini API
           if (!imageUrl) {
             try {
-              imageUrl = await callGeminiImageAPI(GEMINI_API_KEY!, imgPrompt.prompt);
-            } catch (geminiError) {
-              console.error(`[generate-story] Gemini also failed for ${imgPrompt.label}:`, geminiError);
+              imageUrl = await callLovableImageGenerate(LOVABLE_API_KEY!, imgPrompt.prompt);
+            } catch (lovableError) {
+              console.error(`[generate-story] Lovable Gateway failed for ${imgPrompt.label}:`, lovableError);
             }
           }
 
@@ -1680,8 +1326,9 @@ Respond ONLY with valid JSON:
       );
 
       const imageGenerationTime = Date.now() - imageGenerationStart;
-      console.log(`[generate-story] [PERF] All ${imagePrompts.length} images generated in ${imageGenerationTime}ms (parallel)`);
+      console.log(`[PERF] All ${imagePrompts.length} images generated in ${imageGenerationTime}ms (parallel)`);
 
+      // Extract fulfilled results
       return imageResults.map(result => {
         if (result.status === 'fulfilled') return result.value;
         console.error('[generate-story] Image generation rejected:', result.reason);
@@ -1706,6 +1353,7 @@ Respond ONLY with valid JSON:
         ),
       ]);
 
+      // Extract image results from the settled promises
       const settledResults = results as PromiseSettledResult<any>[];
       if (settledResults[1]?.status === 'fulfilled') {
         allImageResults = settledResults[1].value || [];
@@ -1715,10 +1363,10 @@ Respond ONLY with valid JSON:
 
     } catch (timeoutError) {
       console.error(`[generate-story] Parallel block timed out after ${PARALLEL_TIMEOUT_MS}ms`);
+      // Story is still saved without images
     }
 
-    const parallelDuration = Date.now() - parallelStart;
-    console.log(`[generate-story] [PERF] Parallel block (consistency + images): ${parallelDuration}ms`);
+    console.log(`[PERF] Parallel block (consistency + images): ${Date.now() - parallelStart}ms`);
 
     // ── Sort image results: cover vs. scene images ──
     let coverImageBase64: string | null = null;
@@ -1742,11 +1390,6 @@ Respond ONLY with valid JSON:
 
     console.log(`[generate-story] Final images: cover=${!!coverImageBase64}, scenes=${storyImages.length}`);
 
-    // Update perf metrics
-    perf.consistency = consistencyDuration;
-    perf.imageGeneration = parallelDuration;
-    perf.imageProvider = allImageResults.some(r => r.cached) ? 'cache+generated' : 'generated';
-
     // ================== END PARALLEL EXECUTION ==================
 
     const totalTime = Date.now() - startTime;
@@ -1765,20 +1408,6 @@ Respond ONLY with valid JSON:
     console.log(`Story generated with ${story.vocabulary?.length || 0} vocabulary words`);
     console.log(`Structure classification: beginning=${structureBeginning}, middle=${structureMiddle}, ending=${structureEnding}`);
     console.log(`Emotional coloring: ${emotionalColoring}/${emotionalSecondary}, humor=${humorLevel}, depth=${emotionalDepth}`);
-    
-    // [PERF] === SUMMARY ===
-    perf.storyLLM = perf.storyLLM || 0;
-    perf.parsing = perf.parsing || 0;
-    perf.imagePromptBuild = perf.imagePromptBuild || 0;
-    perf.total = totalTime;
-    
-    console.log(`[generate-story] [PERF] === SUMMARY ===`);
-    console.log(`[generate-story] [PERF]   Story LLM:        ${String(perf.storyLLM).padStart(6)}ms`);
-    console.log(`[generate-story] [PERF]   Parsing:          ${String(perf.parsing).padStart(6)}ms`);
-    console.log(`[generate-story] [PERF]   Consistency:      ${typeof perf.consistency === 'number' ? String(perf.consistency).padStart(6) + 'ms' : 'skipped'}`);
-    console.log(`[generate-story] [PERF]   Image prompt:     ${String(perf.imagePromptBuild).padStart(6)}ms`);
-    console.log(`[generate-story] [PERF]   Image generation: ${String(perf.imageGeneration || 0).padStart(6)}ms (provider: ${perf.imageProvider || 'none'})`);
-    console.log(`[generate-story] [PERF]   TOTAL:            ${String(perf.total).padStart(6)}ms`);
 
     return new Response(JSON.stringify({
       ...story,

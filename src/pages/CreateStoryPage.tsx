@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useKidProfile } from "@/hooks/useKidProfile";
+import { useColorPalette } from "@/hooks/useColorPalette";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import StoryTypeSelectionScreen from "@/components/story-creation/StoryTypeSelectionScreen";
@@ -21,49 +22,6 @@ import { StorySettings } from "@/components/story-creation/StoryTypeSelectionScr
 import { toast } from "sonner";
 import { useTranslations } from "@/lib/translations";
 import StoryGenerationProgress from "@/components/story-creation/StoryGenerationProgress";
-import FablinoPageHeader from "@/components/FablinoPageHeader";
-import { FABLINO_STYLES, FABLINO_COLORS } from "@/constants/design-tokens";
-
-// Fablino messages for the entry screen (per language)
-const FABLINO_ENTRY_MSG: Record<string, (name: string) => string> = {
-  fr: (n) => n ? `Super ${n} ! Comment on crée ton histoire ? 🎨` : `Super ! Comment on crée ton histoire ? 🎨`,
-  de: (n) => n ? `Super ${n}! Wie soll deine Geschichte entstehen? 🎨` : `Super! Wie soll deine Geschichte entstehen? 🎨`,
-  en: (n) => n ? `Awesome ${n}! How shall we create your story? 🎨` : `Awesome! How shall we create your story? 🎨`,
-  es: (n) => n ? `¡Genial ${n}! ¿Cómo creamos tu historia? 🎨` : `¡Genial! ¿Cómo creamos tu historia? 🎨`,
-  nl: (n) => n ? `Super ${n}! Hoe maken we jouw verhaal? 🎨` : `Super! Hoe maken we jouw verhaal? 🎨`,
-  it: (n) => n ? `Fantastico ${n}! Come creiamo la tua storia? 🎨` : `Fantastico! Come creiamo la tua storia? 🎨`,
-  bs: (n) => n ? `Super ${n}! Kako pravimo tvoju priču? 🎨` : `Super! Kako pravimo tvoju priču? 🎨`,
-};
-
-const FABLINO_THEME_MSG: Record<string, string> = {
-  fr: "Quel monde on explore aujourd'hui ? 🌍",
-  de: "Welche Welt erkunden wir heute? 🌍",
-  en: "What world shall we explore today? 🌍",
-  es: "¿Qué mundo exploramos hoy? 🌍",
-  nl: "Welke wereld verkennen we vandaag? 🌍",
-  it: "Che mondo esploriamo oggi? 🌍",
-  bs: "Koji svijet istražujemo danas? 🌍",
-};
-
-const FABLINO_CHARACTERS_MSG: Record<string, string> = {
-  fr: "Qui vient avec toi dans l'aventure ? 👫",
-  de: "Wer kommt mit auf das Abenteuer? 👫",
-  en: "Who's coming on the adventure? 👫",
-  es: "¿Quién viene a la aventura? 👫",
-  nl: "Wie gaat er mee op avontuur? 👫",
-  it: "Chi viene nell'avventura? 👫",
-  bs: "Ko ide s tobom u avanturu? 👫",
-};
-
-const FABLINO_EFFECTS_MSG: Record<string, string> = {
-  fr: "Et si on ajoutait un peu de magie ? ✨",
-  de: "Wie wäre es mit etwas Magie? ✨",
-  en: "How about some magic? ✨",
-  es: "¿Y si añadimos un poco de magia? ✨",
-  nl: "Zullen we wat magie toevoegen? ✨",
-  it: "E se aggiungessimo un po' di magia? ✨",
-  bs: "Šta kažeš na malo magije? ✨",
-};
 
 // Screen states for the wizard
 type WizardScreen = "entry" | "story-type" | "characters" | "effects" | "generating";
@@ -127,15 +85,8 @@ const getEducationalDescription = (
 const CreateStoryPage = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { 
-    kidAppLanguage, 
-    kidReadingLanguage, 
-    kidExplanationLanguage, 
-    kidHomeLanguages, 
-    kidStoryLanguages, 
-    selectedProfile,
-    selectedProfileId,
-  } = useKidProfile();
+  const { kidAppLanguage, kidReadingLanguage, kidExplanationLanguage, kidHomeLanguages, kidStoryLanguages, selectedProfile } = useKidProfile();
+  const { colors: paletteColors } = useColorPalette();
 
   // Wizard state
   const [currentScreen, setCurrentScreen] = useState<WizardScreen>("entry");
@@ -241,9 +192,7 @@ const CreateStoryPage = () => {
             title: data.title,
             content: data.content,
             cover_image_url: data.coverImageBase64 || null,
-            cover_image_status: data.coverImageBase64 ? 'complete' : 'pending',
             story_images: data.storyImages || null,
-            story_images_status: (data.storyImages && data.storyImages.length > 0) ? 'complete' : 'pending',
             image_count: data.image_count || 1,
             difficulty: storyDifficulty,
             text_type: "non-fiction",
@@ -508,9 +457,7 @@ const CreateStoryPage = () => {
             title: data.title,
             content: data.content,
             cover_image_url: data.coverImageBase64 || null,
-            cover_image_status: data.coverImageBase64 ? 'complete' : 'pending',
             story_images: data.storyImages || null,
-            story_images_status: (data.storyImages && data.storyImages.length > 0) ? 'complete' : 'pending',
             image_count: data.image_count || 1,
             difficulty: storyDifficulty,
             text_type: "fiction",
@@ -623,42 +570,42 @@ const CreateStoryPage = () => {
   // Loading screen while generating
   if (currentScreen === "generating" || isGenerating) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: "linear-gradient(160deg, #FFF7ED 0%, #FEF3C7 50%, #EFF6FF 100%)" }}>
+      <div className={`min-h-screen bg-gradient-to-br ${paletteColors.bg} flex items-center justify-center`}>
         <StoryGenerationProgress language={kidAppLanguage} />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center font-nunito" style={{ background: "linear-gradient(160deg, #FFF7ED 0%, #FEF3C7 50%, #EFF6FF 100%)" }}>
+    <div className={`min-h-screen bg-gradient-to-br ${paletteColors.bg}`}>
       {currentScreen === "entry" && (
-        <div className="w-full max-w-[480px] px-5 py-6 flex flex-col mx-auto">
-          {/* Back button */}
-          <button onClick={() => navigate("/")} className="p-2 -ml-2 rounded-lg hover:bg-white/30 transition-colors w-fit mb-1">
-            <svg className="h-5 w-5 text-gray-700" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
-          </button>
-
-          {/* Fablino greeting – same position as homepage */}
-          <FablinoPageHeader
-            mascotImage="/mascot/5_new_story.png"
-            message={(FABLINO_ENTRY_MSG[kidAppLanguage] || FABLINO_ENTRY_MSG.de)(selectedProfile?.name || "")}
-            mascotSize="md"
-          />
+        <div className="min-h-screen flex flex-col">
+          {/* Header */}
+          <div className="sticky top-0 z-20 bg-background/80 backdrop-blur-sm border-b border-border">
+            <div className="container max-w-4xl mx-auto px-4 py-2 md:py-3 flex items-center gap-4">
+              <button onClick={() => navigate("/")} className="p-2 -ml-2 rounded-lg hover:bg-muted transition-colors">
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+              </button>
+              <h1 className="text-base md:text-lg font-baloo font-bold flex-1">
+                {t.wizardEntryTitle}
+              </h1>
+            </div>
+          </div>
 
           {/* Two path cards */}
-          <div className="flex flex-col items-center gap-3 w-full mt-4">
+          <div className="flex-1 flex flex-col items-center justify-center px-4 py-8 gap-4 md:gap-6 max-w-lg mx-auto w-full">
             {/* Weg A: Free */}
             <button
               onClick={() => handlePathSelect("free")}
-              className="w-full bg-white rounded-2xl shadow-sm border border-[#E8863A]/10 p-5 text-left cursor-pointer transition-all hover:shadow-md hover:border-[#E8863A]/30"
+              className="w-full bg-card border-2 border-border hover:border-primary/50 rounded-2xl p-6 md:p-8 text-left transition-all duration-200 hover:scale-[1.02] hover:shadow-lg active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
             >
-              <div className="flex flex-row items-center gap-4">
-                <span className="text-[32px] flex-shrink-0 w-10 text-center">✏️</span>
+              <div className="flex items-start gap-4">
+                <span className="text-4xl md:text-5xl">🎤</span>
                 <div className="flex-1 min-w-0">
-                  <h2 className="text-lg font-semibold" style={{ color: FABLINO_COLORS.text }}>
+                  <h2 className="text-lg md:text-xl font-baloo font-bold text-foreground">
                     {t.wizardPathFree}
                   </h2>
-                  <p className="text-sm mt-0.5" style={{ color: `${FABLINO_COLORS.text}99` }}>
+                  <p className="text-sm md:text-base text-muted-foreground mt-1">
                     {t.wizardPathFreeHint}
                   </p>
                 </div>
@@ -668,15 +615,15 @@ const CreateStoryPage = () => {
             {/* Weg B: Guided */}
             <button
               onClick={() => handlePathSelect("guided")}
-              className="w-full bg-white rounded-2xl shadow-sm border border-[#E8863A]/10 p-5 text-left cursor-pointer transition-all hover:shadow-md hover:border-[#E8863A]/30"
+              className="w-full bg-card border-2 border-border hover:border-primary/50 rounded-2xl p-6 md:p-8 text-left transition-all duration-200 hover:scale-[1.02] hover:shadow-lg active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
             >
-              <div className="flex flex-row items-center gap-4">
-                <span className="text-[32px] flex-shrink-0 w-10 text-center">🧩</span>
+              <div className="flex items-start gap-4">
+                <span className="text-4xl md:text-5xl">🧙</span>
                 <div className="flex-1 min-w-0">
-                  <h2 className="text-lg font-semibold" style={{ color: FABLINO_COLORS.text }}>
+                  <h2 className="text-lg md:text-xl font-baloo font-bold text-foreground">
                     {t.wizardPathGuided}
                   </h2>
-                  <p className="text-sm mt-0.5" style={{ color: `${FABLINO_COLORS.text}99` }}>
+                  <p className="text-sm md:text-base text-muted-foreground mt-1">
                     {t.wizardPathGuidedHint}
                   </p>
                 </div>
@@ -694,19 +641,17 @@ const CreateStoryPage = () => {
           uiLanguage={kidAppLanguage}
           onComplete={handleStoryTypeComplete}
           onBack={handleBack}
-          fablinoMessage={(FABLINO_THEME_MSG[kidAppLanguage] || FABLINO_THEME_MSG.de)}
         />
       )}
 
       {currentScreen === "characters" && (
         <CharacterSelectionScreen
           translations={characterTranslations}
-          kidProfileId={selectedProfile?.id ?? selectedProfileId ?? undefined}
+          kidProfileId={selectedProfile?.id}
           kidName={selectedProfile?.name}
           kidAge={selectedProfile?.age}
           onComplete={handleCharactersComplete}
           onBack={handleBack}
-          fablinoMessage={(FABLINO_CHARACTERS_MSG[kidAppLanguage] || FABLINO_CHARACTERS_MSG.de)}
         />
       )}
 
@@ -714,10 +659,9 @@ const CreateStoryPage = () => {
         <SpecialEffectsScreen
           onComplete={handleEffectsComplete}
           onBack={handleBack}
-          showSettings={true}
+          showSettings={wizardPath === "free"}
           availableLanguages={availableLanguages}
           defaultLanguage={kidReadingLanguage}
-          fablinoMessage={(FABLINO_EFFECTS_MSG[kidAppLanguage] || FABLINO_EFFECTS_MSG.de)}
         />
       )}
     </div>
