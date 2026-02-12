@@ -281,16 +281,14 @@ const CreateStoryPage = () => {
     }
   };
 
-  // Handle story type selection complete (now includes attributes & description from merged screen)
+  // Handle story type selection complete
   const handleStoryTypeComplete = async (
     storyType: StoryType, 
     settings: StorySettings,
     humor?: number, 
     topic?: EducationalTopic, 
     customTopicText?: string,
-    subElements?: StorySubElement[],
-    attributes?: SpecialAttribute[],
-    description?: string
+    subElements?: StorySubElement[]
   ) => {
     setSelectedStoryType(storyType);
     setStorySettings(settings);
@@ -298,9 +296,6 @@ const CreateStoryPage = () => {
     setEducationalTopic(topic);
     setCustomTopic(customTopicText);
     setSelectedSubElements(subElements || []);
-    // Store attributes & description from merged screen
-    if (attributes) setSelectedAttributes(attributes);
-    if (description) setAdditionalDescription(description);
 
     // For educational stories, generate directly without character/setting screens
     if (storyType === "educational" && topic) {
@@ -316,18 +311,10 @@ const CreateStoryPage = () => {
   const [surpriseCharactersFlag, setSurpriseCharactersFlag] = useState(false);
 
   // Handle character selection complete
-  const handleCharactersComplete = async (characters: SelectedCharacter[], surpriseChars?: boolean) => {
+  const handleCharactersComplete = (characters: SelectedCharacter[], surpriseChars?: boolean) => {
     setSelectedCharacters(characters);
     setSurpriseCharactersFlag(surpriseChars || false);
-    
-    if (wizardPath === "guided") {
-      // Guided path: attributes & description already collected on merged screen → generate directly
-      // Pass characters directly since setState is async
-      await generateFictionStory(selectedAttributes, additionalDescription, undefined, characters, surpriseChars || false);
-    } else {
-      // Free path: still needs effects screen
-      setCurrentScreen("effects");
-    }
+    setCurrentScreen("effects");
   };
   
   // Handle special effects selection complete
@@ -357,9 +344,7 @@ const CreateStoryPage = () => {
   const generateFictionStory = async (
     effectAttributes: SpecialAttribute[],
     userDescription: string,
-    settingsOverride?: StorySettingsFromEffects,
-    directCharacters?: SelectedCharacter[],
-    directSurpriseChars?: boolean
+    settingsOverride?: StorySettingsFromEffects
   ) => {
     if (!user?.id) {
       toast.error("Bitte melde dich erneut an");
@@ -370,12 +355,8 @@ const CreateStoryPage = () => {
     setIsGenerating(true);
     setCurrentScreen("generating");
 
-    // Use directly passed characters if available (avoids async setState issue)
-    const chars = directCharacters || selectedCharacters;
-    const surpriseCharsFlag = directSurpriseChars ?? surpriseCharactersFlag;
-
     // Build description from all wizard selections
-    const characterNames = chars.map(c => c.name).join(", ");
+    const characterNames = selectedCharacters.map(c => c.name).join(", ");
     const allAttributes = [...new Set([...selectedAttributes, ...effectAttributes])];
     const attributeNames = allAttributes.filter(a => a !== "normal").join(", ");
     
@@ -404,6 +385,7 @@ const CreateStoryPage = () => {
     if (userDescription) description += description ? `. Zusätzliche Wünsche: ${userDescription}` : userDescription;
 
     const difficulty = getDifficultyFromSchoolClass(selectedProfile?.school_class || "3");
+    // Use storyLanguage from settings override (Weg A) or wizard settings or fallback
     const effectiveLanguage = settingsOverride?.storyLanguage || storySettings?.storyLanguage || kidReadingLanguage;
     const textLanguage = effectiveLanguage.toUpperCase();
 
@@ -415,7 +397,7 @@ const CreateStoryPage = () => {
       const isSeries = settingsOverride?.isSeries || storySettings?.isSeries || false;
 
       // Determine include_self from character selection
-      const includeSelf = chars.some(c => c.type === "me");
+      const includeSelf = selectedCharacters.some(c => c.type === "me");
       
       const { data, error } = await supabase.functions.invoke("generate-story", {
         body: {
@@ -431,7 +413,7 @@ const CreateStoryPage = () => {
           isSeries,
           storyType: selectedStoryType,
           // Character data for richer generation
-          characters: chars.map(c => ({
+          characters: selectedCharacters.map(c => ({
             name: c.name,
             type: c.type,
             age: c.age,
@@ -448,11 +430,11 @@ const CreateStoryPage = () => {
           kidName: selectedProfile?.name,
           kidHobbies: selectedProfile?.hobbies,
           // Series settings
-          endingType: isSeries ? 'C' : 'A',
-          // Block 2.3d: New wizard parameters
+          endingType: isSeries ? 'C' : 'A', // Cliffhanger for series, closed for standalone
+          // Block 2.3d: New wizard parameters (camelCase to match Edge Function)
           storyLanguage: effectiveLanguage,
           includeSelf,
-          surprise_characters: surpriseCharsFlag,
+          surprise_characters: surpriseCharactersFlag,
           kidProfileId: selectedProfile?.id,
           kidAge: selectedProfile?.age,
           difficultyLevel: selectedProfile?.difficulty_level,
