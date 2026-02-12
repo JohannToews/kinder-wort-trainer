@@ -987,6 +987,7 @@ export type Database = {
       }
       stories: {
         Row: {
+          branch_chosen: string | null
           completed: boolean | null
           concrete_theme: string | null
           content: string
@@ -1014,6 +1015,7 @@ export type Database = {
           parent_prompt_text: string | null
           prompt: string | null
           series_id: string | null
+          series_mode: string | null
           story_images: string[] | null
           story_images_status: string | null
           structure_beginning: number | null
@@ -1027,6 +1029,7 @@ export type Database = {
           visual_style_sheet: Json | null
         }
         Insert: {
+          branch_chosen?: string | null
           completed?: boolean | null
           concrete_theme?: string | null
           content: string
@@ -1054,6 +1057,7 @@ export type Database = {
           parent_prompt_text?: string | null
           prompt?: string | null
           series_id?: string | null
+          series_mode?: string | null
           story_images?: string[] | null
           story_images_status?: string | null
           structure_beginning?: number | null
@@ -1067,6 +1071,7 @@ export type Database = {
           visual_style_sheet?: Json | null
         }
         Update: {
+          branch_chosen?: string | null
           completed?: boolean | null
           concrete_theme?: string | null
           content?: string
@@ -1094,6 +1099,7 @@ export type Database = {
           parent_prompt_text?: string | null
           prompt?: string | null
           series_id?: string | null
+          series_mode?: string | null
           story_images?: string[] | null
           story_images_status?: string | null
           structure_beginning?: number | null
@@ -1126,6 +1132,47 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      story_branches: {
+        Row: {
+          chosen_at: string | null
+          chosen_option_id: string | null
+          created_at: string | null
+          episode_number: number
+          id: string
+          options: Json
+          series_id: string
+          story_id: string
+        }
+        Insert: {
+          chosen_at?: string | null
+          chosen_option_id?: string | null
+          created_at?: string | null
+          episode_number: number
+          id?: string
+          options: Json
+          series_id: string
+          story_id: string
+        }
+        Update: {
+          chosen_at?: string | null
+          chosen_option_id?: string | null
+          created_at?: string | null
+          episode_number?: number
+          id?: string
+          options?: Json
+          series_id?: string
+          story_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "story_branches_story_id_fkey"
+            columns: ["story_id"]
+            isOneToOne: false
+            referencedRelation: "stories"
             referencedColumns: ["id"]
           },
         ]
@@ -1231,6 +1278,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      subscription_tiers: {
+        Row: {
+          created_at: string | null
+          id: string
+          max_episodes_per_series: number | null
+          name: string
+          price_monthly: number | null
+          series_enabled: boolean | null
+          series_interactive_enabled: boolean | null
+          stories_per_week: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          id: string
+          max_episodes_per_series?: number | null
+          name: string
+          price_monthly?: number | null
+          series_enabled?: boolean | null
+          series_interactive_enabled?: boolean | null
+          stories_per_week?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          max_episodes_per_series?: number | null
+          name?: string
+          price_monthly?: number | null
+          series_enabled?: boolean | null
+          series_interactive_enabled?: boolean | null
+          stories_per_week?: number | null
+        }
+        Relationships: []
       }
       theme_rules: {
         Row: {
@@ -1584,6 +1664,7 @@ export type Database = {
       get_my_stories: {
         Args: { p_limit?: number; p_offset?: number; p_profile_id?: string }
         Returns: {
+          branch_chosen: string | null
           completed: boolean | null
           concrete_theme: string | null
           content: string
@@ -1611,6 +1692,7 @@ export type Database = {
           parent_prompt_text: string | null
           prompt: string | null
           series_id: string | null
+          series_mode: string | null
           story_images: string[] | null
           story_images_status: string | null
           structure_beginning: number | null
