@@ -234,7 +234,7 @@ const StoryTypeSelectionScreen = ({
         )}
 
         {/* Series Toggle (admin only, Weg B) */}
-        {viewState === "main" && isAdmin && (
+        {viewState === "main" && (
           <div className="w-full bg-white/70 backdrop-blur-sm rounded-2xl border border-orange-100 shadow-sm p-3">
             <div className="flex items-center gap-3">
               <span className="text-sm font-semibold text-[#92400E] w-24 shrink-0">{translations.seriesLabel}</span>
@@ -259,7 +259,7 @@ const StoryTypeSelectionScreen = ({
         )}
 
         {/* Series Mode Toggle (normal vs interactive, visible when series is enabled) */}
-        {viewState === "main" && isAdmin && isSeries && (
+        {viewState === "main" && isSeries && (
           <div className="w-full space-y-2 animate-fade-in">
             {/* Normal Series */}
             <button
