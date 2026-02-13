@@ -1,7 +1,7 @@
 export const FEATURES = {
   NEW_FABLINO_HOME: true,
   /** Global toggle – set to true to enable series for all users */
-  SERIES_ENABLED: false,
+  SERIES_ENABLED: true,
 };
 
 /**
