@@ -1793,6 +1793,16 @@ Wähle genau 10 Vokabelwörter aus.${seriesOutputInstructions}`;
 
       story = JSON.parse(jsonMatch[0]);
 
+      // Validate essential fields exist
+      if (!story.title || !story.content) {
+        console.error(`[generate-story] LLM response missing essential fields. Keys: ${Object.keys(story).join(', ')}, title: ${!!story.title}, content: ${!!story.content}`);
+        if (attempts < maxAttempts) {
+          console.log('[generate-story] Retrying due to missing title/content...');
+          continue;
+        }
+        throw new Error(`LLM response missing essential fields (title: ${!!story.title}, content: ${!!story.content})`);
+      }
+
       // ── DEBUG: Log raw LLM response for series episodes ──
       if (isSeries || seriesId) {
         console.log(`[generate-story] [SERIES-DEBUG] Raw LLM response keys: ${Object.keys(story).join(', ')}`);
@@ -1804,7 +1814,7 @@ Wähle genau 10 Vokabelwörter aus.${seriesOutputInstructions}`;
       }
 
       // Quality check: Count words in the story content
-      const wordCountActual = countWords(story.content);
+      const wordCountActual = countWords(story.content || '');
       console.log(`Story word count: ${wordCountActual}, minimum required: ${minWordCount}`);
 
       if (wordCountActual >= minWordCount) {
