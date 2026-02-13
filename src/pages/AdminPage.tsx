@@ -236,17 +236,15 @@ const AdminPage = () => {
 
       {/* Tab Navigation - Native App Style */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
-        <TabsList className={`flex-none grid mx-4 mt-3 h-12 bg-muted/50 ${user?.role === 'admin' ? 'grid-cols-6' : 'grid-cols-3'}`}>
+        <TabsList className={`flex-none grid mx-4 mt-3 h-12 bg-muted/50 ${user?.role === 'admin' ? 'grid-cols-6' : 'grid-cols-4'}`}>
           <TabsTrigger value="profile" className="flex items-center gap-2 text-sm font-medium">
             <User className="h-4 w-4" />
             <span className="hidden sm:inline">{t.kidProfile}</span>
           </TabsTrigger>
-          {user?.role === 'admin' && (
-            <TabsTrigger value="parenting" className="flex items-center gap-2 text-sm font-medium">
-              <BookHeart className="h-4 w-4" />
-              <span className="hidden sm:inline">{t.parentSettingsTab}</span>
-            </TabsTrigger>
-          )}
+          <TabsTrigger value="parenting" className="flex items-center gap-2 text-sm font-medium">
+            <BookHeart className="h-4 w-4" />
+            <span className="hidden sm:inline">{t.parentSettingsTab}</span>
+          </TabsTrigger>
           <TabsTrigger value="stories" className="flex items-center gap-2 text-sm font-medium">
             <Library className="h-4 w-4" />
             <span className="hidden sm:inline">{t.library}</span>
@@ -283,14 +281,12 @@ const AdminPage = () => {
             </div>
           </TabsContent>
 
-          {/* Parenting / Education Tab - Admin Only */}
-          {user?.role === 'admin' && (
-            <TabsContent value="parenting" className="h-full overflow-y-auto m-0 pr-2">
-              <div className="max-w-3xl mx-auto">
-                <ParentSettingsPanel language={adminLang} />
-              </div>
-            </TabsContent>
-          )}
+          {/* Parenting / Education Tab - All Users */}
+          <TabsContent value="parenting" className="h-full overflow-y-auto m-0 pr-2">
+            <div className="max-w-3xl mx-auto">
+              <ParentSettingsPanel language={adminLang} />
+            </div>
+          </TabsContent>
 
           {/* Stories Tab */}
           <TabsContent value="stories" className="h-full overflow-hidden m-0">
