@@ -1808,6 +1808,13 @@ Wähle genau 10 Vokabelwörter aus.${seriesOutputInstructions}`;
         story = parsed;
       }
 
+      // Normalize: LLM sometimes returns "text" instead of "content"
+      if (!story.content && story.text) {
+        console.log('[generate-story] Normalizing: renaming "text" field to "content"');
+        story.content = story.text;
+        delete story.text;
+      }
+
       // Validate essential fields exist
       if (!story.title || !story.content) {
         console.error(`[generate-story] LLM response missing essential fields. Keys: ${Object.keys(story).join(', ')}, title: ${!!story.title}, content: ${!!story.content}`);
