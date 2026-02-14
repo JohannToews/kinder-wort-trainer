@@ -24,6 +24,52 @@ function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+// ── Robust JSON parser for LLM story responses ──
+function safeParseStoryResponse(raw: string): any | null {
+  // Step 1: Remove markdown backticks
+  let cleaned = raw.trim();
+  if (cleaned.startsWith('```json')) cleaned = cleaned.slice(7);
+  else if (cleaned.startsWith('```')) cleaned = cleaned.slice(3);
+  if (cleaned.endsWith('```')) cleaned = cleaned.slice(0, -3);
+  cleaned = cleaned.trim();
+
+  // Step 2: Try direct parse
+  try {
+    const parsed = JSON.parse(cleaned);
+    return parsed;
+  } catch (e1: any) {
+    console.warn('[PARSE] Direct JSON.parse failed:', e1.message?.substring(0, 100));
+  }
+
+  // Step 3: Extract first { to last }
+  const firstBrace = cleaned.indexOf('{');
+  const lastBrace = cleaned.lastIndexOf('}');
+  if (firstBrace !== -1 && lastBrace > firstBrace) {
+    try {
+      const parsed = JSON.parse(cleaned.slice(firstBrace, lastBrace + 1));
+      console.log('[PARSE] Extracted JSON block succeeded');
+      return parsed;
+    } catch (e2: any) {
+      console.warn('[PARSE] Extracted JSON block failed:', e2.message?.substring(0, 100));
+    }
+  }
+
+  // Step 4: Regex fallback – extract "content" or "text" field
+  const contentMatch = cleaned.match(/"(?:content|text)"\s*:\s*"((?:[^"\\]|\\.)*)"/);
+  if (contentMatch) {
+    console.warn('[PARSE] Using regex fallback for content field');
+    return {
+      title: 'Untitled Story',
+      content: contentMatch[1].replace(/\\n/g, '\n').replace(/\\"/g, '"'),
+      questions: [],
+      vocabulary: [],
+    };
+  }
+
+  console.error('[PARSE] All parsing attempts failed. Raw response (first 500 chars):', raw.substring(0, 500));
+  return null;
+}
+
 // Helper function to create a hash for image prompt caching
 async function hashPrompt(prompt: string): Promise<string> {
   const normalized = prompt.toLowerCase().replace(/\s+/g, ' ').trim();
@@ -155,10 +201,18 @@ async function callLovableAI(
         throw new Error(`AI Gateway error: ${response.status}`);
       }
 
-      const data = await response.json();
+      const responseText = await response.text();
+      let data: any;
+      try {
+        data = JSON.parse(responseText);
+      } catch (parseErr) {
+        console.error('[LOVABLE-AI] JSON parse of gateway response failed. Starts with:', responseText.substring(0, 200));
+        throw new Error('AI Gateway returned invalid JSON');
+      }
       const content = data.choices?.[0]?.message?.content;
       
       if (!content) {
+        console.error('[LOVABLE-AI] No content in response. Keys:', JSON.stringify(Object.keys(data)).substring(0, 200));
         throw new Error("No content in AI response");
       }
       
@@ -553,7 +607,14 @@ async function callLovableImageGenerate(
         continue;
       }
 
-      const data = await response.json();
+      let data: any;
+      try {
+        const respText = await response.text();
+        data = JSON.parse(respText);
+      } catch (parseErr) {
+        console.error("[LOVABLE-IMG] JSON parse failed for model:", model);
+        continue;
+      }
       imageUrl = extractGatewayImageUrl(data);
       if (typeof imageUrl === "string" && imageUrl.length > 0) {
         return imageUrl;
@@ -631,7 +692,14 @@ async function callLovableImageEdit(
         continue;
       }
 
-      const data = await response.json();
+      let data: any;
+      try {
+        const respText = await response.text();
+        data = JSON.parse(respText);
+      } catch (parseErr) {
+        console.error("[LOVABLE-IMG-EDIT] JSON parse failed for model:", model);
+        continue;
+      }
       const imageUrl = extractGatewayImageUrl(data);
       if (typeof imageUrl === "string" && imageUrl.length > 0) {
         return imageUrl;
@@ -699,7 +767,13 @@ async function getVertexAccessToken(serviceAccountJson: string): Promise<string>
     return cachedAccessToken.token;
   }
 
-  const sa = JSON.parse(serviceAccountJson);
+  let sa: any;
+  try {
+    sa = JSON.parse(serviceAccountJson);
+  } catch (e) {
+    console.error('[VERTEX] Failed to parse service account JSON:', (e as Error).message?.substring(0, 100));
+    throw new Error('Invalid service account JSON configuration');
+  }
   const now = Math.floor(Date.now() / 1000);
   const exp = now + 3600;
 
@@ -805,7 +879,15 @@ async function callVertexImageAPI(
         return null;
       }
 
-      const data = await response.json();
+      // Safe JSON parsing for Vertex response
+      const responseText = await response.text();
+      let data: any;
+      try {
+        data = JSON.parse(responseText);
+      } catch (parseError) {
+        console.error('[VERTEX-IMAGE] JSON parse failed. Response starts with:', responseText.substring(0, 200));
+        return null;
+      }
       
       // Look for inline_data with image in the response
       const parts = data.candidates?.[0]?.content?.parts || [];
@@ -813,12 +895,16 @@ async function callVertexImageAPI(
         if (part.inlineData?.mimeType?.startsWith("image/")) {
           const base64Data = part.inlineData.data;
           const mimeType = part.inlineData.mimeType;
+          if (!base64Data) {
+            console.error("[VERTEX-IMAGE] Image part found but data is empty");
+            return null;
+          }
           console.log(`[VERTEX-IMAGE] Successfully generated image`);
           return `data:${mimeType};base64,${base64Data}`;
         }
       }
       
-      console.error("[VERTEX-IMAGE] No image found in response");
+      console.error("[VERTEX-IMAGE] No image found in response. Keys:", JSON.stringify(Object.keys(data)).substring(0, 200));
       return null;
     } catch (error) {
       console.error("[VERTEX-IMAGE] Request error:", error);
@@ -879,7 +965,15 @@ async function callGeminiImageAPI(
         return null;
       }
 
-      const data = await response.json();
+      // Safe JSON parsing
+      const responseText = await response.text();
+      let data: any;
+      try {
+        data = JSON.parse(responseText);
+      } catch (parseErr) {
+        console.error("[GEMINI-CONSUMER-IMAGE] JSON parse failed. Response starts with:", responseText.substring(0, 200));
+        return null;
+      }
       
       // Look for inline_data with image in the response
       const parts = data.candidates?.[0]?.content?.parts || [];
@@ -978,19 +1072,31 @@ async function callVertexImageEditAPI(
         return null;
       }
 
-      const data = await response.json();
+      // Safe JSON parsing for Vertex edit response
+      const responseText = await response.text();
+      let data: any;
+      try {
+        data = JSON.parse(responseText);
+      } catch (parseError) {
+        console.error('[VERTEX-EDIT] JSON parse failed. Response starts with:', responseText.substring(0, 200));
+        return null;
+      }
       
       const parts = data.candidates?.[0]?.content?.parts || [];
       for (const part of parts) {
         if (part.inlineData?.mimeType?.startsWith("image/")) {
           const imgBase64Data = part.inlineData.data;
           const imgMimeType = part.inlineData.mimeType;
+          if (!imgBase64Data) {
+            console.error("[VERTEX-EDIT] Image part found but data is empty");
+            return null;
+          }
           console.log(`[VERTEX-EDIT] Successfully edited image`);
           return `data:${imgMimeType};base64,${imgBase64Data}`;
         }
       }
       
-      console.error("[VERTEX-EDIT] No image found in response");
+      console.error("[VERTEX-EDIT] No image found in response. Keys:", JSON.stringify(Object.keys(data)).substring(0, 200));
       return null;
     } catch (error) {
       console.error("[VERTEX-EDIT] Request error:", error);
@@ -1063,7 +1169,15 @@ async function callGeminiImageEditAPI(
         return null;
       }
 
-      const data = await response.json();
+      // Safe JSON parsing
+      const responseText = await response.text();
+      let data: any;
+      try {
+        data = JSON.parse(responseText);
+      } catch (parseErr) {
+        console.error("[GEMINI-CONSUMER-EDIT] JSON parse failed. Response starts with:", responseText.substring(0, 200));
+        return null;
+      }
       
       // Look for inline_data with image in the response
       const parts = data.candidates?.[0]?.content?.parts || [];
@@ -1275,6 +1389,19 @@ Deno.serve(async (req) => {
         .maybeSingle();
       return data?.value || null;
     }
+
+    // ── DEBUG: Log incoming request parameters ──
+    console.log('[GENERATE] Request:', JSON.stringify({
+      source,
+      language: storyLanguageParam || textLanguage || 'unknown',
+      themeKey: themeKey || 'none',
+      seriesMode: seriesMode || 'none',
+      isSeries,
+      episodeNumber: resolvedEpisodeNumber || 'standalone',
+      textType,
+      kidAge: age,
+      difficulty: difficultyLabel,
+    }));
 
     // ── Block 2.3c: NEW dynamic prompt path with FALLBACK ──
     let fullSystemPromptFinal: string = "";
@@ -1722,9 +1849,21 @@ ${oldSeriesContext}
 
 Antworte NUR mit einem validen JSON-Objekt.
 Erstelle genau ${questionCount} Multiple-Choice Fragen.
-Wähle genau 10 Vokabelwörter aus.${seriesOutputInstructions}`;
+Wähle genau 10 Vokabelwörter aus.${seriesOutputInstructions}
+
+CRITICAL: Your response must be VALID JSON only. No markdown, no backticks, no explanation.
+Required JSON structure:
+{
+  "title": "Story title",
+  "content": "The complete story text as a single string...",
+  "questions": [{"question": "...", "options": ["A", "B", "C", "D"], "correctAnswer": "A", "expectedAnswer": "..."}],
+  "vocabulary": [{"word": "...", "explanation": "..."}],
+  "image_plan": {"character_anchor": "...", "world_anchor": "...", "scenes": [{"scene_id": 1, "setting": "...", "characters_present": "...", "action": "...", "emotion": "..."}]}
+}
+Fields episode_summary, continuity_state, visual_style_sheet, branch_options are ONLY required for series episodes.`;
     }
 
+    console.log('[GENERATE] Prompt path:', usedNewPromptPath ? 'CORE_SLIM_v2' : 'FALLBACK_OLD');
     console.log("Generating story with Lovable AI Gateway:", {
       usedNewPromptPath,
       targetLanguage,
@@ -1784,18 +1923,20 @@ Wähle genau 10 Vokabelwörter aus.${seriesOutputInstructions}`;
 
       const content = await callLovableAI(LOVABLE_API_KEY, fullSystemPrompt, promptToUse, 0.8);
 
-      // Parse the JSON from the response
-      const jsonMatch = content.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) {
-        console.error("Could not parse story JSON from:", content);
-        throw new Error("Could not parse story JSON");
+      // Parse the JSON from the response (robust, multi-fallback)
+      const parsed = safeParseStoryResponse(content);
+      if (!parsed) {
+        console.error("[GENERATE] Could not parse story JSON after all fallbacks. Content length:", content.length);
+        if (attempts < maxAttempts) {
+          console.log("[GENERATE] Retrying story generation...");
+          continue; // retry with expanded prompt
+        }
+        throw new Error("Could not parse story JSON after all attempts");
       }
-
-      let parsed = JSON.parse(jsonMatch[0]);
 
       // Handle nested LLM response: {story: {title, content}, questions, vocabulary, classification}
       if (!parsed.title && !parsed.content && parsed.story && typeof parsed.story === 'object') {
-        console.log('[generate-story] Detected nested LLM response, flattening...');
+        console.log('[PARSE] Detected nested LLM response, flattening...');
         const nested = parsed.story;
         story = {
           ...nested,
@@ -1808,22 +1949,34 @@ Wähle genau 10 Vokabelwörter aus.${seriesOutputInstructions}`;
         story = parsed;
       }
 
-      // Normalize: LLM sometimes returns "text" instead of "content"
-      if (!story.content && story.text) {
-        console.log('[generate-story] Normalizing: renaming "text" field to "content"');
-        story.content = story.text;
-        delete story.text;
+      // Normalize "text" → "content" (old LLM format compatibility)
+      if (!story.content && (story as any).text) {
+        console.log('[PARSE] Normalizing "text" → "content"');
+        story.content = (story as any).text;
+        delete (story as any).text;
       }
 
       // Validate essential fields exist
-      if (!story.title || !story.content) {
-        console.error(`[generate-story] LLM response missing essential fields. Keys: ${Object.keys(story).join(', ')}, title: ${!!story.title}, content: ${!!story.content}`);
+      if (!story.content || typeof story.content !== 'string' || story.content.trim().length === 0) {
+        console.error(`[GENERATE] LLM response missing essential fields. Keys: ${Object.keys(story).join(', ')}, title: ${!!story.title}, content: ${!!story.content}`);
         if (attempts < maxAttempts) {
-          console.log('[generate-story] Retrying due to missing title/content...');
+          console.log('[GENERATE] Retrying due to missing content...');
           continue;
         }
         throw new Error(`LLM response missing essential fields (title: ${!!story.title}, content: ${!!story.content})`);
       }
+
+      // ── DEBUG: Log parsed response summary ──
+      console.log('[GENERATE] Parsed response:', JSON.stringify({
+        hasContent: !!story.content,
+        contentLength: story.content?.length ?? 0,
+        hasQuestions: story.questions?.length ?? 0,
+        hasVocabulary: story.vocabulary?.length ?? 0,
+        hasImagePlan: !!story.image_plan,
+        hasBranchOptions: !!story.branch_options,
+        hasEpisodeSummary: !!story.episode_summary,
+        keys: Object.keys(story).join(', '),
+      }));
 
       // ── DEBUG: Log raw LLM response for series episodes ──
       if (isSeries || seriesId) {

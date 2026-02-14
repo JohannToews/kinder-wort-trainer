@@ -793,32 +793,80 @@ export async function buildStoryPrompt(
   const langName = LANGUAGE_NAMES[lang] || lang;
   const questionCount = request.question_count || 5;
 
-  // ── 1. Load age_rules ──
-  const { data: ageRules, error: ageErr } = await supabaseClient
-    .from('age_rules')
-    .select('*')
-    .eq('language', lang)
-    .lte('min_age', request.kid_profile.age)
-    .gte('max_age', request.kid_profile.age)
-    .limit(1)
-    .maybeSingle();
+  // ── 1. Load age_rules (with fallback to 'de') ──
+  let ageRules: any = null;
+  {
+    const { data, error: ageErr } = await supabaseClient
+      .from('age_rules')
+      .select('*')
+      .eq('language', lang)
+      .lte('min_age', request.kid_profile.age)
+      .gte('max_age', request.kid_profile.age)
+      .limit(1)
+      .maybeSingle();
+    if (ageErr) console.error('[promptBuilder] age_rules error:', ageErr.message);
+    ageRules = data;
 
-  if (ageErr) console.error('[promptBuilder] age_rules error:', ageErr.message);
-  if (!ageRules) throw new Error(`No age_rules found for language=${lang}, age=${request.kid_profile.age}`);
+    if (!ageRules && lang !== 'de') {
+      console.warn(`[promptBuilder] No age_rules for language=${lang}, age=${request.kid_profile.age}. Trying 'de' fallback...`);
+      const { data: fallback } = await supabaseClient
+        .from('age_rules')
+        .select('*')
+        .eq('language', 'de')
+        .lte('min_age', request.kid_profile.age)
+        .gte('max_age', request.kid_profile.age)
+        .limit(1)
+        .maybeSingle();
+      ageRules = fallback;
+    }
+    if (!ageRules) {
+      console.error(`[promptBuilder] No age_rules found at all for age=${request.kid_profile.age}. Using hardcoded defaults.`);
+      ageRules = {
+        style_prompt: 'Write in a child-friendly, engaging style.',
+        vocabulary_level: 'age-appropriate',
+        sentence_complexity: 'simple to moderate',
+        color_palette: 'warm, friendly colors',
+        labels: {},
+      };
+    }
+  }
 
-  // ── 2. Load difficulty_rules ──
-  const { data: diffRules, error: diffErr } = await supabaseClient
-    .from('difficulty_rules')
-    .select('*')
-    .eq('language', lang)
-    .eq('difficulty_level', request.kid_profile.difficulty_level)
-    .limit(1)
-    .maybeSingle();
+  // ── 2. Load difficulty_rules (with fallback to 'de') ──
+  let diffRules: any = null;
+  {
+    const { data, error: diffErr } = await supabaseClient
+      .from('difficulty_rules')
+      .select('*')
+      .eq('language', lang)
+      .eq('difficulty_level', request.kid_profile.difficulty_level)
+      .limit(1)
+      .maybeSingle();
+    if (diffErr) console.error('[promptBuilder] difficulty_rules error:', diffErr.message);
+    diffRules = data;
 
-  if (diffErr) console.error('[promptBuilder] difficulty_rules error:', diffErr.message);
-  if (!diffRules) throw new Error(`No difficulty_rules found for language=${lang}, level=${request.kid_profile.difficulty_level}`);
+    if (!diffRules && lang !== 'de') {
+      console.warn(`[promptBuilder] No difficulty_rules for language=${lang}, level=${request.kid_profile.difficulty_level}. Trying 'de' fallback...`);
+      const { data: fallback } = await supabaseClient
+        .from('difficulty_rules')
+        .select('*')
+        .eq('language', 'de')
+        .eq('difficulty_level', request.kid_profile.difficulty_level)
+        .limit(1)
+        .maybeSingle();
+      diffRules = fallback;
+    }
+    if (!diffRules) {
+      console.error(`[promptBuilder] No difficulty_rules found at all for level=${request.kid_profile.difficulty_level}. Using hardcoded defaults.`);
+      diffRules = {
+        word_count_min: 200,
+        word_count_max: 500,
+        sentence_length: 'moderate',
+        labels: {},
+      };
+    }
+  }
 
-  // ── 3. Load theme_rules (skip for 'surprise' theme) ──
+  // ── 3. Load theme_rules (skip for 'surprise' theme, with fallback to 'de' / 'everyday') ──
   const isSurpriseTheme = !request.theme_key || request.theme_key === 'surprise';
   let themeRules: any = null;
   
@@ -832,8 +880,39 @@ export async function buildStoryPrompt(
       .maybeSingle();
 
     if (themeErr) console.error('[promptBuilder] theme_rules error:', themeErr.message);
-    if (!data) throw new Error(`No theme_rules found for key=${request.theme_key}, language=${lang}`);
     themeRules = data;
+
+    // Fallback 1: Same theme in German
+    if (!themeRules && lang !== 'de') {
+      console.warn(`[promptBuilder] No theme_rules for key=${request.theme_key}, language=${lang}. Trying 'de' fallback...`);
+      const { data: fallback } = await supabaseClient
+        .from('theme_rules')
+        .select('*')
+        .eq('theme_key', request.theme_key)
+        .eq('language', 'de')
+        .limit(1)
+        .maybeSingle();
+      themeRules = fallback;
+    }
+
+    // Fallback 2: 'everyday' theme in German
+    if (!themeRules) {
+      console.warn(`[promptBuilder] No theme_rules for key=${request.theme_key} in any language. Trying 'everyday' (de) fallback...`);
+      const { data: fallback2 } = await supabaseClient
+        .from('theme_rules')
+        .select('*')
+        .eq('theme_key', 'everyday')
+        .eq('language', 'de')
+        .limit(1)
+        .maybeSingle();
+      themeRules = fallback2;
+    }
+
+    // Fallback 3: Hardcoded minimal – NO CRASH
+    if (!themeRules) {
+      console.error(`[promptBuilder] No theme_rules found at all. Using hardcoded minimal rules.`);
+      themeRules = null; // Will be handled like surprise theme (no theme constraints)
+    }
   }
 
   // ── 4. Load content_themes_by_level (guardrails) ──
@@ -929,7 +1008,8 @@ export async function buildStoryPrompt(
       nl: `## ${headers.category}\nKies zelf een creatief en verrassend thema voor dit verhaal. Wees origineel!`,
     };
     sections.push(surpriseThemeHint[lang] || surpriseThemeHint.en);
-  } else {
+  } else if (themeRules) {
+    // Theme rules loaded (or fallback succeeded)
     const themeLabel = label(themeRules.labels, lang);
     const categorySection = [
       `## ${headers.category}`,
@@ -942,6 +1022,10 @@ export async function buildStoryPrompt(
       `→ ${headers.chooseTheme}`,
     ].filter(Boolean).join('\n');
     sections.push(categorySection);
+  } else {
+    // themeRules is null even after all fallbacks – treat like surprise theme
+    console.warn(`[promptBuilder] themeRules null after all fallbacks for key=${request.theme_key}. Using generic prompt.`);
+    sections.push(surpriseThemeHint[lang] || surpriseThemeHint.en);
   }
 
   // CHARACTERS (Block 2.3d: relationship logic, Block 2.3e: surprise_characters)
