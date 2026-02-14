@@ -65,6 +65,14 @@ export interface StoryRequest {
     episode_number: number;
     chosen_title: string;
   }>;
+  // ── Story Subtype (Themenvariation) ──
+  story_subtype?: {
+    subtypeKey: string;
+    promptHint: string;
+    titleSeed: string;
+    settingIdea: string;
+    label: string;            // localized label for display
+  };
 }
 
 // ─── Section Headers (translated) ───────────────────────────────
@@ -995,6 +1003,59 @@ export async function buildStoryPrompt(
     `Questions: ${questionCount}`,
   ].filter(Boolean).join('\n');
   sections.push(lengthSection);
+
+  // STORY SUBTYPE (Themenvariation — inserted before CATEGORY)
+  if (request.story_subtype) {
+    const st = request.story_subtype;
+    const subtypeIntro: Record<string, string> = {
+      de: 'KONKRETER STORY-TYP',
+      fr: 'TYPE D\'HISTOIRE CONCRET',
+      en: 'SPECIFIC STORY TYPE',
+      es: 'TIPO DE HISTORIA CONCRETO',
+      it: 'TIPO DI STORIA CONCRETO',
+      bs: 'KONKRETAN TIP PRIČE',
+      nl: 'CONCREET VERHAALTYPE',
+    };
+    const subtypeWarning: Record<string, string> = {
+      de: 'WICHTIG: Folge der Story-Art. Schreibe KEINE generische Abenteuergeschichte.',
+      fr: 'IMPORTANT : Suis le type d\'histoire. N\'écris PAS une aventure générique.',
+      en: 'IMPORTANT: Follow the story type. Do NOT write a generic adventure story.',
+      es: 'IMPORTANTE: Sigue el tipo de historia. NO escribas una aventura genérica.',
+      it: 'IMPORTANTE: Segui il tipo di storia. NON scrivere un\'avventura generica.',
+      bs: 'VAŽNO: Prati tip priče. NEMOJ pisati generičku avanturu.',
+      nl: 'BELANGRIJK: Volg het verhaaltype. Schrijf GEEN generiek avontuurverhaal.',
+    };
+    const titleSeedHint: Record<string, string> = {
+      de: 'Titel-Impuls: Orientiere dich an Titeln wie',
+      fr: 'Inspiration de titre : Inspire-toi de titres comme',
+      en: 'Title inspiration: Orient yourself to titles like',
+      es: 'Inspiración de título: Oriéntate a títulos como',
+      it: 'Ispirazione titolo: Orientati a titoli come',
+      bs: 'Inspiracija za naslov: Orijentiši se na naslove poput',
+      nl: 'Titel-inspiratie: Oriënteer je op titels zoals',
+    };
+    const settingHint: Record<string, string> = {
+      de: 'Setting-Inspiration',
+      fr: 'Inspiration de décor',
+      en: 'Setting inspiration',
+      es: 'Inspiración de escenario',
+      it: 'Ispirazione ambientazione',
+      bs: 'Inspiracija za mjesto radnje',
+      nl: 'Setting-inspiratie',
+    };
+
+    const subtypeSection = [
+      `## ${subtypeIntro[lang] || subtypeIntro.en}`,
+      `Story-Art: ${st.label}`,
+      `Anweisung: ${st.promptHint}`,
+      st.settingIdea ? `${settingHint[lang] || settingHint.en}: ${st.settingIdea}` : null,
+      st.titleSeed ? `${titleSeedHint[lang] || titleSeedHint.en} "${st.titleSeed}"` : null,
+      '',
+      subtypeWarning[lang] || subtypeWarning.en,
+    ].filter(s => s !== null).join('\n');
+    sections.push(subtypeSection);
+    console.log(`[promptBuilder] Added STORY SUBTYPE section: ${st.subtypeKey} (${st.label})`);
+  }
 
   // CATEGORY (or surprise theme hint)
   const surpriseThemeHint: Record<string, string> = {

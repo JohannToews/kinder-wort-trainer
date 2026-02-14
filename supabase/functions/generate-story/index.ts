@@ -3,6 +3,7 @@ import { buildStoryPrompt, injectLearningTheme, StoryRequest, EPISODE_CONFIG } f
 import { shouldApplyLearningTheme } from '../_shared/learningThemeRotation.ts';
 import { buildImagePrompts, buildFallbackImagePrompt, loadImageRules, ImagePromptResult, SeriesImageContext } from '../_shared/imagePromptBuilder.ts';
 import { mergeSeriesContinuityState } from '../_shared/seriesContinuityMerge.ts';
+import { selectStorySubtype, recordSubtypeUsage, SelectedSubtype } from '../_shared/storySubtypeSelector.ts';
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -1613,6 +1614,31 @@ Deno.serve(async (req) => {
         }
       }
 
+      // ── Story Subtype Selection (Themenvariation) ──
+      // Only select for Episode 1 of a series or standalone stories. Ep2+ inherit from Ep1.
+      let selectedSubtype: SelectedSubtype | null = null;
+      const isEpisode1OrStandalone = !resolvedEpisodeNumber || resolvedEpisodeNumber <= 1;
+      if (isEpisode1OrStandalone) {
+        try {
+          selectedSubtype = await selectStorySubtype(
+            supabase,
+            resolvedThemeKey,
+            kidProfileId,
+            resolvedKidAge || 8,
+            effectiveStoryLanguage,
+          );
+          if (selectedSubtype) {
+            console.log(`[generate-story] Subtype selected: ${selectedSubtype.subtypeKey} (${selectedSubtype.label})`);
+          } else {
+            console.log('[generate-story] No subtype selected, continuing without.');
+          }
+        } catch (subtypeErr: any) {
+          console.warn('[generate-story] Subtype selection failed, continuing without:', subtypeErr.message);
+        }
+      } else {
+        console.log(`[generate-story] Episode ${resolvedEpisodeNumber} — skipping subtype selection (inherits from Ep1).`);
+      }
+
       const storyRequest: StoryRequest = {
         kid_profile: {
           id: kidProfileId || userId || 'unknown',
@@ -1654,6 +1680,14 @@ Deno.serve(async (req) => {
         branch_chosen_preview: branchChosenPreview,
         branch_chosen_direction: branchChosenDirection,
         series_all_branches: seriesAllBranches,
+        // ── Story Subtype (Themenvariation) ──
+        story_subtype: selectedSubtype ? {
+          subtypeKey: selectedSubtype.subtypeKey,
+          promptHint: selectedSubtype.promptHint,
+          titleSeed: selectedSubtype.titleSeed,
+          settingIdea: selectedSubtype.settingIdea,
+          label: selectedSubtype.label,
+        } : undefined,
       };
 
       // 3. Build dynamic user message
@@ -2731,6 +2765,21 @@ Antworte NUR mit dem erweiterten Text (ohne Titel, ohne JSON-Format).`;
       console.log(`[generate-story] [SERIES-DEBUG]   branchOptionsParsed=${branchOptionsParsed ? branchOptionsParsed.length + ' options' : 'NULL'}`);
     }
 
+    // ── Record story subtype history (non-blocking) ──
+    if (selectedSubtype && isEpisode1OrStandalone) {
+      try {
+        await recordSubtypeUsage(
+          supabase,
+          kidProfileId,
+          selectedSubtype.category,
+          selectedSubtype.subtypeKey,
+          undefined, // story_id is not known yet (frontend creates it)
+        );
+      } catch (histErr: any) {
+        console.warn('[generate-story] Subtype history write failed (non-fatal):', histErr.message);
+      }
+    }
+
     return new Response(JSON.stringify({
       ...story,
       // Parsed classification fields (robust, already extracted above)
@@ -2770,6 +2819,12 @@ Antworte NUR mit dem erweiterten Text (ohne Titel, ohne JSON-Format).`;
       branch_options: branchOptionsParsed ?? null,
       // Modus B: Pass series_mode back so frontend can store it on the new episode
       series_mode: seriesMode || null,
+      // Story Subtype (Themenvariation) — for frontend reference
+      story_subtype: selectedSubtype ? {
+        subtypeKey: selectedSubtype.subtypeKey,
+        label: selectedSubtype.label,
+        category: selectedSubtype.category,
+      } : null,
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
