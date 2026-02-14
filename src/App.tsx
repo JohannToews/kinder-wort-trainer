@@ -6,6 +6,8 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import { KidProfileProvider } from "@/hooks/useKidProfile";
 import ProtectedRoute from "@/components/ProtectedRoute";
+import ErrorBoundary from "@/components/ErrorBoundary";
+import OfflineBanner from "@/components/OfflineBanner";
 import HomeClassic from "./pages/HomeClassic";
 import HomeFablino from "./pages/HomeFablino";
 import { FEATURES } from "./config/features";
@@ -37,6 +39,8 @@ const App = () => (
         <KidProfileProvider>
           <Toaster />
         <Sonner />
+        <OfflineBanner />
+        <ErrorBoundary>
         <BrowserRouter>
           <Routes>
             <Route path="/login" element={<LoginPage />} />
@@ -111,6 +115,7 @@ const App = () => (
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
+        </ErrorBoundary>
         </KidProfileProvider>
       </AuthProvider>
     </TooltipProvider>

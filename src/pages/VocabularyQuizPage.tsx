@@ -611,20 +611,35 @@ const VocabularyQuizPage = () => {
       setPointsEarned(totalStars);
 
       // Log activity via RPC (handles stars, streak, badges, user_results)
-      try {
-        const result = await supabase.rpc('log_activity', {
-          p_child_id: selectedProfileId,
-          p_activity_type: 'quiz_complete',
-          p_stars: stars,
-          p_metadata: { score, max_score: totalQuestions },
-        });
+      // M13: Retry up to 2 times if log_activity fails — stars must not be lost
+      let logSuccess = false;
+      for (let attempt = 0; attempt < 3 && !logSuccess; attempt++) {
+        try {
+          const result = await supabase.rpc('log_activity', {
+            p_child_id: selectedProfileId,
+            p_activity_type: 'quiz_complete',
+            p_stars: stars,
+            p_metadata: { score, max_score: totalQuestions, score_percent: totalQuestions > 0 ? Math.round((score / totalQuestions) * 100) : 0 },
+          });
 
-        const data = result.data as any;
-        if (data?.new_badges?.length > 0) {
-          setPendingBadges(data.new_badges);
+          if (result.error) {
+            console.error(`[M13] log_activity attempt ${attempt + 1} failed:`, result.error.message);
+            if (attempt < 2) await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
+            continue;
+          }
+
+          logSuccess = true;
+          const data = result.data as any;
+          if (data?.new_badges?.length > 0) {
+            setPendingBadges(data.new_badges);
+          }
+        } catch (e) {
+          console.error(`[M13] log_activity attempt ${attempt + 1} threw:`, e);
+          if (attempt < 2) await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
         }
-      } catch (e) {
-        // Silent fail – gamification should not block UX
+      }
+      if (!logSuccess) {
+        console.error('[M13] log_activity failed after 3 attempts — stars may need manual recovery');
       }
 
       if (passed) {

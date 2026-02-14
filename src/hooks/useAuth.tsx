@@ -59,7 +59,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       const { data: profile, error } = await supabase
         .from('user_profiles')
-        .select('*')
+        .select('id, username, display_name, email, auth_id, auth_migrated, admin_language, app_language, text_language, created_at, updated_at')
         .eq('auth_id', authUser.id)
         .order('auth_migrated', { ascending: false })
         .limit(1)

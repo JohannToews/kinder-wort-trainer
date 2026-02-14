@@ -1267,9 +1267,10 @@ async function loadSeriesContext(
   lastContinuityState: any | null;
   visualStyleSheet: any | null;
 }> {
+  // Query 1: Episodes that have series_id set
   const { data: episodes, error } = await supabase
     .from('stories')
-    .select('episode_number, title, episode_summary, continuity_state, visual_style_sheet')
+    .select('id, episode_number, title, episode_summary, continuity_state, visual_style_sheet')
     .eq('series_id', seriesId)
     .lt('episode_number', currentEpisodeNumber)
     .order('episode_number', { ascending: true });
@@ -1279,12 +1280,30 @@ async function loadSeriesContext(
     return { previousEpisodes: [], lastContinuityState: null, visualStyleSheet: null };
   }
 
-  if (!episodes || episodes.length === 0) {
+  // Belt-and-suspenders: Episode 1 might have series_id = NULL (self-reference set after INSERT).
+  // If Episode 1 is missing, fetch it by id = seriesId (since seriesId IS Episode 1's id).
+  let allEpisodes = episodes || [];
+  const hasEp1 = allEpisodes.some((e: any) => e.episode_number === 1);
+  if (!hasEp1 && currentEpisodeNumber > 1) {
+    const { data: ep1, error: ep1Err } = await supabase
+      .from('stories')
+      .select('id, episode_number, title, episode_summary, continuity_state, visual_style_sheet')
+      .eq('id', seriesId)
+      .maybeSingle();
+    if (!ep1Err && ep1 && ep1.episode_number === 1) {
+      console.log('[loadSeriesContext] Episode 1 found via id fallback (series_id was NULL)');
+      // Also fix the missing series_id for future queries
+      await supabase.from('stories').update({ series_id: seriesId }).eq('id', seriesId);
+      allEpisodes = [ep1, ...allEpisodes];
+    }
+  }
+
+  if (allEpisodes.length === 0) {
     console.log('[loadSeriesContext] No previous episodes found for series:', seriesId);
     return { previousEpisodes: [], lastContinuityState: null, visualStyleSheet: null };
   }
 
-  const rows = episodes as SeriesEpisodeRow[];
+  const rows = allEpisodes as SeriesEpisodeRow[];
   console.log(`[loadSeriesContext] Loaded ${rows.length} previous episode(s) for series ${seriesId}`);
 
   // Build summary list

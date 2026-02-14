@@ -301,6 +301,9 @@ const ReadingPage = () => {
   const [isMarkedAsRead, setIsMarkedAsRead] = useState(false);
   // Series continuation state
   const [isGeneratingContinuation, setIsGeneratingContinuation] = useState(false);
+  // AbortController for continuation generation — prevents orphaned requests
+  const abortControllerRef = useRef<AbortController | null>(null);
+  useEffect(() => { return () => { abortControllerRef.current?.abort(); }; }, []);
   // Interactive series: branch options for current episode
   const [branchOptions, setBranchOptions] = useState<BranchOption[] | null>(null);
   const [branchId, setBranchId] = useState<string | null>(null); // story_branches row id
@@ -483,7 +486,7 @@ const ReadingPage = () => {
         }
       }
     } else {
-      toast.error("Histoire non trouvée");
+      toast.error("Geschichte nicht gefunden");
       navigate("/stories");
     }
     setIsLoading(false);
@@ -509,11 +512,30 @@ const ReadingPage = () => {
       
       const nextEpisodeNumber = (story.episode_number || 1) + 1;
       console.log("Next episode:", nextEpisodeNumber);
+
+      // Check if episode already exists (race condition protection)
+      const { data: existingEpisode } = await supabase
+        .from("stories")
+        .select("id")
+        .eq("series_id", story.series_id || story.id)
+        .eq("episode_number", nextEpisodeNumber)
+        .maybeSingle();
+      
+      if (existingEpisode) {
+        console.log("Episode already exists, navigating to it");
+        toast.info("Diese Episode existiert bereits");
+        navigate(`/read/${existingEpisode.id}`);
+        setIsGeneratingContinuation(false);
+        return;
+      }
       
       // Create continuation prompt with previous story context
       const continuationPrompt = `Fortsetzung von "${story.title}" (Episode ${story.episode_number || 1}):\n\nVorherige Geschichte (Zusammenfassung):\n${story.content.slice(0, 500)}...\n\nUrsprüngliche Idee: ${story.prompt || ""}`;
 
-      // Call generate-story with continuation context
+      // Call generate-story with continuation context (120s timeout)
+      abortControllerRef.current?.abort();
+      abortControllerRef.current = new AbortController();
+      const timeoutId = setTimeout(() => abortControllerRef.current?.abort(), 120_000);
       console.log("Calling generate-story edge function...");
       const { data, error } = await supabase.functions.invoke("generate-story", {
         body: {
@@ -535,6 +557,7 @@ const ReadingPage = () => {
           kidProfileId: story.kid_profile_id,
         },
       });
+      clearTimeout(timeoutId);
 
       console.log("Edge function response - error:", error);
       console.log("Edge function response - data keys:", data ? Object.keys(data) : "null");
@@ -809,6 +832,22 @@ const ReadingPage = () => {
 
     try {
       const nextEpisodeNumber = (story.episode_number || 1) + 1;
+
+      // Check if episode already exists (race condition protection)
+      const { data: existingEp } = await supabase
+        .from("stories")
+        .select("id")
+        .eq("series_id", story.series_id || story.id)
+        .eq("episode_number", nextEpisodeNumber)
+        .maybeSingle();
+      
+      if (existingEp) {
+        toast.info("Diese Episode existiert bereits");
+        navigate(`/read/${existingEp.id}`);
+        setIsGeneratingContinuation(false);
+        return;
+      }
+
       const continuationPrompt = `Fortsetzung von "${story.title}" (Episode ${story.episode_number || 1}):\n\nVorherige Geschichte (Zusammenfassung):\n${story.content.slice(0, 500)}...\n\nUrsprüngliche Idee: ${story.prompt || ""}`;
 
       // Resolve chosen title: from parameter, from story.branch_chosen, or reload from DB
@@ -825,6 +864,11 @@ const ReadingPage = () => {
           branchTitle = chosen?.title;
         }
       }
+
+      // 120s timeout for interactive episode generation
+      abortControllerRef.current?.abort();
+      abortControllerRef.current = new AbortController();
+      const timeoutIdInteractive = setTimeout(() => abortControllerRef.current?.abort(), 120_000);
 
       const { data: genData, error } = await supabase.functions.invoke("generate-story", {
         body: {
@@ -846,6 +890,8 @@ const ReadingPage = () => {
           kidProfileId: story.kid_profile_id,
         },
       });
+
+      clearTimeout(timeoutIdInteractive);
 
       if (error || genData?.error) {
         console.error("Generation error:", error || genData?.error);
@@ -1205,7 +1251,7 @@ const ReadingPage = () => {
     });
 
     if (error) {
-      toast.error("Erreur lors de la sauvegarde");
+      toast.error("Fehler beim Speichern");
       return;
     }
 
@@ -1397,6 +1443,7 @@ const ReadingPage = () => {
               alt={`Story illustration ${imgIdx + 1}`}
               className="rounded-xl shadow-md max-w-full sm:max-w-[85%] md:max-w-[90%] max-h-64 md:max-h-96 lg:max-h-[28rem] object-contain"
               loading="lazy"
+              onError={(e) => { e.currentTarget.src = '/fallback-illustration.svg'; }}
             />
           </div>
         );
@@ -1458,6 +1505,7 @@ const ReadingPage = () => {
                   src={story.cover_image_url} 
                   alt={story.title}
                   className="w-full h-40 md:h-52 object-contain"
+                  onError={(e) => { e.currentTarget.src = '/fallback-illustration.svg'; }}
                 />
               </div>
             )}
@@ -1651,20 +1699,35 @@ const ReadingPage = () => {
                     queryClient.invalidateQueries({ queryKey: ['stories'] });
 
                     // Log activity via RPC (handles stars, streak, badges, user_results)
-                    try {
-                      const result = await supabase.rpc('log_activity', {
-                        p_child_id: childId,
-                        p_activity_type: 'story_read',
-                        p_stars: starRewards.stars_story_read,
-                        p_metadata: { story_id: id, difficulty: story?.difficulty || 'medium' },
-                      });
+                    // M13: Retry up to 2 times if log_activity fails — stars must not be lost
+                    let logSuccess = false;
+                    for (let attempt = 0; attempt < 3 && !logSuccess; attempt++) {
+                      try {
+                        const result = await supabase.rpc('log_activity', {
+                          p_child_id: childId,
+                          p_activity_type: 'story_read',
+                          p_stars: starRewards.stars_story_read,
+                          p_metadata: { story_id: id, difficulty: story?.difficulty || 'medium', language: story?.text_language || 'de' },
+                        });
 
-                      const data = result.data as any;
-                      if (data?.new_badges?.length > 0) {
-                        setPendingBadges(data.new_badges);
+                        if (result.error) {
+                          console.error(`[M13] log_activity attempt ${attempt + 1} failed:`, result.error.message);
+                          if (attempt < 2) await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
+                          continue;
+                        }
+
+                        logSuccess = true;
+                        const data = result.data as any;
+                        if (data?.new_badges?.length > 0) {
+                          setPendingBadges(data.new_badges);
+                        }
+                      } catch (e) {
+                        console.error(`[M13] log_activity attempt ${attempt + 1} threw:`, e);
+                        if (attempt < 2) await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
                       }
-                    } catch (e) {
-                      // Silent fail – gamification should not block UX
+                    }
+                    if (!logSuccess) {
+                      console.error('[M13] log_activity failed after 3 attempts — stars may need manual recovery for story', id);
                     }
                     refreshProgress();
                     
@@ -1731,30 +1794,45 @@ const ReadingPage = () => {
                       const childId = story?.kid_profile_id || selectedProfile?.id || null;
 
                       // Log activity via RPC (handles stars, streak, badges, user_results)
+                      // M13: Retry up to 2 times if log_activity fails — stars must not be lost
                       let actualStarsEarned = quizStars;
-                      try {
-                        const result = await supabase.rpc('log_activity', {
-                          p_child_id: childId,
-                          p_activity_type: activityType,
-                          p_stars: quizStars,
-                          p_metadata: {
-                            quiz_id: id,
-                            score: correctCount,
-                            max_score: totalCount,
-                            score_percent: Math.round(percentage),
-                            difficulty: story?.difficulty || 'medium',
-                          },
-                        });
+                      let quizLogSuccess = false;
+                      for (let attempt = 0; attempt < 3 && !quizLogSuccess; attempt++) {
+                        try {
+                          const result = await supabase.rpc('log_activity', {
+                            p_child_id: childId,
+                            p_activity_type: activityType,
+                            p_stars: quizStars,
+                            p_metadata: {
+                              quiz_id: id,
+                              score: correctCount,
+                              max_score: totalCount,
+                              score_percent: Math.round(percentage),
+                              difficulty: story?.difficulty || 'medium',
+                            },
+                          });
 
-                        const data = result.data as any;
-                        if (data?.stars_earned != null) {
-                          actualStarsEarned = data.stars_earned;
+                          if (result.error) {
+                            console.error(`[M13] quiz log_activity attempt ${attempt + 1} failed:`, result.error.message);
+                            if (attempt < 2) await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
+                            continue;
+                          }
+
+                          quizLogSuccess = true;
+                          const data = result.data as any;
+                          if (data?.stars_earned != null) {
+                            actualStarsEarned = data.stars_earned;
+                          }
+                          if (data?.new_badges?.length > 0) {
+                            setPendingBadges(data.new_badges);
+                          }
+                        } catch (e) {
+                          console.error(`[M13] quiz log_activity attempt ${attempt + 1} threw:`, e);
+                          if (attempt < 2) await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
                         }
-                        if (data?.new_badges?.length > 0) {
-                          setPendingBadges(data.new_badges);
-                        }
-                      } catch (e) {
-                        // Silent fail – gamification should not block UX
+                      }
+                      if (!quizLogSuccess) {
+                        console.error('[M13] quiz log_activity failed after 3 attempts');
                       }
                       refreshProgress();
 

@@ -244,13 +244,18 @@ export const useGamification = () => {
     const newLevelInfo = getLevelFromStars(newStars);
 
     // Update DB
-    await supabase
+    const { error: dbErr } = await supabase
       .from("user_progress")
       .update({
         total_stars: newStars,
         current_level: newLevelInfo.level,
       })
       .eq("kid_profile_id", selectedProfileId);
+
+    if (dbErr) {
+      console.error('[useGamification] Failed to award stars:', dbErr.message);
+      return; // Don't update local state if DB failed
+    }
 
     console.log(`[useGamification] +${count} stars (${reason}), total: ${newStars}, level: ${newLevelInfo.level}`);
 
@@ -310,7 +315,7 @@ export const useGamification = () => {
     if (newStreak > newLongest) newLongest = newStreak;
 
     // Update DB
-    await supabase
+    const { error: streakErr } = await supabase
       .from("user_progress")
       .update({
         current_streak: newStreak,
@@ -318,6 +323,11 @@ export const useGamification = () => {
         last_read_date: today,
       })
       .eq("kid_profile_id", selectedProfileId);
+
+    if (streakErr) {
+      console.error('[useGamification] Failed to update streak:', streakErr.message);
+      return;
+    }
 
     // Award streak bonus (from day 2+)
     if (newStreak >= 2) {
@@ -360,17 +370,29 @@ export const useGamification = () => {
     if (!selectedProfileId || !state) return;
 
     // Set stories.completed = true
-    await supabase
+    const { error: completeErr } = await supabase
       .from("stories")
       .update({ completed: true })
       .eq("id", storyId);
 
+    if (completeErr) {
+      console.error('[useGamification] Failed to mark story complete:', completeErr.message);
+      return;
+    }
+
     // Increment stories_completed in user_progress
     const newCount = state.storiesCompleted + 1;
-    await supabase
+    const { error: progressErr } = await supabase
       .from("user_progress")
       .update({ stories_completed: newCount })
       .eq("kid_profile_id", selectedProfileId);
+
+    if (progressErr) {
+      console.error('[useGamification] Failed to update stories_completed:', progressErr.message);
+      // Rollback story completed flag since progress update failed
+      await supabase.from("stories").update({ completed: false }).eq("id", storyId);
+      return;
+    }
 
     setState(prev => prev ? {
       ...prev,
@@ -385,10 +407,15 @@ export const useGamification = () => {
     if (!selectedProfileId || !state) return;
 
     const newCount = state.wordsLearned + 1;
-    await supabase
+    const { error: wordErr } = await supabase
       .from("user_progress")
       .update({ words_learned: newCount })
       .eq("kid_profile_id", selectedProfileId);
+
+    if (wordErr) {
+      console.error('[useGamification] Failed to update words_learned:', wordErr.message);
+      return;
+    }
 
     setState(prev => prev ? {
       ...prev,
@@ -401,10 +428,15 @@ export const useGamification = () => {
     if (!selectedProfileId || !state) return;
 
     const newCount = state.quizzesPassed + 1;
-    await supabase
+    const { error: quizErr } = await supabase
       .from("user_progress")
       .update({ quizzes_passed: newCount })
       .eq("kid_profile_id", selectedProfileId);
+
+    if (quizErr) {
+      console.error('[useGamification] Failed to update quizzes_passed:', quizErr.message);
+      return;
+    }
 
     setState(prev => prev ? {
       ...prev,

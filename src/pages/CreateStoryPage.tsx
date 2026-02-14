@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { useKidProfile } from "@/hooks/useKidProfile";
@@ -25,6 +25,7 @@ import { StorySettings } from "@/components/story-creation/StoryTypeSelectionScr
 import { toast } from "sonner";
 import { useTranslations } from "@/lib/translations";
 import StoryGenerationProgress, { PerformanceData } from "@/components/story-creation/StoryGenerationProgress";
+import { useDailyStoryLimit } from "@/hooks/useDailyStoryLimit";
 
 // Screen states for the wizard
 type WizardScreen = "entry" | "story-type" | "characters" | "effects" | "generating";
@@ -91,6 +92,7 @@ const CreateStoryPage = () => {
   const { user } = useAuth();
   const { kidAppLanguage, kidReadingLanguage, kidExplanationLanguage, kidHomeLanguages, kidStoryLanguages, selectedProfile } = useKidProfile();
   const { colors: paletteColors } = useColorPalette();
+  const { remaining: storiesRemaining, limitReached, limit: dailyLimit, refresh: refreshStoryLimit } = useDailyStoryLimit(selectedProfile?.id);
 
   // Wizard state
   const [currentScreen, setCurrentScreen] = useState<WizardScreen>("entry");
@@ -106,6 +108,12 @@ const CreateStoryPage = () => {
   const [selectedSubElements, setSelectedSubElements] = useState<StorySubElement[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [performanceData, setPerformanceData] = useState<PerformanceData | null>(null);
+
+  // AbortController for story generation — prevents orphaned requests on unmount
+  const abortControllerRef = useRef<AbortController | null>(null);
+  useEffect(() => {
+    return () => { abortControllerRef.current?.abort(); };
+  }, []);
 
   // Translations
   const t = useTranslations(kidAppLanguage);
@@ -128,6 +136,12 @@ const CreateStoryPage = () => {
       return;
     }
 
+    // K5: Enforce daily rate limit
+    if (limitReached) {
+      toast.error(`Tageslimit erreicht (${dailyLimit} Geschichten pro Tag)`);
+      return;
+    }
+
     setIsGenerating(true);
     setCurrentScreen("generating");
 
@@ -143,7 +157,12 @@ const CreateStoryPage = () => {
       // Use story settings from wizard if available, otherwise defaults
       const storyLength = storySettings?.length || "medium";
       const storyDifficulty = storySettings?.difficulty || difficulty;
-      
+
+      // Abort any previous request + set 120s timeout
+      abortControllerRef.current?.abort();
+      abortControllerRef.current = new AbortController();
+      const timeoutId = setTimeout(() => abortControllerRef.current?.abort(), 120_000);
+
       const { data, error } = await supabase.functions.invoke("generate-story", {
         body: {
           length: storyLength,
@@ -153,13 +172,11 @@ const CreateStoryPage = () => {
           textLanguage,
           globalLanguage: kidAppLanguage,
           userId: user.id,
-          // Modular prompt system: CORE + KINDER-MODUL
           source: 'kid',
           isSeries: storySettings?.isSeries || false,
           storyType: "educational",
           kidName: selectedProfile?.name,
           kidHobbies: selectedProfile?.hobbies,
-          // Block 2.3d: New wizard parameters (camelCase to match Edge Function)
           storyLanguage: effectiveLanguage,
           kidProfileId: selectedProfile?.id,
           kidAge: selectedProfile?.age,
@@ -167,6 +184,7 @@ const CreateStoryPage = () => {
           contentSafetyLevel: selectedProfile?.content_safety_level,
         },
       });
+      clearTimeout(timeoutId);
 
       if (error) {
         console.error("Generation error:", error);
@@ -294,8 +312,14 @@ const CreateStoryPage = () => {
         }
 
         // For series: set series_id to the story's own ID (self-reference)
+        // CRITICAL: Without this, loadSeriesContext won't find Episode 1 for Episode 2+
         if (isSeries && savedStory) {
-          await supabase.from("stories").update({ series_id: savedStory.id }).eq("id", savedStory.id);
+          const { error: seriesIdErr } = await supabase.from("stories").update({ series_id: savedStory.id }).eq("id", savedStory.id);
+          if (seriesIdErr) {
+            console.error("[CreateStory] CRITICAL: Failed to set series_id on Episode 1:", seriesIdErr);
+            // Retry once
+            await supabase.from("stories").update({ series_id: savedStory.id }).eq("id", savedStory.id);
+          }
         }
 
         // For interactive series (educational): save branch options
@@ -429,6 +453,12 @@ const CreateStoryPage = () => {
       return;
     }
 
+    // K5: Enforce daily rate limit
+    if (limitReached) {
+      toast.error(`Tageslimit erreicht (${dailyLimit} Geschichten pro Tag)`);
+      return;
+    }
+
     setIsGenerating(true);
     setCurrentScreen("generating");
 
@@ -476,6 +506,11 @@ const CreateStoryPage = () => {
 
       // Determine include_self from character selection
       const includeSelf = selectedCharacters.some(c => c.type === "me");
+
+      // Abort any previous request + set 120s timeout
+      abortControllerRef.current?.abort();
+      abortControllerRef.current = new AbortController();
+      const timeoutId = setTimeout(() => abortControllerRef.current?.abort(), 120_000);
       
       const { data, error } = await supabase.functions.invoke("generate-story", {
         body: {
@@ -486,11 +521,9 @@ const CreateStoryPage = () => {
           textLanguage,
           globalLanguage: kidAppLanguage,
           userId: user.id,
-          // Modular prompt system: CORE + KINDER-MODUL (+ SERIEN-MODUL if series)
           source: 'kid',
           isSeries,
           storyType: selectedStoryType,
-          // Character data for richer generation
           characters: selectedCharacters.map(c => ({
             name: c.name,
             type: c.type,
@@ -504,13 +537,10 @@ const CreateStoryPage = () => {
           subElements: selectedSubElements,
           humorLevel,
           additionalDescription: userDescription,
-          // Kid profile for personalization
           kidName: selectedProfile?.name,
           kidHobbies: selectedProfile?.hobbies,
-          // Series settings
           seriesMode: isSeries ? seriesMode : undefined,
-          endingType: isSeries ? 'C' : 'A', // Cliffhanger for series, closed for standalone
-          // Block 2.3d: New wizard parameters (camelCase to match Edge Function)
+          endingType: isSeries ? 'C' : 'A',
           storyLanguage: effectiveLanguage,
           includeSelf,
           surprise_characters: surpriseCharactersFlag,
@@ -520,6 +550,7 @@ const CreateStoryPage = () => {
           contentSafetyLevel: selectedProfile?.content_safety_level,
         },
       });
+      clearTimeout(timeoutId);
 
       if (error) {
         console.error("Generation error:", error);
@@ -641,8 +672,14 @@ const CreateStoryPage = () => {
         }
 
         // For series: set series_id to the story's own ID (self-reference)
+        // CRITICAL: Without this, loadSeriesContext won't find Episode 1 for Episode 2+
         if (isSeries && savedStory) {
-          await supabase.from("stories").update({ series_id: savedStory.id }).eq("id", savedStory.id);
+          const { error: seriesIdErr } = await supabase.from("stories").update({ series_id: savedStory.id }).eq("id", savedStory.id);
+          if (seriesIdErr) {
+            console.error("[CreateStory] CRITICAL: Failed to set series_id on Episode 1:", seriesIdErr);
+            // Retry once
+            await supabase.from("stories").update({ series_id: savedStory.id }).eq("id", savedStory.id);
+          }
         }
 
         // For interactive series (fiction): save branch options
@@ -760,12 +797,31 @@ const CreateStoryPage = () => {
             />
           </div>
 
+          {/* Daily limit indicator */}
+          <div className="px-4 max-w-lg mx-auto w-full">
+            <div className={`flex items-center justify-center gap-2 py-2 px-4 rounded-xl text-sm font-medium ${
+              limitReached
+                ? 'bg-red-100 text-red-700'
+                : storiesRemaining <= 2
+                  ? 'bg-amber-100 text-amber-700'
+                  : 'bg-emerald-50 text-emerald-700'
+            }`}>
+              <span>{limitReached ? '🚫' : '📖'}</span>
+              <span>
+                {limitReached
+                  ? `Tageslimit erreicht (${dailyLimit}/${dailyLimit})`
+                  : `Noch ${storiesRemaining} von ${dailyLimit} Geschichten heute übrig`}
+              </span>
+            </div>
+          </div>
+
           {/* Two path cards */}
           <div className="flex-1 flex flex-col items-center px-4 py-6 gap-4 max-w-lg mx-auto w-full">
             {/* Weg A: Free */}
             <button
               onClick={() => handlePathSelect("free")}
-              className="w-full bg-white rounded-2xl p-5 text-left transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] focus:outline-none"
+              disabled={limitReached}
+              className="w-full bg-white rounded-2xl p-5 text-left transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] focus:outline-none disabled:opacity-50 disabled:pointer-events-none"
               style={{ boxShadow: "0 2px 12px -4px rgba(45,24,16,0.1)" }}
             >
               <div className="flex items-center gap-4">
@@ -784,7 +840,8 @@ const CreateStoryPage = () => {
             {/* Weg B: Guided */}
             <button
               onClick={() => handlePathSelect("guided")}
-              className="w-full bg-white rounded-2xl p-5 text-left transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] focus:outline-none"
+              disabled={limitReached}
+              className="w-full bg-white rounded-2xl p-5 text-left transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] focus:outline-none disabled:opacity-50 disabled:pointer-events-none"
               style={{ boxShadow: "0 2px 12px -4px rgba(45,24,16,0.1)" }}
             >
               <div className="flex items-center gap-4">

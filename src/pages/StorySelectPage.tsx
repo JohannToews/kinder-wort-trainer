@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
@@ -47,6 +47,9 @@ const StorySelectPage = () => {
   const appLang = kidAppLanguage;
   const t = useTranslations(appLang);
   const [isGeneratingForSeries, setIsGeneratingForSeries] = useState<string | null>(null);
+  // AbortController for episode generation — prevents orphaned requests
+  const abortControllerRef = useRef<AbortController | null>(null);
+  useEffect(() => { return () => { abortControllerRef.current?.abort(); }; }, []);
 
   // React Query: fetch stories + results with 5min cache
   const { data: queryData, isLoading } = useQuery({
@@ -165,7 +168,11 @@ const StorySelectPage = () => {
       // Episode 5 should be final (ending type A), others are cliffhangers (C)
       const endingType = nextEpisodeNumber >= 5 ? 'A' : 'C';
       
-      // Call generate-story function with modular prompt system
+      // Call generate-story function with 120s timeout
+      abortControllerRef.current?.abort();
+      abortControllerRef.current = new AbortController();
+      const timeoutId = setTimeout(() => abortControllerRef.current?.abort(), 120_000);
+
       const { data, error } = await supabase.functions.invoke("generate-story", {
         body: {
           length: "medium",
@@ -189,6 +196,7 @@ const StorySelectPage = () => {
           storyLanguage: appLang,
         },
       });
+      clearTimeout(timeoutId);
       
       if (error) throw error;
       
@@ -456,6 +464,7 @@ const StoryCard = ({
             alt={story.title}
             loading="lazy"
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+            onError={(e) => { e.currentTarget.src = '/fallback-illustration.svg'; }}
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-sunshine-light to-cotton-candy">

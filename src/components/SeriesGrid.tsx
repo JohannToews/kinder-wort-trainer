@@ -106,6 +106,7 @@ const SeriesGrid = ({
                     alt={firstEpisode.title}
                     loading="lazy"
                     className="w-full h-full object-cover"
+                    onError={(e) => { e.currentTarget.src = '/fallback-illustration.svg'; }}
                   />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/20 to-accent/20">
@@ -172,6 +173,7 @@ const SeriesGrid = ({
                           alt={episode.title}
                           loading="lazy"
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                          onError={(e) => { e.currentTarget.src = '/fallback-illustration.svg'; }}
                         />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/10 to-accent/10">
