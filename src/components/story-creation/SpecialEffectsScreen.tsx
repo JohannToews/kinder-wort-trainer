@@ -5,6 +5,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { SpecialAttribute, StoryLength, StoryDifficulty, LANGUAGE_FLAGS, LANGUAGE_LABELS } from "./types";
 import { cn } from "@/lib/utils";
 import { useKidProfile } from "@/hooks/useKidProfile";
+import { useStoryLengthOptions } from "@/hooks/useStoryLengthOptions";
 import FablinoPageHeader from "@/components/FablinoPageHeader";
 import FablinoMascot from "@/components/FablinoMascot";
 import VoiceRecordButton from "./VoiceRecordButton";
@@ -195,6 +196,13 @@ interface SpecialEffectsScreenProps {
   fablinoMessage?: string;
 }
 
+const LENGTH_CARD_EMOJIS: Record<string, string> = {
+  short: "📖",
+  medium: "📚",
+  long: "📚📚",
+  extra_long: "📚📚📚",
+};
+
 const SpecialEffectsScreen = ({
   onComplete,
   onBack,
@@ -204,9 +212,12 @@ const SpecialEffectsScreen = ({
   defaultLanguage = 'fr',
   fablinoMessage,
 }: SpecialEffectsScreenProps) => {
-  const { kidAppLanguage, kidReadingLanguage } = useKidProfile();
+  const { kidAppLanguage, kidReadingLanguage, selectedProfile } = useKidProfile();
   const t = translations[kidAppLanguage] || translations.de;
   const st = settingsTranslations[kidAppLanguage] || settingsTranslations.de;
+
+  // Load generation config from DB based on kid's age
+  const { options: lengthOptions, defaultLength, loading: lengthLoading } = useStoryLengthOptions(selectedProfile?.age);
   
   const [selectedAttributes, setSelectedAttributes] = useState<SpecialAttribute[]>([]);
   const [additionalDescription, setAdditionalDescription] = useState("");
@@ -214,6 +225,13 @@ const SpecialEffectsScreen = ({
   // Settings state (only used when showSettings = true, i.e. Weg A)
   const [storyLength, setStoryLength] = useState<StoryLength>("medium");
   const [storyDifficulty, setStoryDifficulty] = useState<StoryDifficulty>("medium");
+
+  // Set default length from DB when loaded
+  const [defaultApplied, setDefaultApplied] = useState(false);
+  if (!defaultApplied && !lengthLoading && defaultLength) {
+    setStoryLength(defaultLength as StoryLength);
+    setDefaultApplied(true);
+  }
   const [isSeries, setIsSeries] = useState(false);
   const [seriesMode, setSeriesMode] = useState<'normal' | 'interactive'>('normal');
   const [storyLanguage, setStoryLanguage] = useState<string>(defaultLanguage);
@@ -268,22 +286,44 @@ const SpecialEffectsScreen = ({
         {/* Story Settings (only for Weg A / free path) – compact toggle rows */}
         {true && (
           <div className="w-full bg-white/70 backdrop-blur-sm rounded-2xl border border-orange-100 shadow-sm p-3 space-y-2">
-            {/* Length */}
-            <div className="flex items-center gap-3">
-              <span className="text-sm font-semibold text-[#92400E] w-24 shrink-0">{st.lengthLabel}</span>
-              <div className="flex-1 flex gap-1.5 bg-orange-50/60 rounded-xl p-1">
-                {(["short", "medium", "long", "extra_long"] as StoryLength[]).map((len) => (
+            {/* Length — dynamic from generation_config */}
+            <div className="space-y-1.5">
+              <span className="text-sm font-semibold text-[#92400E]">{st.lengthLabel}</span>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {(lengthOptions.length > 0
+                  ? lengthOptions.map((opt) => ({
+                      key: opt.story_length as StoryLength,
+                      label: (opt.length_labels as Record<string, string>)?.[kidAppLanguage]
+                        || (opt.length_labels as Record<string, string>)?.de
+                        || opt.story_length,
+                      desc: (opt.length_description as Record<string, string>)?.[kidAppLanguage]
+                        || (opt.length_description as Record<string, string>)?.de
+                        || "",
+                      images: opt.scene_image_count + (opt.include_cover ? 1 : 0),
+                    }))
+                  : (["short", "medium", "long", "extra_long"] as StoryLength[]).map((len) => ({
+                      key: len,
+                      label: len === "short" ? st.short : len === "medium" ? st.medium : len === "long" ? st.long : st.extra_long,
+                      desc: "",
+                      images: 0,
+                    }))
+                ).map((item) => (
                   <button
-                    key={len}
-                    onClick={() => setStoryLength(len)}
+                    key={item.key}
+                    onClick={() => setStoryLength(item.key)}
                     className={cn(
-                      "flex-1 py-1.5 text-xs sm:text-sm rounded-lg transition-all duration-200 font-medium text-center",
-                      storyLength === len
-                        ? "bg-[#E8863A] text-white shadow-sm"
-                        : "text-[#2D1810]/70 hover:text-[#2D1810] hover:bg-white/60"
+                      "flex flex-col items-center gap-0.5 py-2.5 px-2 rounded-xl transition-all duration-200 text-center",
+                      storyLength === item.key
+                        ? "bg-[#E8863A] text-white shadow-md scale-[1.02]"
+                        : "bg-orange-50/60 text-[#2D1810]/70 hover:bg-white/80 hover:text-[#2D1810]"
                     )}
                   >
-                    {len === "short" ? st.short : len === "medium" ? st.medium : len === "long" ? st.long : st.extra_long}
+                    <span className="text-lg leading-none">{LENGTH_CARD_EMOJIS[item.key] || "📖"}</span>
+                    <span className="text-xs font-semibold leading-tight">{item.label}</span>
+                    {item.desc && <span className="text-[10px] opacity-80 leading-tight">{item.desc}</span>}
+                    {item.images > 0 && (
+                      <span className="text-[10px] opacity-70 leading-tight">{item.images} Bilder</span>
+                    )}
                   </button>
                 ))}
               </div>

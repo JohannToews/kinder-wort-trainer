@@ -276,6 +276,7 @@ const CreateStoryPage = () => {
             generation_status: "verified",
             ending_type: isSeries ? 'C' : 'A',
             episode_number: isSeries ? 1 : null,
+            story_length: storyLength,
             series_id: null, // Will self-reference after insert for series
             series_mode: isSeries ? (storySettings?.seriesMode || 'normal') : null,
             // Block 2.3c: Story classification metadata
@@ -636,6 +637,7 @@ const CreateStoryPage = () => {
             generation_status: "verified",
             ending_type: isSeries ? 'C' : 'A',
             episode_number: isSeries ? 1 : null,
+            story_length: storyLength,
             series_id: null, // Will self-reference after insert for series
             series_mode: isSeries ? seriesMode : null,
             // Block 2.3c: Story classification metadata

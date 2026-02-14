@@ -553,6 +553,7 @@ const ReadingPage = () => {
           // Phase 2: Pass series flag + kid profile for new prompt path
           isSeries: true,
           seriesMode: story.series_mode || 'normal',
+          storyLength: (story as any).story_length || 'medium',
           storyLanguage: story.text_language || "de",
           kidProfileId: story.kid_profile_id,
         },
@@ -607,6 +608,7 @@ const ReadingPage = () => {
         user_id: user.id,
         kid_profile_id: story.kid_profile_id,
         episode_number: nextEpisodeNumber,
+        story_length: (story as any).story_length || 'medium',
         series_id: story.series_id || story.id,
         ending_type: nextEpisodeNumber >= 5 ? "A" : "C",
       });
@@ -635,6 +637,7 @@ const ReadingPage = () => {
           kid_profile_id: story.kid_profile_id,
           ending_type: nextEpisodeNumber >= 5 ? "A" : "C",
           episode_number: nextEpisodeNumber,
+          story_length: (story as any).story_length || 'medium',
           series_id: story.series_id || story.id, // Backward compat: old Episode 1 has null series_id
           series_mode: data.series_mode || story.series_mode || null,
           // Phase 2: Series context fields from generate-story response
@@ -885,6 +888,7 @@ const ReadingPage = () => {
           userId: user.id,
           isSeries: true,
           seriesMode: 'interactive',
+          storyLength: (story as any).story_length || 'medium',
           branchChosen: branchTitle,
           storyLanguage: story.text_language || "de",
           kidProfileId: story.kid_profile_id,
@@ -960,6 +964,7 @@ const ReadingPage = () => {
             kid_profile_id: story.kid_profile_id,
             ending_type: nextEpisodeNumber >= 5 ? "A" : "C",
             episode_number: nextEpisodeNumber,
+            story_length: (story as any).story_length || 'medium',
             series_id: story.series_id || story.id,
             series_mode: 'interactive',
             episode_summary: genData.episode_summary ?? null,

@@ -1,13 +1,15 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
-const DAILY_STORY_LIMIT = 5;
+// Hardcoded fallback if rate_limits_config can't be loaded
+const FALLBACK_DAILY_LIMIT = 5;
 
 export function useDailyStoryLimit(kidProfileId: string | undefined) {
   const [storiesCreatedToday, setStoriesCreatedToday] = useState(0);
+  const [limit, setLimit] = useState(FALLBACK_DAILY_LIMIT);
   const [loading, setLoading] = useState(true);
 
-  const fetchCount = useCallback(async () => {
+  const fetchAll = useCallback(async () => {
     if (!kidProfileId) {
       setStoriesCreatedToday(0);
       setLoading(false);
@@ -15,7 +17,20 @@ export function useDailyStoryLimit(kidProfileId: string | undefined) {
     }
 
     try {
-      // Get start of today in UTC
+      // 1. Load rate limit from DB (use 'beta' plan for now — can be expanded later)
+      const { data: limitRow } = await (supabase as any)
+        .from('rate_limits_config')
+        .select('max_stories_per_day, max_stories_per_kid_per_day')
+        .eq('plan_type', 'beta')
+        .maybeSingle();
+
+      if (limitRow) {
+        // Use per-kid limit if set, otherwise per-account limit
+        const effectiveLimit = limitRow.max_stories_per_kid_per_day ?? limitRow.max_stories_per_day ?? FALLBACK_DAILY_LIMIT;
+        setLimit(effectiveLimit);
+      }
+
+      // 2. Count stories created today for this kid profile
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       const todayISO = today.toISOString();
@@ -30,25 +45,25 @@ export function useDailyStoryLimit(kidProfileId: string | undefined) {
         setStoriesCreatedToday(count);
       }
     } catch (e) {
-      console.error('[useDailyStoryLimit] Error fetching count:', e);
+      console.error('[useDailyStoryLimit] Error:', e);
     } finally {
       setLoading(false);
     }
   }, [kidProfileId]);
 
   useEffect(() => {
-    fetchCount();
-  }, [fetchCount]);
+    fetchAll();
+  }, [fetchAll]);
 
-  const remaining = Math.max(0, DAILY_STORY_LIMIT - storiesCreatedToday);
+  const remaining = Math.max(0, limit - storiesCreatedToday);
   const limitReached = remaining <= 0;
 
   return {
     storiesCreatedToday,
     remaining,
-    limit: DAILY_STORY_LIMIT,
+    limit,
     limitReached,
     loading,
-    refresh: fetchCount,
+    refresh: fetchAll,
   };
 }

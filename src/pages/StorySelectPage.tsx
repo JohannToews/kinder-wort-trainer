@@ -25,6 +25,7 @@ interface Story {
   series_id: string | null;
   episode_number: number | null;
   ending_type: string | null;
+  story_length?: string | null;
   series_mode?: string | null;
   branch_chosen?: string | null;
   completed?: boolean | null;
@@ -189,6 +190,7 @@ const StorySelectPage = () => {
           source: 'kid',
           isSeries: true,
           seriesMode: lastEpisode.series_mode || undefined,
+          storyLength: lastEpisode.story_length || 'medium',
           kidName: selectedProfile.name,
           kidHobbies: selectedProfile.hobbies,
           // Phase 2: Pass kid profile ID + language for new prompt path & series context
@@ -270,6 +272,7 @@ const StorySelectPage = () => {
           text_language: appLang,
           ending_type: endingType,
           episode_number: nextEpisodeNumber,
+          story_length: lastEpisode.story_length || 'medium',
           series_id: series.seriesId,
           series_mode: data.series_mode || lastEpisode.series_mode || null,
           // Phase 2: Series context fields from generate-story response

@@ -73,6 +73,12 @@ export interface StoryRequest {
     settingIdea: string;
     label: string;            // localized label for display
   };
+  // ── Granular generation config (from generation_config table) ──
+  word_count_override?: {
+    min_words: number;
+    max_words: number;
+    scene_image_count: number;
+  };
 }
 
 // ─── Section Headers (translated) ───────────────────────────────
@@ -952,9 +958,18 @@ export async function buildStoryPrompt(
     .limit(5);
 
   // ── Compute word counts ──
-  const factor = { short: 0.7, medium: 1.0, long: 1.4, extra_long: 2.0 }[request.length] || 1.0;
-  const minWords = Math.round(ageRules.min_word_count * factor);
-  const maxWords = Math.round(ageRules.max_word_count * factor);
+  // If generation_config override is provided (from DB), use it directly.
+  // Otherwise fall back to the age_rules × factor calculation.
+  let minWords: number;
+  let maxWords: number;
+  if (request.word_count_override) {
+    minWords = request.word_count_override.min_words;
+    maxWords = request.word_count_override.max_words;
+  } else {
+    const factor = { short: 0.7, medium: 1.0, long: 1.4, extra_long: 2.0 }[request.length] || 1.0;
+    minWords = Math.round(ageRules.min_word_count * factor);
+    maxWords = Math.round(ageRules.max_word_count * factor);
+  }
 
   // ── Build variety block ──
   const varietyBlock = buildVarietyBlock(recentStories || [], headers);

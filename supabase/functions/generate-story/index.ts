@@ -1436,6 +1436,72 @@ Deno.serve(async (req) => {
       console.warn('[GENERATE] Failed to load image_generation_config, using defaults:', configErr.message);
     }
 
+    // ── Load granular generation_config (age-group × story-length matrix) ──
+    const FALLBACK_GEN_CONFIG = {
+      min_words: 300,
+      max_words: 500,
+      scene_image_count: 3,
+      include_cover: true,
+    };
+
+    function resolveAgeGroup(age: number | undefined | null): string {
+      if (!age || age <= 7) return '6-7';
+      if (age <= 9) return '8-9';
+      return '10-11';
+    }
+
+    const resolvedAgeGroup = resolveAgeGroup(kidAge);
+    const resolvedStoryLength = storyLength || length || 'medium';
+
+    let genConfig = { ...FALLBACK_GEN_CONFIG };
+    try {
+      const { data: gcRow } = await supabase
+        .from('generation_config')
+        .select('min_words, max_words, scene_image_count, include_cover')
+        .eq('age_group', resolvedAgeGroup)
+        .eq('story_length', resolvedStoryLength)
+        .eq('is_active', true)
+        .maybeSingle();
+
+      if (gcRow) {
+        genConfig = {
+          min_words: gcRow.min_words,
+          max_words: gcRow.max_words,
+          scene_image_count: gcRow.scene_image_count,
+          include_cover: gcRow.include_cover ?? true,
+        };
+        console.log(`[GENERATE] generation_config loaded: age=${resolvedAgeGroup}, length=${resolvedStoryLength}`, genConfig);
+      } else {
+        // Fallback: try default for this age group
+        const { data: defaultRow } = await supabase
+          .from('generation_config')
+          .select('min_words, max_words, scene_image_count, include_cover')
+          .eq('age_group', resolvedAgeGroup)
+          .eq('is_default', true)
+          .maybeSingle();
+
+        if (defaultRow) {
+          genConfig = {
+            min_words: defaultRow.min_words,
+            max_words: defaultRow.max_words,
+            scene_image_count: defaultRow.scene_image_count,
+            include_cover: defaultRow.include_cover ?? true,
+          };
+          console.log(`[GENERATE] generation_config default loaded for age=${resolvedAgeGroup}`, genConfig);
+        } else {
+          console.warn(`[GENERATE] No generation_config found, using hardcoded fallback`);
+        }
+      }
+    } catch (gcErr: any) {
+      console.warn('[GENERATE] Failed to load generation_config, using fallback:', gcErr.message);
+    }
+
+    // Override the old maxImagesPerStory with the granular config
+    // genConfig.scene_image_count = scenes only (without cover)
+    // Total = scene_image_count + (include_cover ? 1 : 0)
+    imageGenConfig.maxImagesPerStory = genConfig.scene_image_count + (genConfig.include_cover ? 1 : 0);
+    console.log(`[GENERATE] Effective max images: ${imageGenConfig.maxImagesPerStory} (${genConfig.scene_image_count} scenes + ${genConfig.include_cover ? '1 cover' : 'no cover'})`);
+
     // ================== MODULAR PROMPT LOADING ==================
     const adminLangCode = (textLanguage || 'DE').toLowerCase();
 
@@ -1708,6 +1774,12 @@ Deno.serve(async (req) => {
           settingIdea: selectedSubtype.settingIdea,
           label: selectedSubtype.label,
         } : undefined,
+        // ── Granular generation config (from generation_config table) ──
+        word_count_override: {
+          min_words: genConfig.min_words,
+          max_words: genConfig.max_words,
+          scene_image_count: genConfig.scene_image_count,
+        },
       };
 
       // 3. Build dynamic user message

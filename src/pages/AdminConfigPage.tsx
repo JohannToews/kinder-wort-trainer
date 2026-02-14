@@ -7,14 +7,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
-import { ArrowLeft, Image, Save, Loader2, DollarSign, Gauge, ShieldCheck } from "lucide-react";
+import { ArrowLeft, Image, Save, Loader2, DollarSign, ShieldCheck } from "lucide-react";
+import GenerationConfigSection from "@/components/GenerationConfigSection";
 import { useAuth } from "@/hooks/useAuth";
 import {
   useImageGenerationConfig,
   IMAGE_MODEL_OPTIONS,
   ImageModelId,
   ImagenModelsConfig,
-  GenerationLimitsConfig,
 } from "@/hooks/useImageGenerationConfig";
 
 const AdminConfigPage = () => {
@@ -30,18 +30,13 @@ const AdminConfigPage = () => {
 
   const {
     models,
-    limits,
     isLoading: configLoading,
     saveModels,
-    saveLimits,
   } = useImageGenerationConfig();
 
   // ── Local form state (initialized from DB) ──
   const [coverModel, setCoverModel] = useState<ImageModelId>("imagen-4.0-generate-001");
   const [sceneModel, setSceneModel] = useState<ImageModelId>("imagen-4.0-fast-generate-001");
-  const [maxImages, setMaxImages] = useState(4);
-  const [maxFree, setMaxFree] = useState(2);
-  const [maxPremium, setMaxPremium] = useState(10);
   const [isSaving, setIsSaving] = useState(false);
 
   // Sync DB → local state when config loads
@@ -49,11 +44,8 @@ const AdminConfigPage = () => {
     if (!configLoading) {
       setCoverModel(models.cover.model);
       setSceneModel(models.scene.model);
-      setMaxImages(limits.max_images_per_story);
-      setMaxFree(limits.max_stories_per_day_free);
-      setMaxPremium(limits.max_stories_per_day_premium);
     }
-  }, [configLoading, models, limits]);
+  }, [configLoading, models]);
 
   // ── Cost calculations ──
   const getModelCost = (modelId: ImageModelId) =>
@@ -62,11 +54,13 @@ const AdminConfigPage = () => {
   const getModelLabel = (modelId: ImageModelId) =>
     IMAGE_MODEL_OPTIONS.find((m) => m.value === modelId)?.label ?? "Unknown";
 
+  // Cost per story with ~3 scene images (average from generation_config)
+  const avgScenes = 3;
   const costPerStory = useMemo(() => {
     const coverCost = getModelCost(coverModel) * 1;
-    const sceneCost = getModelCost(sceneModel) * Math.max(0, maxImages - 1);
+    const sceneCost = getModelCost(sceneModel) * avgScenes;
     return coverCost + sceneCost;
-  }, [coverModel, sceneModel, maxImages]);
+  }, [coverModel, sceneModel]);
 
   const costPerUserMonth = useMemo(() => {
     return costPerStory * 20; // estimated 20 stories/month
@@ -89,14 +83,7 @@ const AdminConfigPage = () => {
         },
       };
 
-      const newLimits: GenerationLimitsConfig = {
-        max_images_per_story: maxImages,
-        max_stories_per_day_free: maxFree,
-        max_stories_per_day_premium: maxPremium,
-      };
-
       await saveModels(newModels);
-      await saveLimits(newLimits);
 
       toast.success("Konfiguration gespeichert!");
     } catch (err: any) {
@@ -171,9 +158,7 @@ const AdminConfigPage = () => {
                   ))}
                 </SelectContent>
               </Select>
-              <p className="text-xs text-muted-foreground">
-                1× Cover pro Story
-              </p>
+              <p className="text-xs text-muted-foreground">1× Cover pro Story</p>
             </div>
 
             {/* Scene Model */}
@@ -191,9 +176,7 @@ const AdminConfigPage = () => {
                   ))}
                 </SelectContent>
               </Select>
-              <p className="text-xs text-muted-foreground">
-                {Math.max(0, maxImages - 1)}× Szenen pro Story
-              </p>
+              <p className="text-xs text-muted-foreground">~{avgScenes}× Szenen pro Story (variabel nach Alter/Länge)</p>
             </div>
 
             <Separator />
@@ -215,64 +198,14 @@ const AdminConfigPage = () => {
                 </div>
               </div>
               <p className="text-xs text-muted-foreground mt-1">
-                Berechnung: 1× Cover ({getModelLabel(coverModel)} ${getModelCost(coverModel).toFixed(2)}) + {Math.max(0, maxImages - 1)}× Szene ({getModelLabel(sceneModel)} ${getModelCost(sceneModel).toFixed(2)})
+                Berechnung: 1× Cover ({getModelLabel(coverModel)} ${getModelCost(coverModel).toFixed(2)}) + ~{avgScenes}× Szene ({getModelLabel(sceneModel)} ${getModelCost(sceneModel).toFixed(2)})
               </p>
             </div>
           </CardContent>
         </Card>
 
-        {/* ── Section 2: Generation Limits ── */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Gauge className="h-5 w-5" />
-              Generierungs-Limits
-            </CardTitle>
-            <CardDescription>
-              Begrenze die Nutzung pro Story und pro Tag.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="space-y-2">
-              <Label htmlFor="max-images">Max Bilder pro Story</Label>
-              <Input
-                id="max-images"
-                type="number"
-                min={1}
-                max={6}
-                value={maxImages}
-                onChange={(e) => setMaxImages(Math.min(6, Math.max(1, Number(e.target.value) || 1)))}
-              />
-              <p className="text-xs text-muted-foreground">1 Cover + {Math.max(0, maxImages - 1)} Szenen (1–6)</p>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="max-free">Max Stories/Tag (Free)</Label>
-              <Input
-                id="max-free"
-                type="number"
-                min={1}
-                max={10}
-                value={maxFree}
-                onChange={(e) => setMaxFree(Math.min(10, Math.max(1, Number(e.target.value) || 1)))}
-              />
-              <p className="text-xs text-muted-foreground">Kostenlose User (1–10)</p>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="max-premium">Max Stories/Tag (Premium)</Label>
-              <Input
-                id="max-premium"
-                type="number"
-                min={1}
-                max={50}
-                value={maxPremium}
-                onChange={(e) => setMaxPremium(Math.min(50, Math.max(1, Number(e.target.value) || 1)))}
-              />
-              <p className="text-xs text-muted-foreground">Premium User (1–50)</p>
-            </div>
-          </CardContent>
-        </Card>
+        {/* ── Section 2: Granulare Generierungs-Konfiguration + Rate Limits ── */}
+        <GenerationConfigSection />
 
         {/* ── Save Button ── */}
         <div className="sticky bottom-4">
