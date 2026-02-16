@@ -1,7 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { buildStoryPrompt, injectLearningTheme, StoryRequest, EPISODE_CONFIG } from '../_shared/promptBuilder.ts';
 import { shouldApplyLearningTheme } from '../_shared/learningThemeRotation.ts';
-import { buildImagePrompts, buildFallbackImagePrompt, loadImageRules, ImagePromptResult, SeriesImageContext } from '../_shared/imagePromptBuilder.ts';
+import { buildImagePrompts, buildFallbackImagePrompt, loadImageRules, getStyleForAge, ImagePromptResult, SeriesImageContext } from '../_shared/imagePromptBuilder.ts';
 import { mergeSeriesContinuityState } from '../_shared/seriesContinuityMerge.ts';
 import { selectStorySubtype, recordSubtypeUsage, SelectedSubtype } from '../_shared/storySubtypeSelector.ts';
 
@@ -1372,6 +1372,8 @@ Deno.serve(async (req) => {
       // Modus B: Interactive series
       seriesMode: seriesModeParam,     // 'normal' | 'interactive' | undefined
       branchChosen: branchChosenParam, // option title chosen by child (from frontend)
+      // Image style (Phase 1 — DB-backed styles)
+      image_style_key: imageStyleKeyParam,
     } = await req.json();
 
     // Block 2.3d/e: Debug logging for character data from frontend
@@ -2398,6 +2400,19 @@ Antworte NUR mit dem erweiterten Text (ohne Titel, ohne JSON-Format).`;
     );
     console.log(`[PERF] Image rules loaded in ${Date.now() - imageRulesStart}ms`);
 
+    // ================== Image Style from DB (Phase 1) ==================
+    let imageStyleData: { styleKey: string; promptSnippet: string; ageModifier: string } | undefined;
+    try {
+      imageStyleData = await getStyleForAge(
+        supabase,
+        childAge,
+        imageStyleKeyParam || null
+      );
+      console.log(`[generate-story] Image style resolved: ${imageStyleData.styleKey}`);
+    } catch (styleErr: any) {
+      console.warn('[generate-story] Image style lookup failed:', styleErr?.message);
+    }
+
     // ================== Block 2.4: BUILD IMAGE PROMPTS ==================
     let imagePrompts: ImagePromptResult[];
 
@@ -2440,7 +2455,7 @@ Antworte NUR mit dem erweiterten Text (ohne Titel, ohne JSON-Format).`;
           ? Object.keys(seriesImageCtx.visualStyleSheet)
           : null
       }));
-      imagePrompts = buildImagePrompts(imagePlan, imageAgeRules, imageThemeRules, childAge, seriesImageCtx);
+      imagePrompts = buildImagePrompts(imagePlan, imageAgeRules, imageThemeRules, childAge, seriesImageCtx, imageStyleData);
     } else {
       // ═══ FALLBACK: Simple cover prompt (previous behavior) ═══
       console.log('[generate-story] Using FALLBACK image path: simple cover prompt');
@@ -2465,6 +2480,7 @@ Antworte NUR mit dem erweiterten Text (ohne Titel, ohne JSON-Format).`;
         imageThemeRules,
         childAge,
         seriesImageCtx,
+        imageStyleData,
       );
       imagePrompts = [fallbackPrompt];
     }
@@ -2917,6 +2933,8 @@ Antworte NUR mit dem erweiterten Text (ohne Titel, ohne JSON-Format).`;
         label: selectedSubtype.label,
         category: selectedSubtype.category,
       } : null,
+      // Image style key (Phase 1) — for frontend to store on story row
+      image_style_key: imageStyleData?.styleKey || null,
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

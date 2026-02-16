@@ -108,7 +108,7 @@ const NO_TEXT_INSTRUCTION = 'NO TEXT, NO LETTERS, NO WORDS, NO WRITING, NO NUMBE
  * The DB provides broad age groups (4-6, 7-9, 10-12), but a 6-year-old
  * should see different images than a 9-year-old.
  */
-function getAgeModifier(age: number): string {
+function getAgeModifierFallback(age: number): string {
   if (age <= 5) return 'Art style: soft picture book for very young children. Extremely cute, round, simple. Bright cheerful colors. Everything looks safe and friendly.';
   if (age === 6) return 'Art style: colorful picture book illustration. Cute but not babyish. Friendly characters with big eyes. Warm bright colors.';
   if (age === 7) return 'Art style: modern children book illustration. Characters look capable and curious. Slightly dynamic poses. Vibrant rich colors.';
@@ -117,6 +117,72 @@ function getAgeModifier(age: number): string {
   if (age === 10) return 'Art style: graphic novel illustration. Characters look like real pre-teens with attitude and personality. Atmospheric moody lighting. Sophisticated color palette. Cinematic compositions.';
   if (age === 11) return 'Art style: young adult graphic novel. Semi-realistic characters with individual style. Dramatic lighting and angles. Complex emotions visible. Cool and mature aesthetic.';
   return 'Art style: young adult illustration. Realistic proportions, atmospheric, cinematic. Characters look like teenagers. Sophisticated visual storytelling.'; // 12+
+}
+
+// ─── DB-backed style resolver ────────────────────────────────────
+
+/**
+ * Resolves image style from the image_styles DB table.
+ * Priority: preferredStyleKey (if age-appropriate) → default for age → fallback.
+ */
+export async function getStyleForAge(
+  supabase: any,
+  age: number,
+  preferredStyleKey?: string | null
+): Promise<{
+  styleKey: string;
+  promptSnippet: string;
+  ageModifier: string;
+}> {
+  const ageGroup = age <= 7 ? '6-7' : age <= 9 ? '8-9' : '10-11';
+
+  try {
+    // 1. If kid has a preference AND the style is age-appropriate
+    if (preferredStyleKey) {
+      const { data: preferred } = await supabase
+        .from('image_styles')
+        .select('*')
+        .eq('style_key', preferredStyleKey)
+        .eq('is_active', true)
+        .contains('age_groups', [ageGroup])
+        .maybeSingle();
+
+      if (preferred) {
+        return {
+          styleKey: preferred.style_key,
+          promptSnippet: preferred.imagen_prompt_snippet,
+          ageModifier: preferred.age_modifiers?.[ageGroup] || '',
+        };
+      }
+    }
+
+    // 2. Default style for this age group
+    const { data: defaultStyle } = await supabase
+      .from('image_styles')
+      .select('*')
+      .eq('is_active', true)
+      .contains('default_for_ages', [ageGroup])
+      .order('sort_order')
+      .limit(1)
+      .maybeSingle();
+
+    if (defaultStyle) {
+      return {
+        styleKey: defaultStyle.style_key,
+        promptSnippet: defaultStyle.imagen_prompt_snippet,
+        ageModifier: defaultStyle.age_modifiers?.[ageGroup] || '',
+      };
+    }
+  } catch (err) {
+    console.error('[imagePromptBuilder] DB lookup failed:', err);
+  }
+
+  // 3. Hardcoded fallback (uses renamed old function)
+  return {
+    styleKey: 'fallback',
+    promptSnippet: getAgeModifierFallback(age),
+    ageModifier: '',
+  };
 }
 
 // ─── Main: buildImagePrompts ─────────────────────────────────────
@@ -132,6 +198,7 @@ export function buildImagePrompts(
   themeImageRules: ThemeImageRules,
   childAge: number,
   seriesContext?: SeriesImageContext,
+  imageStyleOverride?: { promptSnippet: string; ageModifier: string },
 ): ImagePromptResult[] {
   const results: ImagePromptResult[] = [];
 
@@ -143,8 +210,10 @@ export function buildImagePrompts(
     childAge
   }));
 
-  // ═══ Age modifier (fine-grained, per year) ═══
-  const ageModifier = getAgeModifier(childAge);
+  // ═══ Age modifier (DB style override or fine-grained fallback) ═══
+  const ageModifier = imageStyleOverride
+    ? `${imageStyleOverride.promptSnippet}. ${imageStyleOverride.ageModifier}`.replace(/\.\s*$/, '')
+    : getAgeModifierFallback(childAge);
 
   // ═══ Phase 3: Series visual consistency prefix ═══
   const seriesPrefix = seriesContext ? buildSeriesStylePrefix(seriesContext) : '';
@@ -240,8 +309,11 @@ export function buildFallbackImagePrompt(
   themeImageRules: ThemeImageRules,
   childAge?: number,
   seriesContext?: SeriesImageContext,
+  imageStyleOverride?: { promptSnippet: string; ageModifier: string },
 ): ImagePromptResult {
-  const ageModifier = childAge ? getAgeModifier(childAge) : '';
+  const ageModifier = imageStyleOverride
+    ? `${imageStyleOverride.promptSnippet}. ${imageStyleOverride.ageModifier}`.replace(/\.\s*$/, '')
+    : (childAge ? getAgeModifierFallback(childAge) : '');
 
   // Same series vs. single-story logic as buildImagePrompts
   const styleBlock = seriesContext
