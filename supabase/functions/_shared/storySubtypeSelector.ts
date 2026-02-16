@@ -33,6 +33,20 @@ export interface SelectedSubtype {
   label: string; // localized label
 }
 
+// DB row shape from story_subtypes table
+interface StorySubtypeRow {
+  subtype_key: string;
+  theme_key: string;
+  labels: Record<string, string>;
+  prompt_hint_en: string;
+  title_seeds: string[];
+  setting_ideas: string[];
+  age_groups: string[];
+  weight: number;
+  is_active: boolean;
+  [key: string]: unknown; // allow extra DB columns
+}
+
 function getAgeGroup(age: number): string {
   if (age <= 7) return '6-7';
   if (age <= 9) return '8-9';
@@ -125,23 +139,24 @@ export async function selectStorySubtype(
   }
 
   // 5. Filter out recently used (but keep at least 3 options)
-  let candidates = subtypes.filter((s: any) => !recentKeys.includes(s.subtype_key));
+  const typedSubtypes = subtypes as StorySubtypeRow[];
+  let candidates: StorySubtypeRow[] = typedSubtypes.filter(s => !recentKeys.includes(s.subtype_key));
 
-  if (candidates.length < 3 && subtypes.length >= 3) {
+  if (candidates.length < 3 && typedSubtypes.length >= 3) {
     // Too aggressive filtering — reduce exclusion to last 2 only
     const shorterExclusion = recentKeys.slice(0, 2);
-    candidates = subtypes.filter((s: any) => !shorterExclusion.includes(s.subtype_key));
+    candidates = typedSubtypes.filter(s => !shorterExclusion.includes(s.subtype_key));
     console.log(`[SubtypeSelector] Reduced exclusion to last 2, candidates: ${candidates.length}`);
   }
 
   if (candidates.length === 0) {
     // Fallback: use all subtypes (no exclusion)
-    candidates = subtypes;
-    console.log(`[SubtypeSelector] No candidates after exclusion, using all ${subtypes.length} subtypes`);
+    candidates = typedSubtypes;
+    console.log(`[SubtypeSelector] No candidates after exclusion, using all ${typedSubtypes.length} subtypes`);
   }
 
   // 6. Weighted random selection
-  const selected = weightedRandomPick(candidates);
+  const selected = weightedRandomPick<StorySubtypeRow>(candidates);
   if (!selected) {
     console.error('[SubtypeSelector] weightedRandomPick returned null');
     return null;
