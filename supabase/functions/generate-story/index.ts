@@ -1661,6 +1661,10 @@ Deno.serve(async (req) => {
       : null;
     const seriesEndingType = episodeConfig?.ending_type_db || resolvedEndingType || 'A';
 
+    // ── Story Subtype (hoisted for access in response block) ──
+    let selectedSubtype: SelectedSubtype | null = null;
+    let isEpisode1OrStandalone = true;
+
     try {
       // 1. Load CORE Slim v2
       const coreSlimData = await loadPrompt('system_prompt_core_v2');
@@ -1722,8 +1726,8 @@ Deno.serve(async (req) => {
 
       // ── Story Subtype Selection (Themenvariation) ──
       // Only select for Episode 1 of a series or standalone stories. Ep2+ inherit from Ep1.
-      let selectedSubtype: SelectedSubtype | null = null;
-      const isEpisode1OrStandalone = !resolvedEpisodeNumber || resolvedEpisodeNumber <= 1;
+      selectedSubtype = null;  // reset
+      isEpisode1OrStandalone = !resolvedEpisodeNumber || resolvedEpisodeNumber <= 1;
       if (isEpisode1OrStandalone) {
         try {
           selectedSubtype = await selectStorySubtype(

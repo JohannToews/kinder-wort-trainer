@@ -296,7 +296,10 @@ console.log(`Results: ${passCount}/${testCount} passed, ${failCount} failed`);
 console.log('══════════════════════════════════════════\n');
 
 if (failCount > 0) {
-  // @ts-ignore - Deno exit
-  if (typeof Deno !== 'undefined') Deno.exit(1);
-  else process.exit(1);
+  if (typeof Deno !== 'undefined') {
+    Deno.exit(1);
+  } else {
+    // @ts-ignore - Node.js fallback
+    process.exit(1);
+  }
 }
