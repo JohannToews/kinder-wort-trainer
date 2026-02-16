@@ -738,7 +738,7 @@ Deno.serve(async (req) => {
         user_id: null,
         kid_profile_id: null,
         temp_token: tempToken,
-        generation_status: 'completed',
+        generation_status: 'verified',
         difficulty: 'medium',
         text_type: 'fiction',
         story_length: 'short',
