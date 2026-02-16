@@ -301,6 +301,9 @@ export const LANGUAGE_FLAGS: Record<string, string> = {
   fr: '\u{1F1EB}\u{1F1F7}', de: '\u{1F1E9}\u{1F1EA}', en: '\u{1F1EC}\u{1F1E7}',
   es: '\u{1F1EA}\u{1F1F8}', it: '\u{1F1EE}\u{1F1F9}', bs: '\u{1F1E7}\u{1F1E6}',
   nl: '\u{1F1F3}\u{1F1F1}',
+  // Beta languages
+  hu: '\u{1F1ED}\u{1F1FA}', pt: '\u{1F1F5}\u{1F1F9}', tr: '\u{1F1F9}\u{1F1F7}', bg: '\u{1F1E7}\u{1F1EC}',
+  lt: '\u{1F1F1}\u{1F1F9}', ca: '\u{1F3F4}', pl: '\u{1F1F5}\u{1F1F1}', sk: '\u{1F1F8}\u{1F1F0}',
 };
 
 export const LANGUAGE_LABELS: Record<string, Record<string, string>> = {
@@ -311,6 +314,15 @@ export const LANGUAGE_LABELS: Record<string, Record<string, string>> = {
   it: { fr: 'Italien', de: 'Italienisch', en: 'Italian', es: 'Italiano', it: 'Italiano', bs: 'Italijanski', nl: 'Italiaans' },
   bs: { fr: 'Bosnien', de: 'Bosnisch', en: 'Bosnian', es: 'Bosnio', it: 'Bosniaco', bs: 'Bosanski', nl: 'Bosnisch' },
   nl: { fr: 'N\u00e9erlandais', de: 'Niederl\u00e4ndisch', en: 'Dutch', es: 'Holand\u00e9s', it: 'Olandese', bs: 'Holandski', nl: 'Nederlands' },
+  // Beta languages
+  hu: { fr: 'Hongrois', de: 'Ungarisch', en: 'Hungarian', es: 'H\u00fangaro', it: 'Ungherese', bs: 'Ma\u0111arski', nl: 'Hongaars' },
+  pt: { fr: 'Portugais', de: 'Portugiesisch', en: 'Portuguese', es: 'Portugu\u00e9s', it: 'Portoghese', bs: 'Portugalski', nl: 'Portugees' },
+  tr: { fr: 'Turc', de: 'T\u00fcrkisch', en: 'Turkish', es: 'Turco', it: 'Turco', bs: 'Turski', nl: 'Turks' },
+  bg: { fr: 'Bulgare', de: 'Bulgarisch', en: 'Bulgarian', es: 'B\u00falgaro', it: 'Bulgaro', bs: 'Bugarski', nl: 'Bulgaars' },
+  lt: { fr: 'Lituanien', de: 'Litauisch', en: 'Lithuanian', es: 'Lituano', it: 'Lituano', bs: 'Litvanski', nl: 'Litouws' },
+  ca: { fr: 'Catalan', de: 'Katalanisch', en: 'Catalan', es: 'Catal\u00e1n', it: 'Catalano', bs: 'Katalonski', nl: 'Catalaans' },
+  pl: { fr: 'Polonais', de: 'Polnisch', en: 'Polish', es: 'Polaco', it: 'Polacco', bs: 'Poljski', nl: 'Pools' },
+  sk: { fr: 'Slovaque', de: 'Slowakisch', en: 'Slovak', es: 'Eslovaco', it: 'Slovacco', bs: 'Slova\u010dki', nl: 'Slowaaks' },
 };
 
 export interface StoryTypeSelectionTranslations {

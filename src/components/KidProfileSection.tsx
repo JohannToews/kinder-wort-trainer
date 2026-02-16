@@ -13,6 +13,7 @@ import { useTranslations, Language } from "@/lib/translations";
 import { DEFAULT_SCHOOL_SYSTEMS, SchoolSystems, SchoolSystem } from "@/lib/schoolSystems";
 import { useKidProfile } from "@/hooks/useKidProfile";
 import { LANGUAGE_FLAGS, LANGUAGE_LABELS } from "@/components/story-creation/types";
+import { STORY_LANGUAGES } from "@/lib/languages";
 
 interface KidCharacterDB {
   id: string;
@@ -984,20 +985,20 @@ const KidProfileSection = ({ language, userId, onProfileUpdate }: KidProfileSect
             <div className="space-y-2">
               <Label>{t.storyLanguagesLabel}</Label>
               <p className="text-xs text-muted-foreground">{t.storyLanguagesHint}</p>
+              {/* Core languages */}
               <div className="flex flex-wrap gap-2">
-                {(['fr', 'de', 'en', 'es', 'it', 'bs'] as const).map((lang) => {
-                  const isSelected = (currentProfile.story_languages || []).includes(lang);
+                {STORY_LANGUAGES.filter(l => l.tier === 'core').map((sl) => {
+                  const isSelected = (currentProfile.story_languages || []).includes(sl.code);
                   return (
                     <button
-                      key={lang}
+                      key={sl.code}
                       onClick={() => {
                         const current = currentProfile.story_languages || [];
                         if (isSelected) {
-                          // Don't allow deselecting the last language
                           if (current.length <= 1) return;
-                          updateCurrentProfile({ story_languages: current.filter(l => l !== lang) });
+                          updateCurrentProfile({ story_languages: current.filter(l => l !== sl.code) });
                         } else {
-                          updateCurrentProfile({ story_languages: [...current, lang] });
+                          updateCurrentProfile({ story_languages: [...current, sl.code] });
                         }
                       }}
                       className={`px-3 py-1.5 rounded-lg border-2 transition-all text-sm font-medium ${
@@ -1006,7 +1007,35 @@ const KidProfileSection = ({ language, userId, onProfileUpdate }: KidProfileSect
                           : 'border-muted bg-background text-muted-foreground hover:border-muted-foreground/50'
                       }`}
                     >
-                      {LANGUAGE_FLAGS[lang] || ''} {LANGUAGE_LABELS[lang]?.[language] || lang.toUpperCase()}
+                      {LANGUAGE_FLAGS[sl.code] || ''} {LANGUAGE_LABELS[sl.code]?.[language] || sl.nameNative}
+                    </button>
+                  );
+                })}
+              </div>
+              {/* Beta languages */}
+              <div className="flex flex-wrap gap-2 pt-1">
+                {STORY_LANGUAGES.filter(l => l.tier === 'beta').map((sl) => {
+                  const isSelected = (currentProfile.story_languages || []).includes(sl.code);
+                  return (
+                    <button
+                      key={sl.code}
+                      onClick={() => {
+                        const current = currentProfile.story_languages || [];
+                        if (isSelected) {
+                          if (current.length <= 1) return;
+                          updateCurrentProfile({ story_languages: current.filter(l => l !== sl.code) });
+                        } else {
+                          updateCurrentProfile({ story_languages: [...current, sl.code] });
+                        }
+                      }}
+                      className={`px-3 py-1.5 rounded-lg border-2 transition-all text-sm font-medium ${
+                        isSelected
+                          ? 'border-primary bg-primary/10 text-primary ring-1 ring-primary/30'
+                          : 'border-muted bg-background text-muted-foreground hover:border-muted-foreground/50'
+                      }`}
+                    >
+                      {LANGUAGE_FLAGS[sl.code] || ''} {LANGUAGE_LABELS[sl.code]?.[language] || sl.nameNative}
+                      <span className="ml-1 text-[10px] opacity-70 font-normal">Beta</span>
                     </button>
                   );
                 })}

@@ -167,6 +167,9 @@ const SECTION_HEADERS: Record<string, Record<string, string>> = {
 const LANGUAGE_NAMES: Record<string, string> = {
   fr: 'Français', de: 'Deutsch', en: 'English',
   es: 'Español', it: 'Italiano', bs: 'Bosanski', nl: 'Nederlands',
+  // Beta languages
+  hu: 'Magyar', pt: 'Português', tr: 'Türkçe', bg: 'Български',
+  lt: 'Lietuvių', ca: 'Català', pl: 'Polski', sk: 'Slovenčina',
 };
 
 // ─── Helper: extract JSONB label ────────────────────────────────
@@ -808,30 +811,46 @@ export async function buildStoryPrompt(
   const questionCount = request.question_count || 5;
 
   // ── 1. Load age_rules (with fallback to 'de') ──
+  // Clamp to min 6 for DB lookup — age_rules starts at min_age=6.
+  // The real age (e.g. 5) is still used in the prompt text itself.
+  const ageForRules = Math.max(request.kid_profile.age, 6);
+
   let ageRules: any = null;
   {
     const { data, error: ageErr } = await supabaseClient
       .from('age_rules')
       .select('*')
       .eq('language', lang)
-      .lte('min_age', request.kid_profile.age)
-      .gte('max_age', request.kid_profile.age)
+      .lte('min_age', ageForRules)
+      .gte('max_age', ageForRules)
       .limit(1)
       .maybeSingle();
     if (ageErr) console.error('[promptBuilder] age_rules error:', ageErr.message);
     ageRules = data;
 
+    if (!ageRules && lang !== 'en' && lang !== 'de') {
+      console.warn(`[promptBuilder] No age_rules for lang=${lang}. Trying 'en'...`);
+      const { data: enFallback } = await supabaseClient
+        .from('age_rules')
+        .select('*')
+        .eq('language', 'en')
+        .lte('min_age', ageForRules)
+        .gte('max_age', ageForRules)
+        .limit(1)
+        .maybeSingle();
+      ageRules = enFallback;
+    }
     if (!ageRules && lang !== 'de') {
-      console.warn(`[promptBuilder] No age_rules for language=${lang}, age=${request.kid_profile.age}. Trying 'de' fallback...`);
-      const { data: fallback } = await supabaseClient
+      console.warn(`[promptBuilder] No age_rules for lang=${lang} or 'en'. Trying 'de'...`);
+      const { data: deFallback } = await supabaseClient
         .from('age_rules')
         .select('*')
         .eq('language', 'de')
-        .lte('min_age', request.kid_profile.age)
-        .gte('max_age', request.kid_profile.age)
+        .lte('min_age', ageForRules)
+        .gte('max_age', ageForRules)
         .limit(1)
         .maybeSingle();
-      ageRules = fallback;
+      ageRules = deFallback;
     }
     if (!ageRules) {
       console.error(`[promptBuilder] No age_rules found at all for age=${request.kid_profile.age}. Using hardcoded defaults.`);
@@ -858,16 +877,27 @@ export async function buildStoryPrompt(
     if (diffErr) console.error('[promptBuilder] difficulty_rules error:', diffErr.message);
     diffRules = data;
 
+    if (!diffRules && lang !== 'en' && lang !== 'de') {
+      console.warn(`[promptBuilder] No difficulty_rules for lang=${lang}. Trying 'en'...`);
+      const { data: enFallback } = await supabaseClient
+        .from('difficulty_rules')
+        .select('*')
+        .eq('language', 'en')
+        .eq('difficulty_level', request.kid_profile.difficulty_level)
+        .limit(1)
+        .maybeSingle();
+      diffRules = enFallback;
+    }
     if (!diffRules && lang !== 'de') {
-      console.warn(`[promptBuilder] No difficulty_rules for language=${lang}, level=${request.kid_profile.difficulty_level}. Trying 'de' fallback...`);
-      const { data: fallback } = await supabaseClient
+      console.warn(`[promptBuilder] No difficulty_rules for lang=${lang} or 'en'. Trying 'de'...`);
+      const { data: deFallback } = await supabaseClient
         .from('difficulty_rules')
         .select('*')
         .eq('language', 'de')
         .eq('difficulty_level', request.kid_profile.difficulty_level)
         .limit(1)
         .maybeSingle();
-      diffRules = fallback;
+      diffRules = deFallback;
     }
     if (!diffRules) {
       console.error(`[promptBuilder] No difficulty_rules found at all for level=${request.kid_profile.difficulty_level}. Using hardcoded defaults.`);
@@ -896,20 +926,33 @@ export async function buildStoryPrompt(
     if (themeErr) console.error('[promptBuilder] theme_rules error:', themeErr.message);
     themeRules = data;
 
-    // Fallback 1: Same theme in German
+    // Fallback 1: Same theme in English
+    if (!themeRules && lang !== 'en' && lang !== 'de') {
+      console.warn(`[promptBuilder] No theme_rules for key=${request.theme_key}, lang=${lang}. Trying 'en'...`);
+      const { data: enFallback } = await supabaseClient
+        .from('theme_rules')
+        .select('*')
+        .eq('theme_key', request.theme_key)
+        .eq('language', 'en')
+        .limit(1)
+        .maybeSingle();
+      themeRules = enFallback;
+    }
+
+    // Fallback 2: Same theme in German
     if (!themeRules && lang !== 'de') {
-      console.warn(`[promptBuilder] No theme_rules for key=${request.theme_key}, language=${lang}. Trying 'de' fallback...`);
-      const { data: fallback } = await supabaseClient
+      console.warn(`[promptBuilder] No theme_rules for key=${request.theme_key}, lang=${lang}. Trying 'de'...`);
+      const { data: deFallback } = await supabaseClient
         .from('theme_rules')
         .select('*')
         .eq('theme_key', request.theme_key)
         .eq('language', 'de')
         .limit(1)
         .maybeSingle();
-      themeRules = fallback;
+      themeRules = deFallback;
     }
 
-    // Fallback 2: 'everyday' theme in German
+    // Fallback 3: 'everyday' theme in German
     if (!themeRules) {
       console.warn(`[promptBuilder] No theme_rules for key=${request.theme_key} in any language. Trying 'everyday' (de) fallback...`);
       const { data: fallback2 } = await supabaseClient
@@ -982,6 +1025,20 @@ export async function buildStoryPrompt(
 
   // CHILD
   sections.push(`## ${headers.child}\nName: ${request.kid_profile.first_name}, Age: ${request.kid_profile.age}`);
+
+  // Explicit language instruction for beta languages (no UI translations)
+  const BETA_LANG_CODES = new Set(['hu','pt','tr','bg','lt','ca','pl','sk']);
+  if (BETA_LANG_CODES.has(lang)) {
+    sections.push(
+      `## CRITICAL LANGUAGE INSTRUCTION\n` +
+      `Write the ENTIRE story in ${LANGUAGE_NAMES[lang] || lang} (${lang}).\n` +
+      `ALL text must be in ${LANGUAGE_NAMES[lang] || lang}: title, story text, dialogue, narration, descriptions.\n` +
+      `ALL comprehension questions and answer options must be in ${LANGUAGE_NAMES[lang] || lang}.\n` +
+      `ALL vocabulary words and their explanations must be in ${LANGUAGE_NAMES[lang] || lang}.\n` +
+      `Use correct grammar, diacritics, and punctuation for ${LANGUAGE_NAMES[lang] || lang}.\n` +
+      `Character names can remain as provided (child's real name).`
+    );
+  }
 
   // LANGUAGE & LEVEL
   const diffLabel = label(diffRules.label, lang);
