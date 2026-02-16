@@ -29,6 +29,7 @@ interface Story {
   series_mode?: string | null;
   branch_chosen?: string | null;
   completed?: boolean | null;
+  series_episode_count?: number | null;
 }
 
 // Difficulty, tab, and status labels are now in lib/translations.ts

@@ -1,5 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
-import { buildStoryPrompt, injectLearningTheme, StoryRequest, EPISODE_CONFIG } from '../_shared/promptBuilder.ts';
+import { buildStoryPrompt, injectLearningTheme, StoryRequest, EPISODE_CONFIG, getEpisodeConfig, getDefaultEpisodeCount } from '../_shared/promptBuilder.ts';
 import { shouldApplyLearningTheme } from '../_shared/learningThemeRotation.ts';
 import { buildImagePrompts, buildFallbackImagePrompt, loadImageRules, getStyleForAge, ImagePromptResult, SeriesImageContext } from '../_shared/imagePromptBuilder.ts';
 import { mergeSeriesContinuityState } from '../_shared/seriesContinuityMerge.ts';
@@ -328,15 +328,17 @@ Falls keine Probleme gefunden: {"hasIssues": false, "issues": [], "suggestedFixe
 
 /**
  * Build the series-specific consistency check prompt.
- * Uses EPISODE_CONFIG for episode function context and continuity_state for cross-episode checks.
+ * Uses getEpisodeConfig for episode function context and continuity_state for cross-episode checks.
  */
 function buildSeriesConsistencyPrompt(
   episodeNumber: number,
   storyLanguage: string,
   childAge: number,
   continuityState: any | null,
+  seriesEpisodeCount?: number | null,
 ): string {
-  const config = EPISODE_CONFIG[episodeNumber] || EPISODE_CONFIG[5];
+  const totalEps = seriesEpisodeCount || 5;
+  const config = getEpisodeConfig(episodeNumber, totalEps, childAge);
 
   const ageMin = Math.max(4, childAge - 1);
   const ageMax = childAge + 1;
@@ -345,7 +347,7 @@ function buildSeriesConsistencyPrompt(
     ? `\nPREVIOUS EPISODES CONTEXT (continuity_state from last episode):\n${JSON.stringify(continuityState, null, 2)}`
     : '\nPREVIOUS EPISODES CONTEXT: This is Episode 1 – no previous context.';
 
-  return `You are a children's story editor checking EPISODE ${episodeNumber} of a 5-episode series.
+  return `You are a children's story editor checking EPISODE ${episodeNumber} of a ${totalEps}-episode series.
 
 Target audience: children age ${ageMin}-${ageMax}.
 Story language: ${storyLanguage}.
@@ -1266,18 +1268,19 @@ async function loadSeriesContext(
   previousEpisodes: Array<{ episode_number: number; title: string; episode_summary?: string }>;
   lastContinuityState: any | null;
   visualStyleSheet: any | null;
+  seriesEpisodeCount: number | null;
 }> {
   // Query 1: Episodes that have series_id set
   const { data: episodes, error } = await supabase
     .from('stories')
-    .select('id, episode_number, title, episode_summary, continuity_state, visual_style_sheet')
+    .select('id, episode_number, title, episode_summary, continuity_state, visual_style_sheet, series_episode_count')
     .eq('series_id', seriesId)
     .lt('episode_number', currentEpisodeNumber)
     .order('episode_number', { ascending: true });
 
   if (error) {
     console.error('[loadSeriesContext] Error loading previous episodes:', error.message);
-    return { previousEpisodes: [], lastContinuityState: null, visualStyleSheet: null };
+    return { previousEpisodes: [], lastContinuityState: null, visualStyleSheet: null, seriesEpisodeCount: null };
   }
 
   // Belt-and-suspenders: Episode 1 might have series_id = NULL (self-reference set after INSERT).
@@ -1287,7 +1290,7 @@ async function loadSeriesContext(
   if (!hasEp1 && currentEpisodeNumber > 1) {
     const { data: ep1, error: ep1Err } = await supabase
       .from('stories')
-      .select('id, episode_number, title, episode_summary, continuity_state, visual_style_sheet')
+      .select('id, episode_number, title, episode_summary, continuity_state, visual_style_sheet, series_episode_count')
       .eq('id', seriesId)
       .maybeSingle();
     if (!ep1Err && ep1 && ep1.episode_number === 1) {
@@ -1300,7 +1303,7 @@ async function loadSeriesContext(
 
   if (allEpisodes.length === 0) {
     console.log('[loadSeriesContext] No previous episodes found for series:', seriesId);
-    return { previousEpisodes: [], lastContinuityState: null, visualStyleSheet: null };
+    return { previousEpisodes: [], lastContinuityState: null, visualStyleSheet: null, seriesEpisodeCount: null };
   }
 
   const rows = allEpisodes as SeriesEpisodeRow[];
@@ -1321,7 +1324,11 @@ async function loadSeriesContext(
   const ep1 = rows.find(r => r.episode_number === 1);
   const visualStyleSheet = ep1?.visual_style_sheet || null;
 
-  return { previousEpisodes, lastContinuityState, visualStyleSheet };
+  // series_episode_count from Episode 1 (or first available)
+  const ep1ForCount = rows.find(r => r.episode_number === 1) || rows[0];
+  const seriesEpisodeCount = (ep1ForCount as any)?.series_episode_count || null;
+
+  return { previousEpisodes, lastContinuityState, visualStyleSheet, seriesEpisodeCount };
 }
 
 Deno.serve(async (req) => {
@@ -1374,6 +1381,8 @@ Deno.serve(async (req) => {
       branchChosen: branchChosenParam, // option title chosen by child (from frontend)
       // Image style (Phase 1 — DB-backed styles)
       image_style_key: imageStyleKeyParam,
+      // Chapter story model — variable episode count
+      series_episode_count: seriesEpisodeCountParam,
     } = await req.json();
 
     // Block 2.3d/e: Debug logging for character data from frontend
@@ -1386,12 +1395,19 @@ Deno.serve(async (req) => {
     // ── Resolve episode number: CreateStoryPage sends no episodeNumber for Ep1, so default to 1 if isSeries ──
     const resolvedEpisodeNumber: number | undefined = episodeNumber || (isSeries ? 1 : undefined);
 
-    // ── Phase 0.2: Auto-finalize series at Episode 5 ──
-    // Override ending_type to 'A' (complete) for Episode 5+, regardless of what frontend sends.
-    // This ensures no cliffhanger is generated for the final episode.
+    // ── Resolve series episode count (variable 3-7, default 5 for legacy) ──
+    let seriesEpisodeCount: number | null = seriesEpisodeCountParam || seriesContextData.seriesEpisodeCount || null;
+    if (isSeries && resolvedEpisodeNumber === 1 && !seriesEpisodeCount) {
+      seriesEpisodeCount = getDefaultEpisodeCount(kidAge || 8);
+      console.log(`[generate-story] Auto-set series_episode_count=${seriesEpisodeCount} for Ep1 (age=${kidAge || 8})`);
+    }
+    const totalEps = seriesEpisodeCount || 5;
+
+    // ── Auto-finalize series at final episode ──
+    // Override ending_type to 'A' (complete) for the final episode, regardless of what frontend sends.
     let resolvedEndingType = endingType;
-    if (seriesId && resolvedEpisodeNumber && resolvedEpisodeNumber >= 5) {
-      console.log(`[generate-story] Series finale override: Episode ${resolvedEpisodeNumber} → ending_type 'A' (was '${endingType}')`);
+    if (seriesId && resolvedEpisodeNumber && resolvedEpisodeNumber >= totalEps) {
+      console.log(`[generate-story] Series finale override: Episode ${resolvedEpisodeNumber} of ${totalEps} → ending_type 'A' (was '${endingType}')`);
       resolvedEndingType = 'A';
     }
 
@@ -1534,7 +1550,8 @@ Deno.serve(async (req) => {
       previousEpisodes: Array<{ episode_number: number; title: string; episode_summary?: string }>;
       lastContinuityState: any | null;
       visualStyleSheet: any | null;
-    } = { previousEpisodes: [], lastContinuityState: null, visualStyleSheet: null };
+      seriesEpisodeCount: number | null;
+    } = { previousEpisodes: [], lastContinuityState: null, visualStyleSheet: null, seriesEpisodeCount: null };
 
     if (seriesId && episodeNumber && episodeNumber > 1) {
       console.log(`[generate-story] Loading series context for series=${seriesId}, episode=${episodeNumber}`);
@@ -1639,8 +1656,10 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Determine the resolved ending type from EPISODE_CONFIG (Phase 2 override)
-    const episodeConfig = resolvedEpisodeNumber ? EPISODE_CONFIG[resolvedEpisodeNumber] || EPISODE_CONFIG[5] : null;
+    // Determine the resolved ending type from episode config (Phase 2 override)
+    const episodeConfig = resolvedEpisodeNumber
+      ? getEpisodeConfig(resolvedEpisodeNumber, totalEps, resolvedKidAge || 8)
+      : null;
     const seriesEndingType = episodeConfig?.ending_type_db || resolvedEndingType || 'A';
 
     try {
@@ -1757,6 +1776,7 @@ Deno.serve(async (req) => {
         surprise_characters: surpriseCharactersParam || false,
         // ── Phase 2: Series context fields ──
         series_episode_number: (isSeries || seriesId) ? resolvedEpisodeNumber : undefined,
+        series_total_episodes: (isSeries || seriesId) ? totalEps : undefined,
         series_ending_type: (isSeries || seriesId) ? seriesEndingType : undefined,
         series_previous_episodes: seriesContextData.previousEpisodes.length > 0
           ? seriesContextData.previousEpisodes : undefined,
@@ -2522,6 +2542,7 @@ Antworte NUR mit dem erweiterten Text (ohne Titel, ohne JSON-Format).`;
           targetLanguage,
           effectiveAge,
           lastContinuity,
+          seriesEpisodeCount,
         );
 
         let correctionAttempts = 0;
@@ -2935,6 +2956,8 @@ Antworte NUR mit dem erweiterten Text (ohne Titel, ohne JSON-Format).`;
       } : null,
       // Image style key (Phase 1) — for frontend to store on story row
       image_style_key: imageStyleData?.styleKey || null,
+      // Chapter story model — variable episode count
+      series_episode_count: seriesEpisodeCount || null,
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

@@ -15,6 +15,7 @@ interface Story {
   ending_type: string | null;
   series_mode?: string | null;
   branch_chosen?: string | null;
+  series_episode_count?: number | null;
 }
 
 interface Series {
@@ -86,7 +87,8 @@ const SeriesGrid = ({
       {seriesList.map((series) => {
         const firstEpisode = series.episodes[0];
         const lastEpisode = series.episodes[series.episodes.length - 1];
-        const canContinue = lastEpisode?.ending_type === 'C';
+        const totalEps = firstEpisode?.series_episode_count || 5;
+        const canContinue = lastEpisode?.ending_type === 'C' && series.episodes.length < totalEps;
         const isGenerating = isGeneratingForSeries === series.seriesId;
         const lastEpisodeCompleted = storyStatuses.get(lastEpisode?.id || '') || false;
         const canGenerateNext = canContinue && lastEpisodeCompleted;
@@ -135,7 +137,7 @@ const SeriesGrid = ({
 
             {/* Episode Progress Indicator */}
             <div className="flex items-center gap-1.5 mb-3">
-              {Array.from({ length: 5 }, (_, i) => {
+              {Array.from({ length: totalEps }, (_, i) => {
                 const epNum = i + 1;
                 const episode = series.episodes.find(e => (e.episode_number || 1) === epNum);
                 const isCompleted = episode ? (storyStatuses.get(episode.id) || false) : false;
@@ -151,7 +153,7 @@ const SeriesGrid = ({
                 );
               })}
               <span className="text-xs text-muted-foreground ml-1.5 whitespace-nowrap">
-                {series.episodes.length}/5
+                {series.episodes.length}/{totalEps}
               </span>
             </div>
 

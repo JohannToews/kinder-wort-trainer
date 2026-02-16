@@ -35,6 +35,7 @@ export interface StoryRequest {
   surprise_characters?: boolean;  // Block 2.3e: fictional-only characters
   // ── Phase 2: Series context ──
   series_episode_number?: number;
+  series_total_episodes?: number;     // 3-7, set at Ep1 (NULL/undefined = legacy 5)
   series_ending_type?: string;        // resolved ending type ('A', 'B', 'C')
   series_previous_episodes?: Array<{
     episode_number: number;
@@ -65,6 +66,8 @@ export interface StoryRequest {
     episode_number: number;
     chosen_title: string;
   }>;
+  // ── Chapter story: variable episode count ──
+  series_total_episodes?: number;  // 3-7, set at Ep1
   // ── Story Subtype (Themenvariation) ──
   story_subtype?: {
     subtypeKey: string;
@@ -481,6 +484,18 @@ export interface EpisodeConfig {
   ending_type_db: string;
 }
 
+export function getDefaultEpisodeCount(age: number): number {
+  if (age <= 7) return 3;
+  if (age <= 9) return 5;
+  return 6;
+}
+
+export function getDefaultEpisodeCount(age: number): number {
+  if (age <= 7) return 3;
+  if (age <= 9) return 5;
+  return 6;
+}
+
 export const EPISODE_CONFIG: Record<number, EpisodeConfig> = {
   1: {
     function_name: "Die Welt öffnet sich",
@@ -561,6 +576,230 @@ export const EPISODE_CONFIG: Record<number, EpisodeConfig> = {
   },
 };
 
+// ─── Dynamic Episode Config (variable episode count 3-7) ────────
+
+/**
+ * Returns the episode config for a given episode number within a series of totalEpisodes.
+ * Backward-compatible: totalEpisodes=5 returns exactly the old EPISODE_CONFIG.
+ */
+export function getEpisodeConfig(
+  episodeNumber: number,
+  totalEpisodes: number,
+  age: number
+): EpisodeConfig {
+
+  // ═══ BACKWARD COMPATIBILITY ═══
+  if (totalEpisodes === 5 && EPISODE_CONFIG[episodeNumber]) {
+    return EPISODE_CONFIG[episodeNumber];
+  }
+
+  // ═══ TEMPLATE: ERSTLESER (3 episodes, age 6-7) ═══
+  if (totalEpisodes === 3) {
+    const ERSTLESER_CONFIG: Record<number, EpisodeConfig> = {
+      1: {
+        function_name: "Das Abenteuer beginnt",
+        function_description: "Stelle die Welt und die Figuren vor. Zeige das Problem oder Mysterium. Mache neugierig auf mehr. Alles bleibt freundlich und einladend.",
+        requirements: [
+          "Die ersten Sätze müssen sofort neugierig machen",
+          "Alle Figuren werden vorgestellt (max. 2-3 Figuren)",
+          "Ein klares, einfaches Problem wird eingeführt",
+          "Signature Element einführen (z.B. magischer Gegenstand, Tier-Begleiter)",
+          "Ende macht neugierig (KEIN harter Cliffhanger, KEIN Angst-Moment)",
+        ],
+        preferred_anfang: ["A1", "A2"],
+        preferred_mitte: ["M1", "M2"],
+        required_ende: "Neugierig-offenes Ende: eine Frage oder Entdeckung die Lust auf Weiterlesen macht",
+        ending_type_db: "B",
+      },
+      2: {
+        function_name: "Die Herausforderung",
+        function_description: "Die Figuren versuchen das Problem zu lösen. Es ist schwieriger als gedacht. Sie brauchen Mut, Freundschaft oder eine clevere Idee.",
+        requirements: [
+          "Ein erster Lösungsversuch, der nicht ganz klappt",
+          "Die Figuren zeigen Mut, Teamwork oder Kreativität",
+          "Konsequenzen aus Kapitel 1 zeigen",
+          "Signature Element kommt vor",
+          "Ende zeigt: Es gibt noch etwas zu tun, aber Hoffnung ist da",
+        ],
+        preferred_anfang: ["A3", "A5"],
+        preferred_mitte: ["M1", "M3"],
+        required_ende: "Hoffnungsvolles offenes Ende: die Figuren haben eine Idee",
+        ending_type_db: "B",
+      },
+      3: {
+        function_name: "Das Happy End",
+        function_description: "Alles kommt zusammen. Das Problem wird gelöst. Die Figuren haben etwas gelernt. Abschluss mit gutem Gefühl.",
+        requirements: [
+          "Die Lösung ergibt sich aus den vorherigen Kapiteln (kein Zufall)",
+          "Callback zu Kapitel 1 (mindestens ein Element wird wieder wichtig)",
+          "Jede Figur hat ihren Moment",
+          "Signature Element hat einen besonderen Moment",
+          "KEIN Cliffhanger — Geschichte muss abschließen",
+          "Ende fühlt sich belohnend an (Kind hat mitgefiebert und bekommt Auflösung)",
+        ],
+        preferred_anfang: ["A1", "A3"],
+        preferred_mitte: ["M1", "M4"],
+        required_ende: "Abgeschlossen: Happy End oder warmherziger Abschluss. Kind fühlt sich gut.",
+        ending_type_db: "A",
+      },
+    };
+    return ERSTLESER_CONFIG[episodeNumber] || ERSTLESER_CONFIG[3];
+  }
+
+  // ═══ TEMPLATE: FORTGESCHRITTEN (4 episodes, age 8-9) ═══
+  if (totalEpisodes === 4) {
+    const FORTGESCHRITTEN_4_CONFIG: Record<number, EpisodeConfig> = {
+      1: {
+        function_name: "Die Welt öffnet sich",
+        function_description: "Etabliere die Welt und Figuren. Setze das zentrale Mysterium. Platziere ein Signature Element. Ende mit starkem Hook.",
+        requirements: [
+          "Die ersten zwei Sätze müssen sofort neugierig machen",
+          "Jede Hauptfigur bekommt einen charakteristischen Moment",
+          "Ein Geheimnis oder Rätsel wird angedeutet (nicht erklärt)",
+          "Signature Element einführen",
+          "Ende mit unwiderstehlichem Hook",
+        ],
+        preferred_anfang: ["A1", "A2", "A4"],
+        preferred_mitte: ["M1", "M2"],
+        required_ende: "Cliffhanger oder starkes offenes Ende",
+        ending_type_db: "C",
+      },
+      2: {
+        function_name: "Alles wird komplizierter",
+        function_description: "Der erste Plan scheitert. Neue Hürden tauchen auf. Die Figuren müssen umdenken.",
+        requirements: [
+          "Ein gescheiterter Versuch der Figuren",
+          "Neue Dimension des Problems",
+          "Konsequenzen aus Kapitel 1 zeigen",
+          "Beziehungen werden komplexer",
+          "Signature Element kommt vor",
+        ],
+        preferred_anfang: ["A3", "A5"],
+        preferred_mitte: ["M1", "M3", "M6"],
+        required_ende: "Cliffhanger — es wird schlimmer bevor es besser wird",
+        ending_type_db: "C",
+      },
+      3: {
+        function_name: "Die Wende",
+        function_description: "Enthüllung und emotionaler Wendepunkt. Karten werden neu gemischt. Schwere Entscheidung für die Hauptfigur.",
+        requirements: [
+          "Eine Enthüllung die alles verändert",
+          "Schwere Entscheidung oder Opfer der Hauptfigur",
+          "Moment der Einsamkeit oder Zweifel",
+          "Aber: ein Funke Hoffnung bleibt",
+          "Signature Element bekommt tiefere Bedeutung",
+        ],
+        preferred_anfang: ["A2", "A5"],
+        preferred_mitte: ["M2", "M4", "M5"],
+        required_ende: "Stärkster Cliffhanger: alles scheint verloren, aber ein Detail zeigt den Weg",
+        ending_type_db: "C",
+      },
+      4: {
+        function_name: "Das große Finale",
+        function_description: "Alles kommt zusammen. Das Mysterium wird gelöst. Die Figuren haben sich verändert.",
+        requirements: [
+          "Alle wesentlichen Fäden auflösen",
+          "Callback zu Kapitel 1",
+          "Jede Hauptfigur bekommt ihren Moment",
+          "Charakterentwicklung sichtbar",
+          "Signature Element hat finalen Moment",
+          "KEIN Deus ex machina",
+          "KEIN Cliffhanger — Geschichte muss abschließen",
+        ],
+        preferred_anfang: ["A1", "A3"],
+        preferred_mitte: ["M1", "M4"],
+        required_ende: "Abschluss: Klassisch (8J) oder Offenes Fenster (9J)",
+        ending_type_db: "A",
+      },
+    };
+    return FORTGESCHRITTEN_4_CONFIG[episodeNumber] || FORTGESCHRITTEN_4_CONFIG[4];
+  }
+
+  // ═══ TEMPLATE: LESERATTE (6 episodes, age 10+) ═══
+  if (totalEpisodes === 6) {
+    const LESERATTE_6_CONFIG: Record<number, EpisodeConfig> = {
+      1: { ...EPISODE_CONFIG[1] },
+      2: { ...EPISODE_CONFIG[2] },
+      3: { ...EPISODE_CONFIG[3] },
+      4: {
+        function_name: "Die Vertiefung",
+        function_description: "Eine Pause im äußeren Konflikt. Innere Welten und Beziehungen vertiefen sich. Nebenfiguren bekommen ihre Geschichte. Subtile Hinweise auf die finale Auflösung.",
+        requirements: [
+          "Fokus auf Beziehungen und innere Konflikte (nicht Action)",
+          "Eine Nebenfigur bekommt Tiefe und ihre eigene Mini-Geschichte",
+          "Subtile Hinweise die im Finale wichtig werden",
+          "Perspektive einer anderen Figur zeigen",
+          "Signature Element kommt vor — in unerwarteter Weise",
+        ],
+        preferred_anfang: ["A3", "A6"],
+        preferred_mitte: ["M2", "M5"],
+        required_ende: "Ruhiger Cliffhanger: eine leise Entdeckung die alles verändern wird",
+        ending_type_db: "C",
+      },
+      5: { ...EPISODE_CONFIG[4] },
+      6: {
+        ...EPISODE_CONFIG[5],
+        requirements: [
+          ...EPISODE_CONFIG[5].requirements,
+          "Nutze die Vertiefungs-Episode: Nebenfigur-Geschichte fließt ins Finale",
+        ],
+      },
+    };
+    return LESERATTE_6_CONFIG[episodeNumber] || LESERATTE_6_CONFIG[6];
+  }
+
+  // ═══ TEMPLATE: LESERATTE LANG (7 episodes, age 12+) ═══
+  if (totalEpisodes === 7) {
+    const LESERATTE_7_CONFIG: Record<number, EpisodeConfig> = {
+      1: { ...EPISODE_CONFIG[1] },
+      2: { ...EPISODE_CONFIG[2] },
+      3: { ...EPISODE_CONFIG[3] },
+      4: {
+        function_name: "Die Vertiefung",
+        function_description: "Pause im äußeren Konflikt. Beziehungen und Hintergeschichten vertiefen sich.",
+        requirements: [
+          "Fokus auf Beziehungen und innere Konflikte",
+          "Nebenfigur bekommt Tiefe",
+          "Subtile Hinweise auf die finale Auflösung",
+          "Signature Element in unerwarteter Weise",
+        ],
+        preferred_anfang: ["A3", "A6"],
+        preferred_mitte: ["M2", "M5"],
+        required_ende: "Ruhiger Cliffhanger: leise Entdeckung",
+        ending_type_db: "C",
+      },
+      5: {
+        function_name: "Die Eskalation",
+        function_description: "Die Ruhe ist vorbei. Konsequenzen der Vertiefung treffen auf den äußeren Konflikt. Alles beschleunigt sich.",
+        requirements: [
+          "Ergebnisse der Vertiefung eskalieren den Hauptkonflikt",
+          "Tempo steigt deutlich",
+          "Allianzen verschieben sich final",
+          "Point of no return: Figuren können nicht mehr zurück",
+          "Signature Element wird zur Waffe/zum Schlüssel",
+        ],
+        preferred_anfang: ["A5", "A3"],
+        preferred_mitte: ["M3", "M6"],
+        required_ende: "Harter Cliffhanger: die finale Konfrontation steht bevor",
+        ending_type_db: "C",
+      },
+      6: { ...EPISODE_CONFIG[4] },
+      7: {
+        ...EPISODE_CONFIG[5],
+        required_ende: "Abschluss: Philosophisch oder offenes Fenster (für 12+)",
+        requirements: [
+          ...EPISODE_CONFIG[5].requirements,
+          "Nutze Vertiefungs- und Eskalations-Episode für die Auflösung",
+        ],
+      },
+    };
+    return LESERATTE_7_CONFIG[episodeNumber] || LESERATTE_7_CONFIG[7];
+  }
+
+  // ═══ FALLBACK: Use old 5-episode config ═══
+  return EPISODE_CONFIG[episodeNumber] || EPISODE_CONFIG[5];
+}
+
 // ─── Modus B: Interactive Series Prompt Blocks ───────────────────
 
 /**
@@ -569,9 +808,10 @@ export const EPISODE_CONFIG: Record<number, EpisodeConfig> = {
  */
 function buildInteractiveBranchOptionsBlock(request: StoryRequest): string {
   const epNum = request.series_episode_number || 1;
-  if (request.series_mode !== 'interactive' || epNum >= 5) return '';
+  const totalEps = request.series_total_episodes || 5;
+  if (request.series_mode !== 'interactive' || epNum >= totalEps) return '';
 
-  const nextEpConfig = EPISODE_CONFIG[epNum + 1];
+  const nextEpConfig = getEpisodeConfig(epNum + 1, totalEps, request.kid_profile.age);
   const nextEpFunction = nextEpConfig ? nextEpConfig.function_name : '';
   const age = request.kid_profile.age;
 
@@ -640,7 +880,8 @@ function buildBranchChosenBlock(request: StoryRequest): string {
 function buildInteractiveFinaleBlock(request: StoryRequest): string {
   if (request.series_mode !== 'interactive') return '';
   const epNum = request.series_episode_number || 1;
-  if (epNum !== 5) return '';
+  const totalEps = request.series_total_episodes || 5;
+  if (epNum !== totalEps) return '';
 
   const allBranches = request.series_all_branches || [];
   if (allBranches.length === 0) return '';
@@ -670,12 +911,13 @@ function buildSeriesContextBlock(request: StoryRequest): string {
   const epNum = request.series_episode_number;
   if (!epNum) return '';
 
-  const config = EPISODE_CONFIG[epNum] || EPISODE_CONFIG[5]; // Default to finale for ep6+
+  const totalEps = request.series_total_episodes || 5;
+  const config = getEpisodeConfig(epNum, totalEps, request.kid_profile.age);
   const lines: string[] = [];
 
   // ═══ Header ═══
   lines.push('═══════════════════════════════════════════════');
-  lines.push(`SERIEN-MODUS: Episode ${epNum} von 5`);
+  lines.push(`SERIEN-MODUS: Episode ${epNum} von ${totalEps}`);
   lines.push('═══════════════════════════════════════════════');
   lines.push('');
 
