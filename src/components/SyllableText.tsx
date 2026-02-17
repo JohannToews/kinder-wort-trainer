@@ -80,21 +80,34 @@ for (const [lang, mod] of Object.entries(rawModules)) {
 // Allow hyphenation for ALL words, even very short ones
 const HYPHEN_OPTIONS = { minWordLength: 1 };
 
+let _splitLogCount = 0;
+
 function splitSyllables(word: string, language: string): string[] {
   if (!word) return [word];
 
   const hyphenateSyncFn = hyphenateSyncFns[language] || hyphenateSyncFns.de;
 
   if (!hyphenateSyncFn) {
-    // No hyphenation available — return word as single syllable
+    if (_splitLogCount < 5) {
+      console.warn('[splitSyllables] NO hyphenateSyncFn for language:', language, 'word:', word);
+      _splitLogCount++;
+    }
     return [word];
   }
 
   try {
     const hyphenated = hyphenateSyncFn(word, HYPHEN_OPTIONS);
     const syllables = hyphenated.split(SOFT_HYPHEN);
+    if (_splitLogCount < 10) {
+      console.log('[splitSyllables]', JSON.stringify(word), '→', JSON.stringify(syllables), 'lang:', language);
+      _splitLogCount++;
+    }
     return syllables.length > 0 ? syllables : [word];
-  } catch {
+  } catch (e) {
+    if (_splitLogCount < 5) {
+      console.error('[splitSyllables] ERROR for word:', word, e);
+      _splitLogCount++;
+    }
     return [word];
   }
 }
