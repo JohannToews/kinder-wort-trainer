@@ -251,10 +251,15 @@ const ReadingPage = () => {
   const { id } = useParams<{ id: string }>();
   const [searchParams] = useSearchParams();
 
-  // ── View Mode: immersive (default) or classic ─────────────
+  // ── View Mode: immersive or classic ─────────────────────
+  // Immersive Reader is admin-only for now (papa / role=admin).
+  // Everyone else gets the classic reader.
+  const isAdmin = user?.role === 'admin';
   const modeParam = searchParams.get('mode');
   const [viewMode, setViewMode] = useState<'immersive' | 'classic'>(
-    modeParam === 'classic' ? 'classic' : 'immersive'
+    modeParam === 'classic' ? 'classic'
+      : modeParam === 'immersive' ? 'immersive'
+      : isAdmin ? 'immersive' : 'classic'
   );
 
   const [story, setStory] = useState<Story | null>(null);
@@ -1659,16 +1664,18 @@ const ReadingPage = () => {
         backTo="/stories"
         rightContent={
           <div className="flex items-center gap-2">
-            {/* Mode toggle: switch to immersive */}
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setViewMode('immersive')}
-              title="Immersive Reader"
-              className="h-9 w-9"
-            >
-              <BookOpenText className="h-4 w-4" />
-            </Button>
+            {/* Mode toggle: switch to immersive (admin only) */}
+            {isAdmin && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setViewMode('immersive')}
+                title="Immersive Reader"
+                className="h-9 w-9"
+              >
+                <BookOpenText className="h-4 w-4" />
+              </Button>
+            )}
             {/* Star counter */}
             {gamificationState && (
               <div className="flex items-center gap-1 text-primary font-bold text-sm bg-primary/10 px-2.5 py-1 rounded-full">
