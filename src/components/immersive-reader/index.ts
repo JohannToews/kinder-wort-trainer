@@ -39,6 +39,10 @@ export { default as ImmersiveToolbar } from './ImmersiveToolbar';
 export { default as ImmersiveReader } from './ImmersiveReader';
 export { default as ImmersiveChapterTitle } from './ImmersiveChapterTitle';
 
+// Phase 4: Quiz + End Screen
+export { default as ImmersiveQuizFlow } from './ImmersiveQuizFlow';
+export { default as ImmersiveEndScreen } from './ImmersiveEndScreen';
+
 // Types
 export type {
   ImmersivePage,

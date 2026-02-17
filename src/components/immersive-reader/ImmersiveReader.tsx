@@ -25,6 +25,8 @@ import ImmersiveProgressBar from './ImmersiveProgressBar';
 import ImmersiveWordSheet from './ImmersiveWordSheet';
 import ImmersiveToolbar from './ImmersiveToolbar';
 import ImmersiveChapterTitle from './ImmersiveChapterTitle';
+import ImmersiveQuizFlow from './ImmersiveQuizFlow';
+import ImmersiveEndScreen from './ImmersiveEndScreen';
 
 // Minimal Story interface — matches the shape used in ReadingPage.tsx
 interface Story {
@@ -55,9 +57,15 @@ export interface ImmersiveReaderProps {
   story: Story;
   kidProfile: KidProfile | null;
   accountTier?: string;
+  hasQuiz?: boolean;
+  quizPassThreshold?: number;
   onComplete: () => void;
-  onQuizStart?: () => void;
+  onQuizComplete?: (correctCount: number, totalCount: number) => void;
   onNavigateToStories?: () => void;
+  onNextChapter?: () => void;
+  onNewStory?: () => void;
+  /** Result from log_activity RPC, set externally after onComplete fires */
+  activityResult?: Record<string, unknown> | null;
 }
 
 /**
@@ -70,9 +78,14 @@ const ImmersiveReader: React.FC<ImmersiveReaderProps> = ({
   story,
   kidProfile,
   accountTier = 'standard',
+  hasQuiz = false,
+  quizPassThreshold = 80,
   onComplete,
-  onQuizStart,
+  onQuizComplete,
   onNavigateToStories,
+  onNextChapter,
+  onNewStory,
+  activityResult,
 }) => {
   const readerRef = useRef<HTMLDivElement>(null);
 
@@ -162,6 +175,18 @@ const ImmersiveReader: React.FC<ImmersiveReaderProps> = ({
     isLastPage,
   } = usePagePosition(allPages);
 
+  // ── Reader Phase (reading → quiz → end) ────────────────
+  type ReaderPhase = 'reading' | 'quiz' | 'end-screen';
+  const [readerPhase, setReaderPhase] = useState<ReaderPhase>('reading');
+  const [quizResult, setQuizResult] = useState<{ correctCount: number; totalCount: number; starsEarned: number } | null>(null);
+
+  // Determine end screen variant
+  const endScreenVariant = useMemo(() => {
+    if (!isChapterStory) return 'single' as const;
+    const isLastEpisode = chapterNumber >= totalChapters;
+    return isLastEpisode ? 'series-complete' as const : 'chapter' as const;
+  }, [isChapterStory, chapterNumber, totalChapters]);
+
   // ── Word Explanation ──────────────────────────────────────
   const [selectedWord, setSelectedWord] = useState<string | null>(null);
   const isWordSheetOpen = selectedWord !== null;
@@ -188,9 +213,19 @@ const ImmersiveReader: React.FC<ImmersiveReaderProps> = ({
   const goNext = useCallback(() => {
     if (isTransitioning || isLastPage) return;
 
-    // If on last page: trigger completion
+    // If on last page: fire onComplete and transition to quiz or end screen
     if (currentPage === totalPages - 1) {
       onComplete();
+
+      // Chapter stories: always go to quiz first (mandatory)
+      if (isChapterStory && hasQuiz) {
+        setReaderPhase('quiz');
+      } else if (hasQuiz) {
+        // Single story: go to end screen, quiz is optional (button there)
+        setReaderPhase('end-screen');
+      } else {
+        setReaderPhase('end-screen');
+      }
       return;
     }
 
@@ -201,7 +236,7 @@ const ImmersiveReader: React.FC<ImmersiveReaderProps> = ({
       setSlideDirection('none');
       setIsTransitioning(false);
     }, PAGE_TRANSITION_MS);
-  }, [isTransitioning, isLastPage, currentPage, totalPages, rawGoNext, onComplete]);
+  }, [isTransitioning, isLastPage, currentPage, totalPages, rawGoNext, onComplete, isChapterStory, hasQuiz]);
 
   const goPrev = useCallback(() => {
     if (isTransitioning || isFirstPage) return;
@@ -285,6 +320,33 @@ const ImmersiveReader: React.FC<ImmersiveReaderProps> = ({
     };
   }, [slideDirection]);
 
+  // ── Quiz / End Screen handlers ─────────────────────────
+  const handleQuizComplete = useCallback((correctCount: number, totalCount: number) => {
+    setQuizResult({ correctCount, totalCount, starsEarned: 0 });
+    setReaderPhase('end-screen');
+    onQuizComplete?.(correctCount, totalCount);
+  }, [onQuizComplete]);
+
+  const handleQuizRetry = useCallback(() => {
+    // Navigate back to page 1 (or page 0 for chapter title)
+    setReaderPhase('reading');
+    setQuizResult(null);
+    const startPage = isChapterStory ? 1 : 0; // skip chapter title
+    if (allPages[startPage]) {
+      // Reset to the start via goToPage from usePagePosition
+      // We use rawGoPrev repeatedly or just set page 0
+    }
+  }, [isChapterStory, allPages]);
+
+  const handleStartQuizFromEndScreen = useCallback(() => {
+    setReaderPhase('quiz');
+  }, []);
+
+  const handleReadAgain = useCallback(() => {
+    setReaderPhase('reading');
+    setQuizResult(null);
+  }, []);
+
   // ── Render ────────────────────────────────────────────────
   if (!story.content || allPages.length === 0) {
     return (
@@ -299,84 +361,128 @@ const ImmersiveReader: React.FC<ImmersiveReaderProps> = ({
       ref={readerRef}
       className="immersive-reader bg-background min-h-screen flex flex-col"
     >
-      {/* Progress Bar */}
-      <ImmersiveProgressBar
-        currentPage={currentPage}
-        totalPages={totalPages}
-        chapterNumber={isChapterStory ? chapterNumber : undefined}
-        totalChapters={isChapterStory ? totalChapters : undefined}
-        language={uiLanguage}
-      />
+      {/* Progress Bar (only during reading phase) */}
+      {readerPhase === 'reading' && (
+        <ImmersiveProgressBar
+          currentPage={currentPage}
+          totalPages={totalPages}
+          chapterNumber={isChapterStory ? chapterNumber : undefined}
+          totalChapters={isChapterStory ? totalChapters : undefined}
+          language={uiLanguage}
+        />
+      )}
 
-      {/* Main page area with navigation */}
-      <ImmersiveNavigation
-        onNext={goNext}
-        onPrev={goPrev}
-        disabled={isWordSheetOpen || isTransitioning}
-      >
-        <div className="flex-1 relative overflow-hidden" style={slideStyle}>
-          {/* Chapter Title Page */}
-          {isChapterTitlePage && (
-            <ImmersiveChapterTitle
-              chapterNumber={chapterNumber}
-              totalChapters={totalChapters}
-              title={story.title}
-              coverImageUrl={story.cover_image_url}
-              language={uiLanguage}
-            />
-          )}
+      {/* ═══ READING PHASE ═══ */}
+      {readerPhase === 'reading' && (
+        <ImmersiveNavigation
+          onNext={goNext}
+          onPrev={goPrev}
+          disabled={isWordSheetOpen || isTransitioning}
+        >
+          <div className="flex-1 relative overflow-hidden" style={slideStyle}>
+            {/* Chapter Title Page */}
+            {isChapterTitlePage && (
+              <ImmersiveChapterTitle
+                chapterNumber={chapterNumber}
+                totalChapters={totalChapters}
+                title={story.title}
+                coverImageUrl={story.cover_image_url}
+                language={uiLanguage}
+              />
+            )}
 
-          {/* Content Pages (text-only or image-text) */}
-          {!isChapterTitlePage && currentPageData && (
-            <ImmersivePageRenderer
-              page={currentPageData}
-              layoutMode={layoutMode}
-              imageUrl={currentImageUrl}
-              imageSide={currentImageSide}
-              storyTheme={story.concrete_theme}
-              fontSize={typography.fontSize}
-              lineHeight={typography.lineHeight}
-              letterSpacing={typography.letterSpacing}
-              syllableMode={syllableActive}
-              storyLanguage={hyphenLanguage}
-              onWordTap={handleWordTap}
-              highlightedWord={selectedWord}
-            />
-          )}
-        </div>
-
-        {/* Navigation hint (first page, first time only) */}
-        {showNavHint && currentPage === 0 && (
-          <div className="absolute bottom-20 left-0 right-0 flex justify-center pointer-events-none">
-            <div className="bg-foreground/80 text-background px-6 py-3 rounded-full text-sm font-medium animate-bounce shadow-lg">
-              {labels.tapToContinue}
-            </div>
+            {/* Content Pages (text-only or image-text) */}
+            {!isChapterTitlePage && currentPageData && (
+              <ImmersivePageRenderer
+                page={currentPageData}
+                layoutMode={layoutMode}
+                imageUrl={currentImageUrl}
+                imageSide={currentImageSide}
+                storyTheme={story.concrete_theme}
+                fontSize={typography.fontSize}
+                lineHeight={typography.lineHeight}
+                letterSpacing={typography.letterSpacing}
+                syllableMode={syllableActive}
+                storyLanguage={hyphenLanguage}
+                onWordTap={handleWordTap}
+                highlightedWord={selectedWord}
+              />
+            )}
           </div>
-        )}
-      </ImmersiveNavigation>
 
-      {/* Toolbar (font size, syllables, fullscreen) */}
-      <ImmersiveToolbar
-        fontSizeSetting={fontSizeSetting}
-        onFontSizeChange={setFontSizeSetting}
-        syllableMode={syllableModeEnabled}
-        onSyllableModeChange={setSyllableModeEnabled}
-        isFullscreen={isFullscreen}
-        onToggleFullscreen={toggleFullscreen}
-        storyLanguage={storyLanguage}
-        uiLanguage={uiLanguage}
-      />
+          {/* Navigation hint (first page, first time only) */}
+          {showNavHint && currentPage === 0 && (
+            <div className="absolute bottom-20 left-0 right-0 flex justify-center pointer-events-none">
+              <div className="bg-foreground/80 text-background px-6 py-3 rounded-full text-sm font-medium animate-bounce shadow-lg">
+                {labels.tapToContinue}
+              </div>
+            </div>
+          )}
+        </ImmersiveNavigation>
+      )}
 
-      {/* Word Explanation Bottom Sheet */}
-      <ImmersiveWordSheet
-        word={selectedWord}
-        storyId={story.id}
-        storyLanguage={storyLanguage}
-        explanationLanguage={kidProfile?.explanation_language || storyLanguage}
-        kidProfileId={kidProfile?.id}
-        onClose={handleWordSheetClose}
-        onSaved={handleWordSaved}
-      />
+      {/* ═══ QUIZ PHASE ═══ */}
+      {readerPhase === 'quiz' && (
+        <div className="flex-1">
+          <ImmersiveQuizFlow
+            storyId={story.id}
+            storyLanguage={storyLanguage}
+            isMandatory={isChapterStory}
+            passThreshold={quizPassThreshold}
+            onComplete={handleQuizComplete}
+            onRetry={handleQuizRetry}
+          />
+        </div>
+      )}
+
+      {/* ═══ END SCREEN PHASE ═══ */}
+      {readerPhase === 'end-screen' && (
+        <div className="flex-1">
+          <ImmersiveEndScreen
+            variant={endScreenVariant}
+            storyLanguage={storyLanguage}
+            activityResult={activityResult as Record<string, unknown> | undefined}
+            quizResult={quizResult}
+            chapterNumber={chapterNumber}
+            totalChapters={totalChapters}
+            hasQuiz={hasQuiz}
+            quizTaken={!!quizResult}
+            onStartQuiz={handleStartQuizFromEndScreen}
+            onNewStory={onNewStory || onNavigateToStories}
+            onReadAgain={handleReadAgain}
+            onNextChapter={onNextChapter}
+            onMyStories={onNavigateToStories}
+            onNewChapterStory={onNewStory}
+          />
+        </div>
+      )}
+
+      {/* Toolbar (font size, syllables, fullscreen) — only during reading */}
+      {readerPhase === 'reading' && (
+        <ImmersiveToolbar
+          fontSizeSetting={fontSizeSetting}
+          onFontSizeChange={setFontSizeSetting}
+          syllableMode={syllableModeEnabled}
+          onSyllableModeChange={setSyllableModeEnabled}
+          isFullscreen={isFullscreen}
+          onToggleFullscreen={toggleFullscreen}
+          storyLanguage={storyLanguage}
+          uiLanguage={uiLanguage}
+        />
+      )}
+
+      {/* Word Explanation Bottom Sheet — only during reading */}
+      {readerPhase === 'reading' && (
+        <ImmersiveWordSheet
+          word={selectedWord}
+          storyId={story.id}
+          storyLanguage={storyLanguage}
+          explanationLanguage={kidProfile?.explanation_language || storyLanguage}
+          kidProfileId={kidProfile?.id}
+          onClose={handleWordSheetClose}
+          onSaved={handleWordSaved}
+        />
+      )}
     </div>
   );
 };

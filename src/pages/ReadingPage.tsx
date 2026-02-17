@@ -1507,6 +1507,8 @@ const ReadingPage = () => {
             explanation_language: kidExplanationLanguage,
           } : null}
           accountTier="standard"
+          hasQuiz={hasQuestions}
+          quizPassThreshold={starRewards.quiz_pass_threshold}
           onComplete={async () => {
             const childId = story.kid_profile_id || selectedProfile?.id || null;
 
@@ -1549,8 +1551,60 @@ const ReadingPage = () => {
               stars: starRewards.stars_story_read,
             });
           }}
-          onQuizStart={() => setShowQuiz(true)}
+          onQuizComplete={async (correctCount, totalCount) => {
+            const percentage = totalCount > 0 ? (correctCount / totalCount) * 100 : 0;
+            const isPerfect = correctCount === totalCount && totalCount > 0;
+            const passed = percentage >= starRewards.quiz_pass_threshold;
+            const quizStars = !passed ? starRewards.stars_quiz_failed
+              : isPerfect ? starRewards.stars_quiz_perfect
+              : starRewards.stars_quiz_passed;
+
+            const childId = story.kid_profile_id || selectedProfile?.id || null;
+
+            // Log quiz activity via RPC with retry
+            for (let attempt = 0; attempt < 3; attempt++) {
+              try {
+                const result = await supabase.rpc('log_activity', {
+                  p_child_id: childId,
+                  p_activity_type: 'quiz_complete',
+                  p_stars: quizStars,
+                  p_metadata: {
+                    quiz_id: id,
+                    score: correctCount,
+                    max_score: totalCount,
+                    score_percent: Math.round(percentage),
+                    difficulty: story.difficulty || 'medium',
+                  },
+                });
+                if (!result.error) {
+                  const data = result.data as any;
+                  if (data?.new_badges?.length > 0) {
+                    setPendingBadges(data.new_badges);
+                  }
+                  break;
+                }
+                if (attempt < 2) await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
+              } catch (e) {
+                if (attempt < 2) await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
+              }
+            }
+            refreshProgress();
+
+            if (isPerfect) {
+              setFablinoReaction({ type: 'perfect', message: t.fablinoQuizPerfect, stars: quizStars });
+            } else if (passed) {
+              setFablinoReaction({
+                type: 'celebrate',
+                message: t.fablinoQuizGood.replace('{correct}', String(correctCount)).replace('{total}', String(totalCount)),
+                stars: quizStars,
+              });
+            } else {
+              setFablinoReaction({ type: 'encourage', message: t.fablinoQuizEncourage, stars: 0 });
+            }
+          }}
           onNavigateToStories={() => navigate('/stories')}
+          onNextChapter={() => handleContinueSeries()}
+          onNewStory={() => navigate('/stories')}
         />
 
         {/* Fablino Feedback Overlay (shared with classic mode) */}
