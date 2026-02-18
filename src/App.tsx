@@ -28,6 +28,9 @@ import CreateStoryPage from "./pages/CreateStoryPage";
 import InstallPage from "./pages/InstallPage";
 import ShareRedirectPage from "./pages/ShareRedirectPage";
 import StickerBookPage from "./pages/StickerBookPage";
+import WelcomePage from "./pages/WelcomePage";
+import OnboardingKindPage from "./pages/OnboardingKindPage";
+import OnboardingStoryPage from "./pages/OnboardingStoryPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -49,6 +52,9 @@ const App = () => (
             <Route path="/update-password" element={<UpdatePasswordPage />} />
             <Route path="/install" element={<InstallPage />} />
             <Route path="/s/:token" element={<ShareRedirectPage />} />
+            <Route path="/welcome" element={<WelcomePage />} />
+            <Route path="/onboarding/kind" element={<OnboardingKindPage />} />
+            <Route path="/onboarding/story" element={<OnboardingStoryPage />} />
             <Route path="/" element={
               <ProtectedRoute>
                 {FEATURES.NEW_FABLINO_HOME ? <HomeFablino /> : <HomeClassic />}
