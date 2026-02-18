@@ -12,8 +12,8 @@ interface ImageStyle {
   description: Record<string, string>;
   preview_image_url: string | null;
   age_groups: string[];
-  default_for_ages: string[];
-  sort_order: number;
+  default_for_ages: string[] | null;
+  sort_order: number | null;
 }
 
 interface ImageStylePickerProps {
@@ -83,9 +83,15 @@ const ImageStylePicker: React.FC<ImageStylePickerProps> = ({
         return;
       }
 
-      const filtered = (data || []).filter((s: any) =>
-        s.age_groups?.includes(ageGroup)
-      );
+      const filtered = (data || [])
+        .filter((s) => (s.age_groups as string[])?.includes(ageGroup))
+        .map((s) => ({
+          ...s,
+          labels: (s.labels ?? {}) as Record<string, string>,
+          description: (s.description ?? {}) as Record<string, string>,
+          age_groups: s.age_groups as string[],
+          default_for_ages: s.default_for_ages as string[] | null,
+        }));
 
       setStyles(filtered);
 
