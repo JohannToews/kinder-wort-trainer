@@ -31,6 +31,10 @@ const STYLE_EMOJIS: Record<string, string> = {
   adventure_cartoon: "🦸",
   graphic_novel: "🎬",
   semi_realistic: "✨",
+  "3d_adventure": "🎥",
+  pixel_art: "👾",
+  brick_block: "🧱",
+  vintage_retro: "📺",
 };
 
 const translations: Record<string, {
