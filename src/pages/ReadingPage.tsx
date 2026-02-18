@@ -224,14 +224,12 @@ const ReadingPage = () => {
   const [searchParams] = useSearchParams();
 
   // ── View Mode: immersive or classic ─────────────────────
-  // Immersive Reader is admin-only for now (papa / role=admin).
-  // Everyone else gets the classic reader.
+  // Classic reader is the default for ALL users (including admin).
+  // Admin can switch to immersive via toggle; non-admin cannot.
   const isAdmin = user?.role === 'admin';
   const modeParam = searchParams.get('mode');
   const [viewMode, setViewMode] = useState<'immersive' | 'classic'>(
-    modeParam === 'classic' ? 'classic'
-      : modeParam === 'immersive' ? 'immersive'
-      : isAdmin ? 'immersive' : 'classic'
+    modeParam === 'immersive' && isAdmin ? 'immersive' : 'classic'
   );
 
   const [story, setStory] = useState<Story | null>(null);
