@@ -1,14 +1,15 @@
-// @ts-expect-error — hypher + hyphenation.* packages lack TS declarations
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore
 import Hypher from 'hypher';
-// @ts-expect-error
+// @ts-ignore
 import german from 'hyphenation.de';
-// @ts-expect-error
+// @ts-ignore
 import english from 'hyphenation.en-us';
-// @ts-expect-error
+// @ts-ignore
 import spanish from 'hyphenation.es';
-// @ts-expect-error
+// @ts-ignore
 import dutch from 'hyphenation.nl';
-// @ts-expect-error
+// @ts-ignore
 import italian from 'hyphenation.it';
 
 // === DE + other langs: hypher (synchronous, good quality) ===
