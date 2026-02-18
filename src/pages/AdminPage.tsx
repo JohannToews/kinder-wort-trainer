@@ -17,6 +17,7 @@ import ParentSettingsPanel from "@/components/ParentSettingsPanel";
 import UserManagementSection from "@/components/UserManagementSection";
 import SystemPromptSection from "@/components/SystemPromptSection";
 import AgeRulesSection from "@/components/AgeRulesSection";
+import ImageStylesSection from "@/components/ImageStylesSection";
 import { useAuth } from "@/hooks/useAuth";
 import { useKidProfile } from "@/hooks/useKidProfile";
 import { useTranslations, Language } from "@/lib/translations";
@@ -739,6 +740,9 @@ const AdminPage = () => {
                     </div>
                   </CardHeader>
                 </Card>
+
+                {/* Image Styles Management */}
+                <ImageStylesSection language={adminLang} />
 
                 {/* System Prompt Editor */}
                 <SystemPromptSection language={adminLang} />
