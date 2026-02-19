@@ -154,6 +154,9 @@ const OnboardingStoryPage = () => {
           difficultyLevel: kid.difficulty_level || 2,
           contentSafetyLevel: kid.content_safety_level || 2,
           image_style_key: imageStyle,
+          // Onboarding: always generate 3 scene images
+          image_count: 3,
+          scene_image_count: 3,
         },
       });
 
