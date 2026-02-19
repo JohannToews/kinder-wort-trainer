@@ -405,25 +405,12 @@ const OnboardingKindPage = () => {
             <p className="text-xs" style={{ color: "rgba(45,24,16,0.45)" }}>
               In dieser Sprache siehst du Menüs, Einstellungen und Benachrichtigungen
             </p>
-            <div className="grid grid-cols-2 gap-2 mt-2">
-              {UI_LANGUAGES.map((lang) => (
-                <button
-                  key={lang.code}
-                  type="button"
-                  onClick={() => setAdminLang(lang.code)}
-                  className="flex items-center gap-2.5 px-4 py-3 rounded-xl border-2 transition-all text-left"
-                  style={{
-                    background: adminLang === lang.code ? "#E8863A" : "transparent",
-                    color: adminLang === lang.code ? "white" : "rgba(45,24,16,0.8)",
-                    borderColor: adminLang === lang.code ? "#E8863A" : "rgba(232,134,58,0.25)",
-                  }}
-                >
-                  <span className="text-2xl">{lang.flag}</span>
-                  <span className="text-sm font-semibold">{lang.nameNative}</span>
-                  {adminLang === lang.code && <Check className="h-4 w-4 ml-auto" />}
-                </button>
-              ))}
-            </div>
+          <SingleSelect
+              options={UI_LANGUAGES.map((l) => ({ code: l.code, label: l.nameNative, flag: l.flag }))}
+              value={adminLang}
+              onChange={setAdminLang}
+              placeholder="Sprache auswählen..."
+            />
           </div>
 
           <Button
