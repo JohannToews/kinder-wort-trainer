@@ -647,8 +647,7 @@ function getSchoolClass(age: number): string {
 function getDifficultyLevel(age: number): number {
   if (age <= 6) return 1;
   if (age <= 8) return 2;
-  if (age <= 10) return 3;
-  return 4;
+  return 3; // max is 3 (constraint: difficulty_level between 1 and 3)
 }
 
 export default OnboardingKindPage;
