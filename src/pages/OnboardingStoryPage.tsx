@@ -54,6 +54,7 @@ const OnboardingStoryPage = () => {
   const [searchParams] = useSearchParams();
   const kidId = searchParams.get("kid");
   const storyTypeParam = searchParams.get("storyType");
+  const storyLangParam = searchParams.get("lang");
   const navigate = useNavigate();
   const { toast } = useToast();
   const { isAuthenticated, isLoading: authLoading, user } = useAuth();
@@ -130,7 +131,7 @@ const OnboardingStoryPage = () => {
     const resolvedStoryType = storyTypeParam || "fantasy";
     const theme = getThemeForStoryType(resolvedStoryType, age);
     const imageStyle = getDefaultImageStyle(age);
-    const readingLang = kid.reading_language || kid.school_system || "fr";
+    const readingLang = storyLangParam || kid.reading_language || kid.school_system || "fr";
     const difficulty = getDifficultyForAge(age);
 
     try {

@@ -30,6 +30,12 @@ const GENDERS = [
 
 type Step = "profile" | "storyType";
 
+// Helper: get flag+native name for a language code
+function getLangMeta(code: string) {
+  const found = ALL_LANGUAGES.find((l) => l.code === code);
+  return found ? { flag: found.flag, label: found.nameNative } : { flag: "🌐", label: code.toUpperCase() };
+}
+
 // ── Single-select dropdown ──────────────────────────────────────
 function SingleSelect({
   options,
@@ -175,6 +181,7 @@ const OnboardingKindPage = () => {
   const [schoolLang, setSchoolLang] = useState<string | null>(null);
   const [extraLangs, setExtraLangs] = useState<string[]>([]);
   const [selectedStoryType, setSelectedStoryType] = useState<string | null>(null);
+  const [selectedStoryLang, setSelectedStoryLang] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -271,7 +278,9 @@ const OnboardingKindPage = () => {
         return;
       }
 
-      navigate(`/onboarding/story?kid=${savedProfile.id}&storyType=${selectedStoryType}`, { replace: true });
+      // Use selected story language (defaults to school lang)
+      const storyLang = selectedStoryLang || schoolLang!;
+      navigate(`/onboarding/story?kid=${savedProfile.id}&storyType=${selectedStoryType}&lang=${storyLang}`, { replace: true });
     } catch (err) {
       console.error(err);
       toast({ title: "Fehler", description: "Ein Fehler ist aufgetreten.", variant: "destructive" });
@@ -412,6 +421,45 @@ const OnboardingKindPage = () => {
       {/* === STEP 2: Story Type === */}
       {step === "storyType" && (
         <div className="w-full max-w-md space-y-4">
+
+          {/* Language toggle – shows selected languages, user can switch */}
+          {(() => {
+            const allLangs = Array.from(new Set([schoolLang!, ...extraLangs]));
+            if (allLangs.length <= 1) return null;
+            return (
+              <div className="bg-white rounded-2xl px-5 py-4 shadow-sm border" style={{ borderColor: "rgba(232,134,58,0.15)" }}>
+                <p className="text-xs font-semibold mb-2.5" style={{ color: "rgba(45,24,16,0.5)" }}>
+                  📚 Sprache der Geschichte
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {allLangs.map((code) => {
+                    const meta = getLangMeta(code);
+                    const isActive = selectedStoryLang === code || (!selectedStoryLang && code === schoolLang);
+                    return (
+                      <button
+                        key={code}
+                        type="button"
+                        onClick={() => setSelectedStoryLang(code)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-semibold border-2 transition-all"
+                        style={{
+                          background: isActive ? "#E8863A" : "transparent",
+                          color: isActive ? "white" : "rgba(45,24,16,0.7)",
+                          borderColor: isActive ? "#E8863A" : "rgba(232,134,58,0.25)",
+                        }}
+                      >
+                        <span className="text-base">{meta.flag}</span>
+                        <span>{meta.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="text-xs mt-2" style={{ color: "rgba(45,24,16,0.4)" }}>
+                  In welcher Sprache soll die erste Geschichte sein?
+                </p>
+              </div>
+            );
+          })()}
+
           {STORY_TYPES.map((type) => (
             <button
               key={type.key}
