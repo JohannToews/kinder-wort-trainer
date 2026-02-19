@@ -6,14 +6,13 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2 } from "lucide-react";
+import { Loader2, ChevronDown, Check } from "lucide-react";
+import { LANGUAGES } from "@/lib/languages";
 
-const LANGUAGES = [
-  { code: "fr", flag: "🇫🇷", label: "Français" },
-  { code: "de", flag: "🇩🇪", label: "Deutsch" },
-  { code: "en", flag: "🇬🇧", label: "English" },
-  { code: "es", flag: "🇪🇸", label: "Español" },
-];
+// All supported languages alphabetically sorted by native name
+const ALL_LANGUAGES = [...LANGUAGES]
+  .filter((l) => l.storySupported)
+  .sort((a, b) => a.nameNative.localeCompare(b.nameNative));
 
 const STORY_TYPES = [
   { key: "adventure", emoji: "🏰", label: "Abenteuer", description: "Mutige Helden & spannende Quests" },
@@ -21,15 +20,160 @@ const STORY_TYPES = [
   { key: "animals", emoji: "🐾", label: "Tiergeschichte", description: "Niedliche Tiere & ihre Freundschaften" },
 ];
 
-const AGES = [6, 7, 8, 9, 10];
+const AGES = [5, 6, 7, 8, 9, 10, 11, 12];
+
+const GENDERS = [
+  { value: "girl", label: "Mädchen", emoji: "👧" },
+  { value: "boy", label: "Junge", emoji: "👦" },
+  { value: "other", label: "Divers", emoji: "🧒" },
+];
 
 type Step = "profile" | "storyType";
 
+// ── Single-select dropdown ──────────────────────────────────────
+function SingleSelect({
+  options,
+  value,
+  onChange,
+  placeholder,
+}: {
+  options: { code: string; label: string; flag: string }[];
+  value: string | null;
+  onChange: (code: string) => void;
+  placeholder: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const selected = options.find((o) => o.code === value);
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        className="w-full flex items-center justify-between h-12 rounded-xl border-2 px-4 text-sm bg-white"
+        style={{
+          borderColor: value ? "#E8863A" : "rgba(232,134,58,0.3)",
+          color: value ? "rgba(45,24,16,0.9)" : "rgba(45,24,16,0.45)",
+        }}
+      >
+        <span>
+          {selected ? `${selected.flag} ${selected.label}` : placeholder}
+        </span>
+        <ChevronDown className="h-4 w-4 opacity-50" />
+      </button>
+
+      {open && (
+        <div
+          className="absolute z-50 w-full mt-1 bg-white rounded-xl border shadow-lg overflow-y-auto"
+          style={{ borderColor: "rgba(232,134,58,0.25)", maxHeight: "220px" }}
+        >
+          {options.map((opt) => (
+            <button
+              key={opt.code}
+              type="button"
+              onClick={() => { onChange(opt.code); setOpen(false); }}
+              className="w-full flex items-center gap-2.5 px-4 py-3 text-sm text-left hover:bg-orange-50 transition-colors"
+              style={{ color: "rgba(45,24,16,0.85)" }}
+            >
+              <span className="text-lg">{opt.flag}</span>
+              <span>{opt.label}</span>
+              {opt.code === value && <Check className="h-4 w-4 ml-auto" style={{ color: "#E8863A" }} />}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Multi-select dropdown ───────────────────────────────────────
+function MultiSelect({
+  options,
+  values,
+  onChange,
+  placeholder,
+  excludeCode,
+}: {
+  options: { code: string; label: string; flag: string }[];
+  values: string[];
+  onChange: (codes: string[]) => void;
+  placeholder: string;
+  excludeCode?: string | null;
+}) {
+  const [open, setOpen] = useState(false);
+  const available = options.filter((o) => o.code !== excludeCode);
+
+  const toggle = (code: string) => {
+    if (values.includes(code)) {
+      onChange(values.filter((v) => v !== code));
+    } else {
+      onChange([...values, code]);
+    }
+  };
+
+  const selectedLabels = available
+    .filter((o) => values.includes(o.code))
+    .map((o) => `${o.flag} ${o.label}`)
+    .join(", ");
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        className="w-full flex items-center justify-between min-h-12 rounded-xl border-2 px-4 py-3 text-sm bg-white text-left"
+        style={{
+          borderColor: values.length > 0 ? "#E8863A" : "rgba(232,134,58,0.3)",
+          color: values.length > 0 ? "rgba(45,24,16,0.9)" : "rgba(45,24,16,0.45)",
+        }}
+      >
+        <span className="line-clamp-2">{selectedLabels || placeholder}</span>
+        <ChevronDown className="h-4 w-4 opacity-50 flex-shrink-0 ml-2" />
+      </button>
+
+      {open && (
+        <div
+          className="absolute z-50 w-full mt-1 bg-white rounded-xl border shadow-lg overflow-y-auto"
+          style={{ borderColor: "rgba(232,134,58,0.25)", maxHeight: "220px" }}
+        >
+          {available.map((opt) => {
+            const checked = values.includes(opt.code);
+            return (
+              <button
+                key={opt.code}
+                type="button"
+                onClick={() => toggle(opt.code)}
+                className="w-full flex items-center gap-2.5 px-4 py-3 text-sm text-left hover:bg-orange-50 transition-colors"
+                style={{ color: "rgba(45,24,16,0.85)" }}
+              >
+                <span className="text-lg">{opt.flag}</span>
+                <span className="flex-1">{opt.label}</span>
+                <div
+                  className="h-5 w-5 rounded-md border-2 flex items-center justify-center flex-shrink-0"
+                  style={{
+                    borderColor: checked ? "#E8863A" : "rgba(232,134,58,0.35)",
+                    background: checked ? "#E8863A" : "transparent",
+                  }}
+                >
+                  {checked && <Check className="h-3 w-3 text-white" />}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Main Component ──────────────────────────────────────────────
 const OnboardingKindPage = () => {
   const [step, setStep] = useState<Step>("profile");
   const [name, setName] = useState("");
   const [selectedAge, setSelectedAge] = useState<number | null>(null);
-  const [readingLang, setReadingLang] = useState<string | null>(null);
+  const [gender, setGender] = useState<string | null>(null);
+  const [schoolLang, setSchoolLang] = useState<string | null>(null);
+  const [extraLangs, setExtraLangs] = useState<string[]>([]);
   const [selectedStoryType, setSelectedStoryType] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
@@ -58,6 +202,13 @@ const OnboardingKindPage = () => {
     })();
   }, [user]);
 
+  // Build the dropdown option list from LANGUAGES
+  const langOptions = ALL_LANGUAGES.map((l) => ({
+    code: l.code,
+    label: l.nameNative,
+    flag: l.flag,
+  }));
+
   const handleProfileNext = () => {
     if (!name.trim()) {
       toast({ title: "Fehler", description: "Bitte einen Namen eingeben.", variant: "destructive" });
@@ -67,8 +218,12 @@ const OnboardingKindPage = () => {
       toast({ title: "Fehler", description: "Bitte ein Alter auswählen.", variant: "destructive" });
       return;
     }
-    if (!readingLang) {
-      toast({ title: "Fehler", description: "Bitte eine Lesesprache auswählen.", variant: "destructive" });
+    if (!gender) {
+      toast({ title: "Fehler", description: "Bitte ein Geschlecht auswählen.", variant: "destructive" });
+      return;
+    }
+    if (!schoolLang) {
+      toast({ title: "Fehler", description: "Bitte eine Schulsprache auswählen.", variant: "destructive" });
       return;
     }
     setStep("storyType");
@@ -84,8 +239,9 @@ const OnboardingKindPage = () => {
 
     setIsLoading(true);
     try {
-      const schoolSystem = readingLang!;
       const age = selectedAge!;
+      // All story languages = school lang + extra langs (deduplicated)
+      const storyLanguages = Array.from(new Set([schoolLang!, ...extraLangs]));
 
       const { data: savedProfile, error } = await supabase
         .from("kid_profiles")
@@ -93,16 +249,17 @@ const OnboardingKindPage = () => {
           user_id: user.id,
           name: name.trim().slice(0, 30),
           age,
-          reading_language: readingLang!,
-          home_languages: [readingLang!],
-          ui_language: readingLang!,
-          school_system: schoolSystem,
+          gender,
+          reading_language: schoolLang!,
+          home_languages: storyLanguages,
+          ui_language: schoolLang!,
+          school_system: schoolLang!,
           school_class: getSchoolClass(age),
           difficulty_level: getDifficultyLevel(age),
           content_safety_level: 2,
           color_palette: "warm",
           hobbies: "",
-          story_languages: [readingLang!],
+          story_languages: storyLanguages,
           explanation_language: "de",
         })
         .select()
@@ -151,7 +308,7 @@ const OnboardingKindPage = () => {
 
       {/* === STEP 1: Profile === */}
       {step === "profile" && (
-        <div className="w-full max-w-md bg-white rounded-3xl shadow-lg px-6 py-7 space-y-6">
+        <div className="w-full max-w-md bg-white rounded-3xl shadow-lg px-6 py-7 space-y-5">
           {/* Name */}
           <div className="space-y-1.5">
             <Label className="text-sm font-semibold">Name des Kindes</Label>
@@ -170,13 +327,13 @@ const OnboardingKindPage = () => {
           {/* Alter */}
           <div className="space-y-2">
             <Label className="text-sm font-semibold">Alter</Label>
-            <div className="flex gap-3">
+            <div className="flex flex-wrap gap-2">
               {AGES.map((age) => (
                 <button
                   key={age}
                   type="button"
                   onClick={() => setSelectedAge(age)}
-                  className="flex-1 h-14 rounded-xl text-base font-bold transition-all border-2"
+                  className="h-12 w-12 rounded-xl text-base font-bold transition-all border-2 flex-shrink-0"
                   style={{
                     background: selectedAge === age ? "#E8863A" : "transparent",
                     color: selectedAge === age ? "white" : "rgba(45,24,16,0.7)",
@@ -189,27 +346,56 @@ const OnboardingKindPage = () => {
             </div>
           </div>
 
-          {/* Lesesprache */}
+          {/* Geschlecht */}
           <div className="space-y-2">
-            <Label className="text-sm font-semibold">Lesesprache 📚</Label>
-            <div className="grid grid-cols-2 gap-2">
-              {LANGUAGES.map((lang) => (
+            <Label className="text-sm font-semibold">Geschlecht</Label>
+            <div className="flex gap-2">
+              {GENDERS.map((g) => (
                 <button
-                  key={lang.code}
+                  key={g.value}
                   type="button"
-                  onClick={() => setReadingLang(lang.code)}
-                  className="flex items-center gap-2.5 py-3 px-4 rounded-xl border-2 transition-all"
+                  onClick={() => setGender(g.value)}
+                  className="flex-1 flex flex-col items-center gap-1 py-3 rounded-xl border-2 transition-all"
                   style={{
-                    background: readingLang === lang.code ? "#E8863A" : "transparent",
-                    color: readingLang === lang.code ? "white" : "rgba(45,24,16,0.75)",
-                    borderColor: readingLang === lang.code ? "#E8863A" : "rgba(232,134,58,0.25)",
+                    background: gender === g.value ? "#E8863A" : "transparent",
+                    color: gender === g.value ? "white" : "rgba(45,24,16,0.75)",
+                    borderColor: gender === g.value ? "#E8863A" : "rgba(232,134,58,0.25)",
                   }}
                 >
-                  <span className="text-2xl">{lang.flag}</span>
-                  <span className="text-sm font-semibold">{lang.label}</span>
+                  <span className="text-2xl">{g.emoji}</span>
+                  <span className="text-xs font-semibold">{g.label}</span>
                 </button>
               ))}
             </div>
+          </div>
+
+          {/* Schulsprache (single dropdown) */}
+          <div className="space-y-1.5">
+            <Label className="text-sm font-semibold">Schulsprache 📚</Label>
+            <p className="text-xs" style={{ color: "rgba(45,24,16,0.45)" }}>
+              Die Hauptsprache, in der dein Kind liest
+            </p>
+            <SingleSelect
+              options={langOptions}
+              value={schoolLang}
+              onChange={setSchoolLang}
+              placeholder="Sprache auswählen..."
+            />
+          </div>
+
+          {/* Weitere Lesesprachen (multi dropdown) */}
+          <div className="space-y-1.5">
+            <Label className="text-sm font-semibold">Weitere Lesesprachen <span className="font-normal text-xs">(optional)</span></Label>
+            <p className="text-xs" style={{ color: "rgba(45,24,16,0.45)" }}>
+              Mehrere Sprachen möglich
+            </p>
+            <MultiSelect
+              options={langOptions}
+              values={extraLangs}
+              onChange={setExtraLangs}
+              placeholder="Weitere Sprachen..."
+              excludeCode={schoolLang}
+            />
           </div>
 
           <Button
@@ -293,7 +479,9 @@ function getSchoolClass(age: number): string {
   if (age <= 7) return "2";
   if (age <= 8) return "3";
   if (age <= 9) return "4";
-  return "5";
+  if (age <= 10) return "5";
+  if (age <= 11) return "6";
+  return "7";
 }
 
 function getDifficultyLevel(age: number): number {
