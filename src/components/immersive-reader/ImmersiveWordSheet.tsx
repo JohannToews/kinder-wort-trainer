@@ -9,9 +9,19 @@ import {
   DrawerFooter,
   DrawerClose,
 } from '@/components/ui/drawer';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  DialogClose,
+} from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import FablinoMascot from '@/components/FablinoMascot';
 import { Loader2, X, BookmarkPlus, Check } from 'lucide-react';
+import { useImmersiveLayout } from './useImmersiveLayout';
 
 interface ImmersiveWordSheetProps {
   word: string | null;
@@ -141,12 +151,95 @@ const ImmersiveWordSheet: React.FC<ImmersiveWordSheetProps> = ({
   }, [word, storyLanguage, explanationLanguage]);
 
   const isOpen = word !== null;
+  const layoutMode = useImmersiveLayout();
+  const isTablet = layoutMode === 'small-tablet';
 
+  // Shared inner content
+  const wordLabel = word ? word.replace(/[.,!?;:'"«»\-–—()[\]{}]/g, '') : '';
+
+  const contentBody = (
+    <>
+      {isLoading && (
+        <span className="flex items-center gap-2 text-muted-foreground">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Loading...
+        </span>
+      )}
+      {error && !isLoading && (
+        <span className="text-destructive">
+          Could not load explanation.
+        </span>
+      )}
+      {explanation && !isLoading && (
+        <span className="text-foreground text-sm leading-relaxed">
+          {explanation}
+        </span>
+      )}
+    </>
+  );
+
+  const footerButtons = (
+    <>
+      {error && !isLoading && (
+        <Button variant="outline" size="sm" onClick={handleRetry}>
+          Retry
+        </Button>
+      )}
+      {explanation && !isSaved && (
+        <Button
+          size="sm"
+          onClick={handleSave}
+          className="flex items-center gap-1.5"
+        >
+          <BookmarkPlus className="h-4 w-4" />
+          Save
+        </Button>
+      )}
+      {isSaved && (
+        <Button size="sm" variant="outline" disabled className="flex items-center gap-1.5">
+          <Check className="h-4 w-4 text-green-600" />
+          Saved
+        </Button>
+      )}
+    </>
+  );
+
+  // ── Tablet: Dialog Popup ─────────────────────────────────
+  if (isTablet) {
+    return (
+      <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <div className="flex flex-row items-start gap-3">
+              <FablinoMascot
+                src="/mascot/fablino-happy.webp"
+                size="sm"
+                bounce={false}
+                className="flex-shrink-0 mt-1"
+              />
+              <div className="flex-1 min-w-0">
+                <DialogTitle className="text-lg font-bold text-left">
+                  {wordLabel}
+                </DialogTitle>
+                <DialogDescription className="text-left mt-1">
+                  {contentBody}
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+          <DialogFooter className="flex-row gap-2 justify-start">
+            {footerButtons}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  // ── Phone: Bottom Sheet Drawer ───────────────────────────
   return (
     <Drawer open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
       <DrawerContent className="immersive-word-sheet max-h-[50vh]">
         <DrawerHeader className="flex flex-row items-start gap-3 pb-2">
-          {/* Fox mascot */}
           <FablinoMascot
             src="/mascot/fablino-happy.webp"
             size="sm"
@@ -155,58 +248,20 @@ const ImmersiveWordSheet: React.FC<ImmersiveWordSheetProps> = ({
           />
           <div className="flex-1 min-w-0">
             <DrawerTitle className="text-lg font-bold text-left">
-              {word && word.replace(/[.,!?;:'"«»\-–—()[\]{}]/g, '')}
+              {wordLabel}
             </DrawerTitle>
             <DrawerDescription className="text-left mt-1">
-              {isLoading && (
-                <span className="flex items-center gap-2 text-muted-foreground">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Loading...
-                </span>
-              )}
-              {error && !isLoading && (
-                <span className="text-destructive">
-                  Could not load explanation.
-                </span>
-              )}
-              {explanation && !isLoading && (
-                <span className="text-foreground text-sm leading-relaxed">
-                  {explanation}
-                </span>
-              )}
+              {contentBody}
             </DrawerDescription>
           </div>
-
-          {/* Close button */}
           <DrawerClose asChild>
             <Button variant="ghost" size="icon" className="flex-shrink-0 h-8 w-8">
               <X className="h-4 w-4" />
             </Button>
           </DrawerClose>
         </DrawerHeader>
-
         <DrawerFooter className="flex-row gap-2 pt-0">
-          {error && !isLoading && (
-            <Button variant="outline" size="sm" onClick={handleRetry}>
-              Retry
-            </Button>
-          )}
-          {explanation && !isSaved && (
-            <Button
-              size="sm"
-              onClick={handleSave}
-              className="flex items-center gap-1.5"
-            >
-              <BookmarkPlus className="h-4 w-4" />
-              Save
-            </Button>
-          )}
-          {isSaved && (
-            <Button size="sm" variant="outline" disabled className="flex items-center gap-1.5">
-              <Check className="h-4 w-4 text-green-600" />
-              Saved
-            </Button>
-          )}
+          {footerButtons}
         </DrawerFooter>
       </DrawerContent>
     </Drawer>
