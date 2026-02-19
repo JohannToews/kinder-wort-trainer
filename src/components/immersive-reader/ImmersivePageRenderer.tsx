@@ -157,8 +157,9 @@ const ImmersivePageRenderer: React.FC<ImmersivePageRendererProps> = ({
   );
 
   // ── Phone / Small-Tablet (Vertical) Layout ────────────────
-  const padding = layoutMode === 'small-tablet' ? 'px-8' : 'px-5';
-  const imageHeight = layoutMode === 'small-tablet' ? 'max-h-[55vh]' : 'max-h-[50vh]';
+  // Full width on both phone and tablet — no side padding restriction
+  const padding = 'px-5';
+  const imageHeight = layoutMode === 'small-tablet' ? 'max-h-[60vh]' : 'max-h-[50vh]';
 
   if (page.hasImage && imageUrl) {
     return (
