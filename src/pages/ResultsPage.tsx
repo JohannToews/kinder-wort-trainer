@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useKidProfile } from "@/hooks/useKidProfile";
 import { useResultsPage, LevelInfo, BadgeInfo } from "@/hooks/useResultsPage";
 import { translateLevelName, translateBadgeName, translateBadgeMessage } from "@/lib/levelTranslations";
-import { ArrowLeft } from "lucide-react";
+import BackButton from "@/components/BackButton";
 import FablinoMascot from "@/components/FablinoMascot";
 import SpeechBubble from "@/components/SpeechBubble";
 
@@ -850,9 +850,7 @@ const ResultsPage = () => {
         className="min-h-screen pb-safe"
       >
         <div className="px-4 pt-3 pb-0">
-          <button onClick={() => navigate("/")} className="p-2 -ml-2 rounded-lg hover:bg-white/30 transition-colors">
-            <ArrowLeft className="h-5 w-5 text-gray-700" />
-          </button>
+          <BackButton to="/" />
         </div>
         <div className="max-w-lg mx-auto px-4 space-y-4 pt-2">
           <SkeletonCard />
@@ -886,9 +884,7 @@ const ResultsPage = () => {
       className="min-h-screen pb-safe"
     >
       <div className="px-4 pt-3 pb-0">
-        <button onClick={() => navigate("/")} className="p-2 -ml-2 rounded-lg hover:bg-white/30 transition-colors">
-          <ArrowLeft className="h-5 w-5 text-gray-700" />
-        </button>
+        <BackButton to="/" />
       </div>
 
       <div className="max-w-lg mx-auto px-4 space-y-4 pt-1 pb-8">

@@ -1,6 +1,4 @@
-import { useNavigate } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import BackButton from "@/components/BackButton";
 
 interface PageHeaderProps {
   title: string;
@@ -9,20 +7,11 @@ interface PageHeaderProps {
 }
 
 const PageHeader = ({ title, backTo = "/", rightContent }: PageHeaderProps) => {
-  const navigate = useNavigate();
-
   return (
     <div className="p-4 md:p-6">
       <div className="max-w-4xl mx-auto flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => navigate(backTo)}
-            className="rounded-full hover:bg-primary/20 h-14 w-14"
-          >
-            <ArrowLeft className="h-10 w-10 stroke-[2.5]" />
-          </Button>
+          <BackButton to={backTo} />
           <h1 className="text-2xl md:text-3xl font-baloo text-foreground">
             {title}
           </h1>

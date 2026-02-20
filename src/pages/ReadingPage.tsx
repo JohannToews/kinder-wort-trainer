@@ -19,6 +19,7 @@ import { useGamification } from "@/hooks/useGamification";
 import FablinoReaction from "@/components/FablinoReaction";
 import BadgeCelebrationModal, { EarnedBadge } from "@/components/BadgeCelebrationModal";
 import PageHeader from "@/components/PageHeader";
+import BackButton from "@/components/BackButton";
 import { Language, getTranslations } from "@/lib/translations";
 import BranchDecisionScreen from "@/components/story-creation/BranchDecisionScreen";
 import type { BranchOption as BranchOptionType } from "@/components/story-creation/BranchDecisionScreen";
@@ -1477,12 +1478,7 @@ const ReadingPage = () => {
         </button>
 
         {/* Back button */}
-        <button
-          onClick={() => navigate('/stories')}
-          className="fixed top-3 left-14 z-50 bg-background/80 backdrop-blur-sm border rounded-full px-3 py-2 shadow-sm hover:bg-muted transition-colors text-xs text-muted-foreground font-medium"
-        >
-          ← {story.title.length > 20 ? story.title.substring(0, 20) + '…' : story.title}
-        </button>
+        <BackButton to="/stories" className="fixed top-3 left-14 z-50" />
 
         <ImmersiveReader
           story={story}

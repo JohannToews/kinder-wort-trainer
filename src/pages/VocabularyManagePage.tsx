@@ -4,7 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { ArrowLeft, Plus, Trash2, CheckCircle2, XCircle, Minus, Save, Loader2, Users } from "lucide-react";
+import { Plus, Trash2, CheckCircle2, XCircle, Minus, Save, Loader2, Users } from "lucide-react";
+import BackButton from "@/components/BackButton";
 import { useAuth } from "@/hooks/useAuth";
 import { useKidProfile } from "@/hooks/useKidProfile";
 import { useTranslations, Language } from "@/lib/translations";
@@ -186,14 +187,7 @@ const VocabularyManagePage = () => {
       {/* Header */}
       <div className="sticky top-0 z-10 bg-background/80 backdrop-blur-sm border-b border-border p-4">
         <div className="max-w-4xl mx-auto flex items-center gap-4">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => navigate("/")}
-            className="rounded-full hover:bg-primary/20"
-          >
-            <ArrowLeft className="h-6 w-6" />
-          </Button>
+          <BackButton to="/" />
           <h1 className="text-2xl md:text-3xl font-baloo text-foreground">
             {t.vocabManageTitle}
           </h1>

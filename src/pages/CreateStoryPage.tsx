@@ -11,6 +11,7 @@ import CharacterSelectionScreen from "@/components/story-creation/CharacterSelec
 import SpecialEffectsScreen, { StorySettingsFromEffects } from "@/components/story-creation/SpecialEffectsScreen";
 import ImageStylePicker from "@/components/story-creation/ImageStylePicker";
 import FablinoPageHeader from "@/components/FablinoPageHeader";
+import BackButton from "@/components/BackButton";
 import {
   StoryType,
   StorySubElement,
@@ -876,9 +877,7 @@ const CreateStoryPage = () => {
         <div className="min-h-screen flex flex-col">
           {/* Header */}
           <div className="py-3 px-4 max-w-lg mx-auto w-full">
-            <button onClick={() => navigate("/")} className="p-2 -ml-2 rounded-lg hover:bg-white/50 transition-colors">
-              <svg className="h-5 w-5 text-[#2D1810]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
-            </button>
+            <BackButton to="/" />
           </div>
 
           {/* Fablino + Speech Bubble */}

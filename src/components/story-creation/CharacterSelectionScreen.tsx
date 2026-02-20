@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect } from "react";
-import { ArrowLeft, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
+import BackButton from "@/components/BackButton";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -334,13 +335,7 @@ const CharacterSelectionScreen = ({
     <div className="min-h-screen flex flex-col">
       {/* Back button */}
       <div className="px-4 pt-3 pb-0">
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={viewState === "main" ? onBack : () => setViewState("main")}
-        >
-          <ArrowLeft className="h-5 w-5" />
-        </Button>
+        <BackButton onClick={viewState === "main" ? onBack : () => setViewState("main")} />
       </div>
 
       {/* Vertically centered content */}

@@ -18,7 +18,10 @@
 10. [Dynamic Prompt Engine](#dynamic-prompt-engine-block-23c)
 11. [Series Feature (Modus A)](#series-feature-modus-a--linear-5-episode-series)
 12. [Voice Input Feature](#voice-input-feature)
-13. [Technical Debt & Code Smells](#technical-debt--code-smells)
+13. [Immersive Reader](#immersive-reader)
+14. [Image Style System](#image-style-system)
+15. [Syllable Coloring](#syllable-coloring)
+16. [Technical Debt & Code Smells](#technical-debt--code-smells)
 
 ---
 
@@ -26,7 +29,7 @@
 
 | Layer | Technology |
 |-------|-----------|
-| Frontend | React 18.3, TypeScript 5.8, Vite 5.4 |
+| Frontend | React 18.3, TypeScript 5.8, Vite 5.4, hypher (syllables DE), hyphen (syllables FR) |
 | UI | shadcn/ui (50+ Radix UI components), Tailwind CSS 3.4, Framer Motion 12 |
 | State | React Context, TanStack React Query 5 (stories cache: 5min stale / 10min GC) |
 | Backend | Supabase (Edge Functions, PostgreSQL, Storage, Realtime) |
@@ -57,7 +60,8 @@ kinder-wort-trainer/
 │   ├── components/
 │   │   ├── ui/                        # 50+ shadcn/ui components
 │   │   ├── gamification/              # PointsDisplay, LevelBadge, LevelUpModal, StreakFlame, CollectibleModal
-│   │   ├── story-creation/            # 15 files – multi-step story creation wizard (incl. SavedCharactersModal, VoiceRecordButton, WaveformVisualizer)
+│   │   ├── immersive-reader/           # 15+ files – book-style reader (pixel-based splitting, spreads, syllables)
+│   │   ├── story-creation/            # 16 files – multi-step story creation wizard (incl. ImageStylePicker, VoiceRecordButton)
 │   │   ├── story-sharing/             # 5 files – QR code sharing, import/export
 │   │   ├── ConsistencyCheckStats.tsx  # Admin: consistency check result stats (delete, refresh, selection)
 │   │   ├── BadgeCelebrationModal.tsx  # Fullscreen modal celebrating new badges (confetti, animations)
@@ -82,7 +86,8 @@ kinder-wort-trainer/
 │   │   ├── StoryAudioPlayer.tsx       # Audio player for TTS narration
 │   │   ├── StoryFeedbackDialog.tsx    # Story feedback dialog (rating, weakest part)
 │   │   ├── StoryGenerator.tsx         # Admin: story generation with custom prompts
-│   │   ├── SyllableText.tsx           # German syllable highlighting
+│   │   ├── ImageStylesSection.tsx     # Admin: image style CRUD (list, edit dialog, preview upload)
+│   │   ├── SyllableText.tsx           # Syllable highlighting (DE via hypher, FR via hyphen async cache)
 │   │   ├── SystemPromptSection.tsx    # Admin: system prompt editing
 │   │   ├── UserManagementSection.tsx  # Admin: user/role management
 │   │   ├── VoiceInputField.tsx        # Voice input via Web Speech API
@@ -108,6 +113,7 @@ kinder-wort-trainer/
 │   │       ├── client.ts              # Supabase client init
 │   │       └── types.ts               # Generated DB types (1600+ lines)
 │   ├── lib/
+│   │   ├── syllabify.ts               # Hybrid syllable splitting (hypher sync for DE, hyphen async for FR)
 │   │   ├── translations.ts            # i18n (7 languages: DE, FR, EN, ES, NL, IT, BS) – 2000+ lines
 │   │   ├── levelTranslations.ts       # Level name translations (7 languages)
 │   │   ├── schoolSystems.ts           # School systems (FR, DE, ES, NL, EN, IT, BS) with class names
@@ -132,7 +138,7 @@ kinder-wort-trainer/
 │   │   ├── migrate-covers/            # Migrates cover images to story-images bucket
 │   │   ├── migrate-user-auth/         # Auth migration (called from MigrationBanner)
 │   │   └── …                          # 14 more Edge Functions
-│   └── migrations/                    # 78+ SQL migrations (incl. 7 Gamification Phase 1 + 3 performance/storage + Series Phase 1)
+│   └── migrations/                    # 80+ SQL migrations (incl. 7 Gamification Phase 1 + 3 performance/storage + Series Phase 1 + 2 Image Styles + 1 Immersive Reader)
 ├── Architecture.md                    # This file
 ├── package.json
 ├── vite.config.ts
@@ -162,12 +168,12 @@ kinder-wort-trainer/
 | `/` | HomeFablino (or HomeClassic) | Home with Fablino mascot via FablinoPageHeader (mascotSize="md"), profile switcher, action buttons (design tokens), weekly tracker card. Feature flag controlled. |
 | `/admin` | AdminPage | Admin dashboard (Profile, Erziehung, Stories, Settings, Account, System tabs) |
 | `/stories` | StorySelectPage | Story browser (fiction/non-fiction/series) – React Query cached, RPC `get_my_stories_list` |
-| `/read/:id` | ReadingPage | Story reading interface (word tap, audio, comprehension quiz, scene images) |
+| `/read/:id` | ReadingPage | Story reading (Classic default, Immersive admin-only). Word tap, audio, quiz, scene images. `?mode=immersive` admin param. |
 | `/quiz` | VocabularyQuizPage | Vocabulary quiz (multiple choice, awards stars) |
 | `/words` | VocabularyManagePage | Manage saved vocabulary words |
 | `/results` | ResultsPage | Progress dashboard (level card, badge roadmap, badge hints) |
 | `/feedback-stats` | FeedbackStatsPage | Story quality statistics dashboard |
-| `/create-story` | CreateStoryPage | Multi-step story creation wizard (4 screens) |
+| `/create-story` | CreateStoryPage | Multi-step story creation wizard (5 screens incl. image style picker) |
 | `/collection` | CollectionPage | Collectibles earned from stories |
 | `/sticker-buch` | StickerBookPage | Sticker book (story covers as collectibles) |
 | `*` | NotFound | 404 page |
@@ -277,7 +283,14 @@ CreateStoryPage.tsx (Wizard – Entry + 3-4 screens)
            + Always shows length/difficulty/series/language settings
            + Series toggle (admin only via isSeriesEnabled())
            + When isSeries: button text "Episode 1 erstellen" + series hint
-  Screen 4: Generation progress animation
+  Screen 4: Image Style Picker (ImageStylePicker.tsx)
+           + Loads active styles from image_styles DB table
+           + Filters by kid's age group (6-7, 8-9, 10-11)
+           + Pre-selects: kid profile preference > age default > first style
+           + "★ Empfohlen" badge on age-default style
+           + Emoji fallback when no preview image uploaded
+           + Saves selected style_key to kid_profiles.image_style after generation
+  Screen 5: Generation progress animation
         │
         ▼
 supabase.functions.invoke('generate-story')
@@ -318,16 +331,31 @@ CreateStoryPage.tsx saves to DB → Navigate to /read/{storyId}
 ```
 ReadingPage.tsx loads story by ID
         │
-        ├── Display cover image (top of page)
-        ├── Display story text (with SyllableText for German)
-        │     • Scene images distributed evenly between paragraphs
+        ├── View Mode: defaults to 'classic' for ALL users (including admin)
+        │     • Admin can switch to 'immersive' via toggle or ?mode=immersive URL param
+        │     • Non-admin: Classic Reader only, no toggle visible
         │
-        ├── Word tap → explain-word function
-        │     • Gemini 2.0 Flash (Lovable Gateway fallback)
-        │     • Child-friendly explanation (max 8 words)
-        │     • Can save → inserts into marked_words
+        ├── CLASSIC READER (default):
+        │     ├── Display cover image (top of page)
+        │     ├── Display story text (with SyllableText for DE/FR)
+        │     │     • Scene images distributed evenly between paragraphs
+        │     ├── Word tap → explain-word function
+        │     │     • Gemini 2.0 Flash (Lovable Gateway fallback)
+        │     │     • Child-friendly explanation (max 8 words)
+        │     │     • Can save → inserts into marked_words
+        │     ├── Audio playback (StoryAudioPlayer via ElevenLabs TTS)
+        │     └── Reading Settings (font size, line spacing, syllable toggle for DE/FR)
         │
-        ├── Audio playback (StoryAudioPlayer via ElevenLabs TTS)
+        ├── IMMERSIVE READER (admin-only):
+        │     ├── Book-style page layout (portrait or landscape spreads)
+        │     ├── Cover page: cover image left, title + multiple paragraphs right
+        │     ├── Pixel-based content splitting (not word-count based)
+        │     ├── Scene images assigned to spreads (cover image deduplicated)
+        │     ├── Swipe/arrow navigation between spreads
+        │     ├── Progress bar with page counter
+        │     ├── Toolbar: syllable toggle (DE/FR only), fullscreen button
+        │     ├── Background: warm cream #FFF9F0 on all pages
+        │     └── See [Immersive Reader](#immersive-reader) section for details
         │
         ├── Comprehension Quiz (after "finished reading")
         │     • Multiple choice from comprehension_questions
@@ -338,7 +366,7 @@ ReadingPage.tsx loads story by ID
         └── Series continuation (if ending_type === 'C' and episode < 5)
               • "Fablino schreibt das nächste Kapitel..." loading text (7 languages)
               • Episode 5: "Serie abgeschlossen! 🦊🎉" + back to library
-              • Passes series_id + episode_number + continuity_state to generate-story
+              • Passes series_id + episode_number + continuity_state + image_style_key
 ```
 
 ### 3. Vocabulary Quiz Flow
@@ -468,7 +496,7 @@ Phase 2 fixes applied (2026-02-10):
 
 - **Database**: PostgreSQL with RLS
 - **Edge Functions**: 17 Deno functions
-- **Storage**: `covers` bucket for story/profile images, `story-images` bucket (public) for migrated images
+- **Storage**: `covers` bucket for story/profile images, `story-images` bucket (public) for migrated images, `style-previews` bucket for image style preview images, `style-previews` bucket (public) for image style preview images
 - **Realtime**: Enabled for `stories` table (generation status updates)
 - **RPC Functions**: `log_activity`, `check_and_award_badges`, `get_results_page` (all 3 rewritten in Gamification Phase 1), `get_my_stories_list` (performance: server-side filtered story list), `get_my_results` (user results)
 
@@ -514,6 +542,8 @@ theme_rules                  ← Block 2.2 (18 entries: 6 themes × 3 langs)
 emotion_rules                ← Block 2.2 (18 entries: 6 emotions × 3 langs)
 image_style_rules            ← Block 2.2 (6 entries: 3 age groups × 2 types)
 difficulty_rules             ← Block 2.2b (9 entries: 3 levels × 3 langs)
+
+image_styles                 ← 10 styles (DB-driven, replaces hardcoded styles)
 ```
 
 ### Core Tables
@@ -521,9 +551,9 @@ difficulty_rules             ← Block 2.2b (9 entries: 3 levels × 3 langs)
 | Table | Purpose | Key Columns |
 |-------|---------|-------------|
 | `user_profiles` | User accounts | username, password_hash, display_name, admin_language, app_language, text_language |
-| `kid_profiles` | Child profiles (multi per user) | name, hobbies, school_system, school_class, color_palette, image_style, gender, age, ui_language, reading_language, explanation_language, home_languages[], story_languages[], content_safety_level (1-4), difficulty_level (1-3) |
+| `kid_profiles` | Child profiles (multi per user) | name, hobbies, school_system, school_class, color_palette, **image_style** (TEXT, preferred style_key from image_styles), gender, age, ui_language, reading_language, explanation_language, home_languages[], story_languages[], content_safety_level (1-4), difficulty_level (1-3) |
 | `user_roles` | Role assignments | user_id, role (admin/standard) |
-| `stories` | Story content and metadata | title, content, cover_image_url, story_images[], difficulty, text_language, generation_status, series_id, episode_number, ending_type, structure ratings, learning_theme_applied, parent_prompt_text, humor_level (1-5), emotional_depth (1-3), moral_topic, concrete_theme, image_count, **is_favorite** (boolean, default false), **episode_summary** (TEXT), **continuity_state** (JSONB), **visual_style_sheet** (JSONB) |
+| `stories` | Story content and metadata | title, content, cover_image_url, story_images[], difficulty, text_language, generation_status, series_id, episode_number, ending_type, structure ratings, learning_theme_applied, parent_prompt_text, humor_level (1-5), emotional_depth (1-3), moral_topic, concrete_theme, image_count, **is_favorite** (boolean, default false), **episode_summary** (TEXT), **continuity_state** (JSONB), **visual_style_sheet** (JSONB), **image_style_key** (TEXT, FK to image_styles) |
 | `kid_characters` | Recurring story figures per kid | kid_profile_id (FK CASCADE), name, role (family/friend/known_figure), age, relation, description, is_active, sort_order |
 | `marked_words` | Vocabulary words with explanations | word, explanation, story_id, quiz_history[], is_learned, difficulty, word_language, explanation_language |
 | `comprehension_questions` | Story comprehension questions | question, expected_answer, options[], story_id, question_language |
@@ -553,6 +583,14 @@ difficulty_rules             ← Block 2.2b (9 entries: 3 levels × 3 langs)
 | `content_themes_by_level` | Emotional content themes with safety levels (0=never, 1-4=allowed from level) |
 | `parent_learning_config` | Per-kid learning preferences (active_themes text[] max 3, frequency 1-3) |
 
+### Image Styles Table
+
+| Table | Purpose | Key Columns |
+|-------|---------|-------------|
+| `image_styles` | DB-driven image style definitions (10 styles) | `style_key` (TEXT PK), `labels` (JSONB: de/fr/en/es/nl/it/bs), `description` (JSONB: multilingual), `imagen_prompt_snippet` (TEXT, style prompt for image generation), `age_groups` (TEXT[]: 4-5, 6-7, 8-9, 10-11, 12+), `default_for_ages` (TEXT[]: which ages get this style as default), `age_modifiers` (JSONB: per-age prompt adjustments), `sort_order` (INT), `is_active` (BOOL), `preview_image_url` (TEXT, uploaded to Supabase Storage) |
+
+Current styles: `watercolor_storybook`, `paper_cut`, `cartoon_vibrant`, `whimsical_digital`, `realistic_illustration`, `minimalist_modern`, `3d_adventure`, `pixel_art`, `brick_block`, `vintage_retro`
+
 ### Story Generation Rule Tables (Block 2.2)
 
 | Table | Purpose | Entries |
@@ -560,7 +598,7 @@ difficulty_rules             ← Block 2.2b (9 entries: 3 levels × 3 langs)
 | `age_rules` | Language complexity rules by age group + language | 12 (4 age groups × FR/DE/EN) |
 | `theme_rules` | Plot templates, settings, conflicts per theme + image style columns | 18 (6 themes × FR/DE/EN) |
 | `emotion_rules` | Conflict patterns, character development per emotion | 18 (6 emotions × FR/DE/EN) |
-| `image_style_rules` | Visual style instructions per age group | 6 (3 age groups × 2 types) |
+| `image_style_rules` | Visual style instructions per age group (legacy, coexists with `image_styles`) | 6 (3 age groups × 2 types) |
 | `difficulty_rules` | Vocabulary complexity per difficulty level | 9 (3 levels × FR/DE/EN) |
 
 ### System Tables
@@ -631,11 +669,20 @@ useKidProfile.tsx → getKidLanguage(school_system)
 | `use-mobile` | Mobile device detection | Window resize listener (768px) |
 | `use-toast` | Toast notifications | React state |
 
+### Immersive Reader Hooks (src/components/immersive-reader/)
+
+| Hook | Purpose | Data Source |
+|------|---------|------------|
+| `useContentSplitter` | Pixel-based content splitting into `ImmersivePage[]`. Uses hidden DOM element for text height measurement. Respects available height per page type (portrait/landscape, with/without image). Sentence-level splitting for oversized paragraphs. `skipParagraphCount` for cover page paragraphs. | Story content + DOM measurement |
+| `useImmersiveLayout` | Detects device layout mode: phone (<640px), small-tablet (<1024px), landscape-spread (short side ≥600px). Listens to window resize + orientation change. | Window dimensions |
+| `usePagePosition` | Manages current spread index and navigation callbacks (next/prev/goTo). Clamps to valid spread range. | Spread count |
+| `useSyllableColoring` | Manages syllable coloring state for Immersive Reader. Supported languages: DE, FR only. Persists toggle preference. | localStorage |
+
 ### Edge Functions
 
 | Function | External API | DB Tables |
 |----------|-------------|-----------|
-| `generate-story` | Gemini 3 Flash (text), Gemini 2.5 Flash (images), Lovable Gateway | reads: app_settings, image_cache, age_rules, difficulty_rules, theme_rules, emotion_rules, image_style_rules, content_themes_by_level, parent_learning_config, learning_themes, stories, kid_profiles; writes: stories, image_cache, consistency_check_results. **Series**: loads series context, builds EPISODE_CONFIG-based prompts, series consistency check, Visual Style Sheet image pipeline. |
+| `generate-story` | Gemini 3 Flash (text), Gemini 2.5 Flash (images), Lovable Gateway | reads: app_settings, image_cache, age_rules, difficulty_rules, theme_rules, emotion_rules, image_style_rules, **image_styles**, content_themes_by_level, parent_learning_config, learning_themes, stories, kid_profiles; writes: stories (incl. **image_style_key**), image_cache, consistency_check_results. **Series**: loads series context, builds EPISODE_CONFIG-based prompts, series consistency check, Visual Style Sheet image pipeline. |
 | `explain-word` | Gemini 2.0 Flash, Lovable Gateway (fallback) | reads: app_settings |
 | `generate-quiz` | Gemini 2.0 Flash | — |
 | `evaluate-answer` | Gemini 2.0 Flash | — |
@@ -685,6 +732,7 @@ useKidProfile.tsx → getKidLanguage(school_system)
 | `SelectionSummary` | Summary of selected characters |
 | `VoiceRecordButton` | Mic button → recording UI (timer + waveform + transcript preview + confirm/retry). Labels in 6 languages (de/fr/es/en/nl/it). Uses `useVoiceRecorder` hook. |
 | `WaveformVisualizer` | Canvas-based 35-bar audio waveform. RMS amplitude from `getByteTimeDomainData`, 80ms capture interval. Uses FABLINO_COLORS. |
+| `ImageStylePicker` | Screen 4: Style selection. Loads active styles from `image_styles` DB, filters by age group, pre-selects profile preference/age default. Emoji fallbacks for missing preview images. |
 | `SettingSelectionScreen` | Story setting selection (currently unused in main flow) |
 | `types.ts` | TypeScript types + translation maps for wizard |
 
@@ -697,7 +745,7 @@ useKidProfile.tsx → getKidLanguage(school_system)
 | Module | Purpose |
 |--------|---------|
 | `promptBuilder.ts` | Builds dynamic user message by querying rule tables (age_rules, difficulty_rules, theme_rules, emotion_rules). Handles surprise theme/characters, character relationships, learning themes, image plan instructions. **Series**: exports `EPISODE_CONFIG` (5-episode definitions), `buildSeriesContextBlock()` (episode function, requirements, structure constraints, continuity state, output extensions). Extended `StoryRequest` interface with series fields. |
-| `imagePromptBuilder.ts` | Constructs image prompts from LLM image_plan + DB style rules. Age-specific modifiers (per year 5-12+). Cover + scene prompts. **Series**: exports `VisualStyleSheet`/`SeriesImageContext` interfaces, `EPISODE_MOOD` (5 mood strings), `buildSeriesStylePrefix()`. Conditional styleBlock: series uses world_style + episode mood (no style_prompt collision). |
+| `imagePromptBuilder.ts` | Constructs image prompts from LLM image_plan + DB style rules. `getStyleForAge()` reads from `image_styles` DB table (fallback to hardcoded). Age-specific modifiers (per year 5-12+). Cover + scene prompts. `target_paragraph` support. **Series**: exports `VisualStyleSheet`/`SeriesImageContext` interfaces, `EPISODE_MOOD` (5 mood strings), `buildSeriesStylePrefix()`. Conditional styleBlock: series uses world_style + episode mood (no style_prompt collision). |
 | `learningThemeRotation.ts` | Determines if a learning theme should be applied based on parent_learning_config frequency and round-robin rotation. |
 
 ### Prompt Architecture
@@ -842,6 +890,188 @@ VoiceRecordButton (UI) → useVoiceRecorder (hook) → speech-to-text (Edge Func
 
 ---
 
+## Immersive Reader
+
+### Architecture
+
+Admin-only book-style reader with pixel-based content splitting, landscape spreads, and syllable coloring.
+
+```
+ReadingPage.tsx (viewMode === 'immersive')
+        │
+        ▼
+ImmersiveReader.tsx (orchestrator)
+  ├── useImmersiveLayout()      → Detects LayoutMode (phone/small-tablet/landscape-spread)
+  ├── useContentSplitter()      → Pixel-based text → ImmersivePage[] splitting
+  ├── useSyllableColoring()     → Toggle state, DE/FR only
+  ├── usePagePosition()         → Current spread index, navigation
+  ├── buildImageArray()         → Deduplicates cover image from story_images
+  ├── buildSpreads()            → Pairs pages into landscape double-page spreads
+  │
+  ├── Cover page: ImmersiveChapterTitle
+  │     • Cover image (left), Title + coverParagraphs (right)
+  │     • Pixel-measured paragraph count to fill available space
+  │
+  ├── Content pages: ImmersivePageRenderer
+  │     • Renders ImmersivePage within a Spread
+  │     • SpreadImageHalf / SpreadTextHalf / SpreadEmptyHalf
+  │     • Image side alternates (left/right) per image index
+  │     • Background: #FFF9F0 on all halves
+  │     • Broken images hidden via onError → display:none
+  │
+  ├── ImmersiveNavigation        → Swipe + arrow key + click navigation
+  ├── ImmersiveProgressBar       → Page counter + progress dots
+  ├── ImmersiveToolbar           → Syllable toggle + fullscreen button
+  ├── ImmersiveWordSheet         → Word tap explanation (bottom sheet)
+  ├── ImmersiveQuizFlow          → Comprehension quiz after reading
+  └── ImmersiveEndScreen         → Stars earned, streak, navigation buttons
+```
+
+### Pixel-Based Content Splitting (useContentSplitter.ts)
+
+```
+splitIntoPagesPixel():
+  1. Create hidden measurement <div> matching text container dimensions
+  2. Get available height: viewport - toolbar - padding (portrait vs landscape)
+  3. Get text container width: half viewport (landscape) or full (portrait)
+  4. For each paragraph:
+     a. Append to measurement div, check scrollHeight
+     b. If fits → add to current page
+     c. If overflows → finalize current page, start new
+     d. If single paragraph overflows → split by sentences
+  5. Enforce MIN_PAGES (3) by reducing available height × 0.7
+  6. Enforce MAX_PAGES (8) by increasing available height × 1.3
+  7. Cleanup: remove measurement div from DOM
+```
+
+### Components (src/components/immersive-reader/)
+
+| Component | File | Description |
+|-----------|------|-------------|
+| `ImmersiveReader` | `ImmersiveReader.tsx` | Main orchestrator. Manages page state, cover paragraphs, spreads, syllable preloading, fullscreen. Background `#FFF9F0`. |
+| `ImmersivePageRenderer` | `ImmersivePageRenderer.tsx` | Renders individual spreads: `SpreadImageHalf`, `SpreadTextHalf`, `SpreadEmptyHalf`. Handles image placement (alternating sides). |
+| `ImmersiveChapterTitle` | `ImmersiveChapterTitle.tsx` | Cover page with image left, title + multiple paragraphs right. Syllable coloring on cover text. |
+| `ImmersiveNavigation` | `ImmersiveNavigation.tsx` | Swipe gestures, arrow key listeners, click-to-navigate zones. |
+| `ImmersiveProgressBar` | `ImmersiveProgressBar.tsx` | Page counter with spread-aware numbering. |
+| `ImmersiveToolbar` | `ImmersiveToolbar.tsx` | Syllable toggle (DE/FR only) + fullscreen button. |
+| `ImmersiveWordSheet` | `ImmersiveWordSheet.tsx` | Bottom sheet for word explanations (word tap). |
+| `ImmersiveQuizFlow` | `ImmersiveQuizFlow.tsx` | Comprehension quiz integrated into reader. |
+| `ImmersiveEndScreen` | `ImmersiveEndScreen.tsx` | Post-reading summary (stars, streak, weekly bonus). |
+| `constants.ts` | `constants.ts` | Types (`ImmersivePage`, `Spread`, `LayoutMode`), typography by age, theme gradients, syllable colors, breakpoints. |
+| `labels.ts` | `labels.ts` | i18n labels for immersive reader UI (7 languages). |
+| `imageUtils.ts` | `imageUtils.ts` | `buildImageArray()` (deduplicates cover), `distributeImagesEvenly()`, `getImageSide()`, `parseImagePlan()`. |
+| `useImmersiveLayout.ts` | `useImmersiveLayout.ts` | Detects device layout: phone (<640), small-tablet (<1024), landscape-spread (≥600 short side). |
+| `usePagePosition.ts` | `usePagePosition.ts` | Manages current spread index + navigation callbacks. |
+| `useContentSplitter.ts` | `useContentSplitter.ts` | Pixel-based content splitting into `ImmersivePage[]`. |
+| `useSyllableColoring.ts` | `useSyllableColoring.ts` | Syllable toggle state. Only DE and FR supported. |
+
+### Typography by Age Group
+
+| Age Group | Font Size | Line Height | Letter Spacing |
+|-----------|-----------|-------------|----------------|
+| 5–7 | 22px | 1.75 | 0.2px |
+| 8–9 | 20px | 1.7 | 0.15px |
+| 10–11 | 18px | 1.65 | 0.1px |
+| 12+ | 16px | 1.6 | 0 |
+
+---
+
+## Image Style System
+
+### Architecture
+
+DB-driven image style system replacing hardcoded style logic. Three phases:
+
+```
+Phase 1 (Backend): image_styles table + getStyleForAge() reads from DB
+Phase 2 (Wizard):  ImageStylePicker in Story Wizard (Screen 4)
+Phase 3 (Admin):   ImageStylesSection CRUD in Admin Panel
+```
+
+### Data Flow
+
+```
+CreateStoryPage (Wizard)
+  │  Screen 4: ImageStylePicker
+  │  ├── Load styles: supabase.from('image_styles').select('*').eq('is_active', true)
+  │  ├── Filter by age: style.age_groups contains kid's age bracket
+  │  ├── Pre-select: kid_profiles.image_style > default_for_ages > first style
+  │  └── Selected: image_style_key
+  │
+  ▼
+generate-story Edge Function
+  │  ├── Receives image_style_key in request body
+  │  ├── imagePromptBuilder.ts → getStyleForAge(supabase, age, styleKey)
+  │  │     Reads from image_styles DB table (fallback to hardcoded)
+  │  │     Uses imagen_prompt_snippet + age_modifiers for image prompts
+  │  ├── Saves image_style_key to stories table
+  │  └── Returns image_style_key to frontend
+  │
+  ▼
+ReadingPage / CreateStoryPage
+  └── Saves selected style to kid_profiles.image_style (preference for next time)
+```
+
+### Admin Panel (ImageStylesSection.tsx)
+
+- List view with all styles (active/inactive)
+- Create/edit dialog: multilingual labels (de/fr/en/es/nl/it/bs), description, `imagen_prompt_snippet`
+- Age group checkboxes (4-5, 6-7, 8-9, 10-11, 12+)
+- Default-for-ages checkboxes
+- Age modifiers (JSONB: per-age prompt adjustments)
+- Preview image upload to `style-previews` Supabase Storage bucket
+- Sort order, active toggle
+- Located in Admin Panel → System tab
+
+---
+
+## Syllable Coloring
+
+### Architecture
+
+Hybrid syllable splitting approach using two libraries:
+
+```
+src/lib/syllabify.ts
+  │
+  ├── German (DE): hypher (synchronous)
+  │     Uses hyphenation.de pattern file
+  │     syllabifySync(word) → string[]
+  │
+  ├── French (FR): hyphen (async with cache)
+  │     Preloads pattern file, caches hyphenator
+  │     syllabifyAsync(word) → Promise<string[]>
+  │
+  └── Other languages: NOT SUPPORTED
+        syllabifyWithLog() returns [word] (no split)
+```
+
+### Supported Languages
+
+Only **German (DE)** and **French (FR)**. The syllable toggle in both Classic and Immersive readers is hidden for all other languages.
+
+### Color Scheme
+
+Alternating blue (#2563EB) / red (#DC2626) syllable coloring. Continuous color offset across paragraphs (no reset per paragraph).
+
+### Components
+
+| Component | Description |
+|-----------|-------------|
+| `SyllableText` (`src/components/SyllableText.tsx`) | Renders text with syllable coloring. Uses `syllabifyWithLog()`. Continuous `globalColorOffset` alternation across paragraphs. |
+| `ReadingSettings` (`src/components/ReadingSettings.tsx`) | Classic Reader syllable toggle (with preview). |
+| `ImmersiveToolbar` | Immersive Reader syllable toggle (visible only for DE/FR). |
+| `useSyllableColoring` | Immersive Reader toggle state hook. |
+
+### npm Dependencies
+
+- `hypher` — synchronous syllable splitting engine
+- `hyphenation.de` — German hyphenation patterns for hypher
+- `hyphenation.fr` — French hyphenation patterns for hypher (used as backup)
+- `hyphen` — async syllable splitting (primary for French)
+
+---
+
 ## Technical Debt & Code Smells
 
 ### Critical
@@ -915,6 +1145,19 @@ VoiceRecordButton (UI) → useVoiceRecorder (hook) → speech-to-text (Edge Func
 |------|---------|
 | `20260212_series_feature_phase1.sql` | Adds `episode_summary` (TEXT), `continuity_state` (JSONB), `visual_style_sheet` (JSONB) to `stories` table. All nullable, existing stories unchanged. |
 
+### Image Style System Migrations (2026-02-17/18)
+
+| File | Purpose |
+|------|---------|
+| `20260217_image_styles.sql` | Creates `image_styles` table (style_key PK, labels JSONB, description JSONB, imagen_prompt_snippet, age_groups, default_for_ages, age_modifiers, sort_order, is_active, preview_image_url). RLS policies. Adds `image_style_key` to `stories`. Seeds 6 initial styles (watercolor_storybook, paper_cut, cartoon_vibrant, whimsical_digital, realistic_illustration, minimalist_modern). |
+| `20260218_image_styles_batch2.sql` | Inserts 4 additional styles (3d_adventure, pixel_art, brick_block, vintage_retro) with multilingual labels, descriptions, and prompt snippets. |
+
+### Immersive Reader Migration (2026-02-10)
+
+| File | Purpose |
+|------|---------|
+| `20260210_immersive_reader_target_paragraph.sql` | Updates `system_prompt_core_v2` in `app_settings` to include `target_paragraph` in IMAGE PLAN INSTRUCTIONS for the LLM. |
+
 ### Performance & Storage Migrations (2026-02-11)
 
 | File | Purpose |
@@ -951,4 +1194,4 @@ VoiceRecordButton (UI) → useVoiceRecorder (hook) → speech-to-text (Edge Func
 
 ---
 
-*Last updated: 2026-02-12. Covers: Block 1 (multilingual DB), Block 2.1 (learning themes + guardrails), Block 2.2/2.2b (rule tables + difficulty_rules), Block 2.3a (story classifications + kid_characters), Block 2.3c (dynamic prompt engine), Block 2.3d (story_languages, wizard character management), Block 2.3e (dual-path wizard, surprise theme/characters), Block 2.4 (intelligent image generation), Phase 5 (star-based gamification, badges, BadgeCelebrationModal, ResultsPage), UI harmonization complete (design-tokens.ts, FablinoMascot sm=64/md=100/lg=130, SpeechBubble, FablinoPageHeader on all screens, compact SpecialEffectsScreen, theme/character Vite imports), **Gamification Phase 1 backend complete** (7 migrations), **Gamification Phase 2 frontend fixes complete** (total_stars insert, activity types story_read/quiz_complete, allBadgeCount=23), **Performance optimizations** (React Query caching on StorySelectPage, server-side story list RPC, image thumbnails via getThumbnailUrl, lazy loading), **New infrastructure** (story-images storage bucket, edgeFunctionHelper with legacy auth, migrate-covers + migrate-user-auth edge functions, SavedCharactersModal, ConsistencyCheckStats, stories.is_favorite), **Series Feature Modus A complete** (Phase 0-5: DB migration for episode_summary/continuity_state/visual_style_sheet, EPISODE_CONFIG with 5-episode structure, buildSeriesContextBlock in promptBuilder.ts, Visual Style Sheet image pipeline with EPISODE_MOOD in imagePromptBuilder.ts, series-aware consistency check with CRITICAL CONTINUITY error retry, feature flag isSeriesEnabled() admin-only, SeriesGrid with episode badges/progress bar, ReadingPage series continuation with Fablino loading text, SpecialEffectsScreen series button text + hint), **Voice Input** (useVoiceRecorder hook + VoiceRecordButton + WaveformVisualizer, integrated in SpecialEffectsScreen), **Speech-to-Text rewrite** (ElevenLabs → Gladia V2 API with custom vocabulary).*
+*Last updated: 2026-02-18. Covers: Block 1 (multilingual DB), Block 2.1 (learning themes + guardrails), Block 2.2/2.2b (rule tables + difficulty_rules), Block 2.3a (story classifications + kid_characters), Block 2.3c (dynamic prompt engine), Block 2.3d (story_languages, wizard character management), Block 2.3e (dual-path wizard, surprise theme/characters), Block 2.4 (intelligent image generation), Phase 5 (star-based gamification, badges, BadgeCelebrationModal, ResultsPage), UI harmonization complete (design-tokens.ts, FablinoMascot sm=64/md=100/lg=130, SpeechBubble, FablinoPageHeader on all screens, compact SpecialEffectsScreen, theme/character Vite imports), **Gamification Phase 1 backend complete** (7 migrations), **Gamification Phase 2 frontend fixes complete** (total_stars insert, activity types story_read/quiz_complete, allBadgeCount=23), **Performance optimizations** (React Query caching on StorySelectPage, server-side story list RPC, image thumbnails via getThumbnailUrl, lazy loading), **New infrastructure** (story-images storage bucket, edgeFunctionHelper with legacy auth, migrate-covers + migrate-user-auth edge functions, SavedCharactersModal, ConsistencyCheckStats, stories.is_favorite), **Series Feature Modus A complete** (Phase 0-5), **Voice Input** (useVoiceRecorder hook + VoiceRecordButton + WaveformVisualizer), **Speech-to-Text rewrite** (ElevenLabs → Gladia V2 API with custom vocabulary), **Immersive Reader** (admin-only book-style reader with pixel-based content splitting, landscape spreads, cover page with multi-paragraph fill, image deduplication, syllable coloring DE/FR, fullscreen mode, warm cream background #FFF9F0, 17 components in src/components/immersive-reader/), **Image Style System** (Phase 1: image_styles DB table with 10 styles + getStyleForAge() reads from DB; Phase 2: ImageStylePicker in Story Wizard Screen 4; Phase 3: ImageStylesSection CRUD in Admin Panel with preview upload), **Syllable Coloring** (hybrid approach: hypher sync for DE, hyphen async+cache for FR; SyllableText component; toggle restricted to DE/FR; live monitoring), **Classic Reader default** (all users default to classic, admin toggle for immersive via URL param or UI toggle).*

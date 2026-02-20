@@ -10,7 +10,7 @@ import { useKidProfile } from "@/hooks/useKidProfile";
 import { useTranslations, type Translations } from "@/lib/translations";
 import { toast } from "sonner";
 import FablinoPageHeader from "@/components/FablinoPageHeader";
-import { ArrowLeft } from "lucide-react";
+import BackButton from "@/components/BackButton";
 import SeriesGrid from "@/components/SeriesGrid";
 import { getThumbnailUrl } from "@/lib/imageUtils";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -330,14 +330,9 @@ const StorySelectPage = () => {
     <div className="min-h-screen flex flex-col items-center font-nunito">
       <div className="w-full max-w-[480px] px-5 pt-6">
         {/* Back button */}
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => navigate("/")}
-          className="rounded-full hover:bg-primary/20 h-10 w-10 mb-1"
-        >
-          <ArrowLeft className="h-6 w-6 stroke-[2.5]" />
-        </Button>
+        <div className="mb-1">
+          <BackButton to="/" />
+        </div>
 
         {/* Fablino header - same position as homepage */}
         <FablinoPageHeader

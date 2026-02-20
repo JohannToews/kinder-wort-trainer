@@ -4,7 +4,7 @@ import { useGamification } from "@/hooks/useGamification";
 import { useAuth } from "@/hooks/useAuth";
 import MigrationBanner from "@/components/MigrationBanner";
 import { Settings, BarChart3 } from "lucide-react";
-import { useState, useRef, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import FablinoPageHeader from "@/components/FablinoPageHeader";
 import { FABLINO_STYLES } from "@/constants/design-tokens";
@@ -97,27 +97,10 @@ const HomeFablino = () => {
     }
   }, [location.key]); // location.key changes on every navigation
 
-  // Profile switcher dropdown
-  const [showProfileDropdown, setShowProfileDropdown] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
-
   // Weekly stats
   const [weeklyStories, setWeeklyStories] = useState(0);
   // Per-day story tracking (Mon=0 .. Sun=6)
   const [storyDays, setStoryDays] = useState<boolean[]>([false, false, false, false, false, false, false]);
-
-  // Close dropdown on outside click
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-        setShowProfileDropdown(false);
-      }
-    };
-    if (showProfileDropdown) {
-      document.addEventListener("mousedown", handleClickOutside);
-    }
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [showProfileDropdown]);
 
   // Load weekly data from user_results
   useEffect(() => {

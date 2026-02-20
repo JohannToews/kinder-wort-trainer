@@ -3,7 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { useKidProfile } from "@/hooks/useKidProfile";
 import { getTranslations } from "@/lib/translations";
 import { supabase } from "@/integrations/supabase/client";
-import { ArrowLeft, Plus, Star } from "lucide-react";
+import { Plus, Star } from "lucide-react";
+import BackButton from "@/components/BackButton";
 import { Progress } from "@/components/ui/progress";
 import FablinoMascot from "@/components/FablinoMascot";
 import SpeechBubble from "@/components/SpeechBubble";
@@ -112,18 +113,13 @@ const StickerBookPage = () => {
       <header className="sticky top-0 z-10 bg-amber-50/95 backdrop-blur-sm border-b border-amber-200">
         <div className="p-4">
           <div className="flex items-center justify-between mb-3">
-            <button
-              onClick={() => navigate('/')}
-              className="flex items-center gap-2 text-amber-700 hover:text-amber-900 transition-colors"
-            >
-              <ArrowLeft className="h-5 w-5" />
-            </button>
+            <BackButton to="/" />
 
             <h1 className="text-xl font-baloo font-bold text-amber-900">
               {t.stickerBook}
             </h1>
 
-            <div className="w-10" /> {/* Spacer for centering */}
+            <div className="w-11" />
           </div>
 
           {/* Fablino + Message + Progress */}

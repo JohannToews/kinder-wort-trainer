@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
-import { ArrowLeft, Star, Loader2 } from "lucide-react";
+import { Star, Loader2 } from "lucide-react";
+import BackButton from "@/components/BackButton";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import FablinoPageHeader from "@/components/FablinoPageHeader";
@@ -137,12 +138,7 @@ const ImageStylePicker: React.FC<ImageStylePickerProps> = ({
   return (
     <div className="min-h-screen flex flex-col">
       <div className="py-3 px-4 max-w-lg mx-auto w-full">
-        <button
-          onClick={onBack}
-          className="p-2 -ml-2 rounded-lg hover:bg-white/50 transition-colors"
-        >
-          <ArrowLeft className="h-5 w-5 text-[#2D1810]" />
-        </button>
+        <BackButton onClick={onBack} />
       </div>
 
       <div className="px-4 max-w-lg mx-auto w-full">

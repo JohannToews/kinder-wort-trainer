@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { ArrowLeft, Sparkles } from "lucide-react";
+import { Sparkles } from "lucide-react";
+import BackButton from "@/components/BackButton";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -200,9 +201,7 @@ const StoryTypeSelectionScreen = ({
     <div className="min-h-screen flex flex-col">
       {/* Back button */}
       <div className="px-4 pt-3 pb-0">
-        <Button variant="ghost" size="icon" onClick={handleBack}>
-          <ArrowLeft className="h-5 w-5" />
-        </Button>
+        <BackButton onClick={handleBack} />
       </div>
 
       {/* Vertically centered content */}

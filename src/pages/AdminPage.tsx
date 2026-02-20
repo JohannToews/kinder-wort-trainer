@@ -7,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { ArrowLeft, Image, Trash2, LogOut, User, Settings, Library, Star, TrendingUp, CreditCard, Wrench, Users, BookHeart, Crown, Mail, Lock, UserX, Receipt, Globe, Loader2, Search, Filter } from "lucide-react";
+import { Image, Trash2, LogOut, User, Settings, Library, Star, TrendingUp, CreditCard, Wrench, Users, BookHeart, Crown, Mail, Lock, UserX, Receipt, Globe, Loader2, Search, Filter } from "lucide-react";
 import { getThumbnailUrl } from "@/lib/imageUtils";
 import { invokeEdgeFunction } from "@/lib/edgeFunctionHelper";
 import PointsConfigSection from "@/components/PointsConfigSection";
@@ -206,14 +206,7 @@ const AdminPage = () => {
       {/* Compact Header */}
       <header className="flex-none flex items-center justify-between px-4 py-3 border-b border-border/50 bg-card/50 backdrop-blur-sm">
         <div className="flex items-center gap-3">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => navigate("/")}
-            className="rounded-full hover:bg-primary/20 h-9 w-9"
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
+          <BackButton to="/" />
           <div>
             <h1 className="text-xl font-baloo font-bold text-foreground">
               {t.adminArea}

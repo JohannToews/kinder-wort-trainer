@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ArrowLeft } from "lucide-react";
+import BackButton from "@/components/BackButton";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { SpecialAttribute, StoryLength, StoryDifficulty, LANGUAGE_FLAGS, LANGUAGE_LABELS } from "./types";
@@ -269,9 +269,7 @@ const SpecialEffectsScreen = ({
     <div className="min-h-screen flex flex-col">
       {/* Back button */}
       <div className="px-4 pt-2 pb-0">
-        <Button variant="ghost" size="icon" onClick={onBack}>
-          <ArrowLeft className="h-5 w-5" />
-        </Button>
+        <BackButton onClick={onBack} />
       </div>
 
       {/* Vertically centered content – consistent with all other screens */}

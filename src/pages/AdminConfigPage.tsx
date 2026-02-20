@@ -7,7 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
-import { ArrowLeft, Image, Save, Loader2, DollarSign, ShieldCheck } from "lucide-react";
+import { Image, Save, Loader2, DollarSign, ShieldCheck } from "lucide-react";
+import BackButton from "@/components/BackButton";
 import GenerationConfigSection from "@/components/GenerationConfigSection";
 import { useAuth } from "@/hooks/useAuth";
 import {
@@ -121,9 +122,7 @@ const AdminConfigPage = () => {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b px-4 py-3 flex items-center gap-3">
-        <Button variant="ghost" size="icon" onClick={() => navigate("/admin")}>
-          <ArrowLeft className="h-5 w-5" />
-        </Button>
+        <BackButton to="/admin" />
         <div>
           <h1 className="text-lg font-bold">Bildgenerierung – Konfiguration</h1>
           <p className="text-xs text-muted-foreground">Modelle, Kosten & Limits</p>
