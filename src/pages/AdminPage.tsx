@@ -7,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { Image, Trash2, LogOut, User, Settings, Library, Star, TrendingUp, CreditCard, Wrench, Users, BookHeart, Crown, Mail, Lock, UserX, Receipt, Globe, Loader2, Search, Filter } from "lucide-react";
+import { Image, Trash2, LogOut, User, Settings, Library, Star, TrendingUp, Wrench, Users, BookHeart, Mail, Lock, UserX, Loader2, Search, Filter } from "lucide-react";
 import BackButton from "@/components/BackButton";
 import { getThumbnailUrl } from "@/lib/imageUtils";
 import { invokeEdgeFunction } from "@/lib/edgeFunctionHelper";
@@ -203,59 +203,81 @@ const AdminPage = () => {
   };
 
   return (
-    <div className="h-screen flex flex-col gradient-admin overflow-hidden">
-      {/* Compact Header */}
-      <header className="flex-none flex items-center justify-between px-4 py-3 border-b border-border/50 bg-card/50 backdrop-blur-sm">
+    <div className="h-screen flex flex-col bg-[#FFF8F0] overflow-hidden">
+      {/* Orange-branded Header */}
+      <header className="flex-none flex items-center justify-between px-4 py-3 border-b border-orange-100 bg-white/80 backdrop-blur-sm">
         <div className="flex items-center gap-3">
           <BackButton to="/" />
-          <div>
-            <h1 className="text-xl font-baloo font-bold text-foreground">
+          <div className="flex items-center gap-2">
+            <img src="/mascot/6_Onboarding.png" alt="" className="h-8 w-8 object-contain" />
+            <h1 className="text-xl font-baloo font-bold text-[#2D1810]">
               {t.adminArea}
             </h1>
-            {user && (
-              <p className="text-xs text-muted-foreground">
-                {user.displayName}
-              </p>
-            )}
           </div>
         </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={handleLogout}
-          className="flex items-center gap-2"
-        >
-          <LogOut className="h-4 w-4" />
-        </Button>
+        <div className="flex items-center gap-2">
+          {/* Language switch in header */}
+          <Select
+            value={adminLang}
+            onValueChange={(v) => handleAdminLanguageChange(v as Language)}
+            disabled={updatingLang}
+          >
+            <SelectTrigger className="w-[52px] h-9 border-orange-200 bg-white px-2">
+              {updatingLang ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <span className="text-base">{languages.find(l => l.value === adminLang)?.flag || '🌐'}</span>
+              )}
+            </SelectTrigger>
+            <SelectContent className="bg-white border border-orange-100 z-50">
+              {languages.map((lang) => (
+                <SelectItem key={lang.value} value={lang.value}>
+                  <div className="flex items-center gap-2">
+                    <span>{lang.flag}</span>
+                    <span className="text-sm">{lang.label}</span>
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleLogout}
+            className="flex items-center gap-2 text-[#2D1810]/60 hover:text-[#2D1810] hover:bg-orange-50"
+          >
+            <LogOut className="h-4 w-4" />
+          </Button>
+        </div>
       </header>
 
-      {/* Tab Navigation - Native App Style */}
+      {/* Tab Navigation - Orange Theme */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
-        <TabsList className={`flex-none grid mx-4 mt-3 h-12 bg-muted/50 ${user?.role === 'admin' ? 'grid-cols-6' : 'grid-cols-4'}`}>
-          <TabsTrigger value="profile" className="flex items-center gap-2 text-sm font-medium">
+        <TabsList className={`flex-none grid mx-4 mt-3 h-12 bg-orange-50 rounded-xl ${user?.role === 'admin' ? 'grid-cols-6' : 'grid-cols-4'}`}>
+          <TabsTrigger value="profile" className="flex items-center gap-2 text-sm font-medium data-[state=active]:bg-orange-500 data-[state=active]:text-white text-orange-600 rounded-lg">
             <User className="h-4 w-4" />
             <span className="hidden sm:inline">{t.kidProfile}</span>
           </TabsTrigger>
-          <TabsTrigger value="parenting" className="flex items-center gap-2 text-sm font-medium">
+          <TabsTrigger value="parenting" className="flex items-center gap-2 text-sm font-medium data-[state=active]:bg-orange-500 data-[state=active]:text-white text-orange-600 rounded-lg">
             <BookHeart className="h-4 w-4" />
             <span className="hidden sm:inline">{t.parentSettingsTab}</span>
           </TabsTrigger>
-          <TabsTrigger value="stories" className="flex items-center gap-2 text-sm font-medium">
+          <TabsTrigger value="stories" className="flex items-center gap-2 text-sm font-medium data-[state=active]:bg-orange-500 data-[state=active]:text-white text-orange-600 rounded-lg">
             <Library className="h-4 w-4" />
             <span className="hidden sm:inline">{t.library}</span>
           </TabsTrigger>
           {user?.role === 'admin' && (
-            <TabsTrigger value="settings" className="flex items-center gap-2 text-sm font-medium">
+            <TabsTrigger value="settings" className="flex items-center gap-2 text-sm font-medium data-[state=active]:bg-orange-500 data-[state=active]:text-white text-orange-600 rounded-lg">
               <Settings className="h-4 w-4" />
               <span className="hidden sm:inline">{t.settings}</span>
             </TabsTrigger>
           )}
-          <TabsTrigger value="account" className="flex items-center gap-2 text-sm font-medium">
-            <CreditCard className="h-4 w-4" />
+          <TabsTrigger value="account" className="flex items-center gap-2 text-sm font-medium data-[state=active]:bg-orange-500 data-[state=active]:text-white text-orange-600 rounded-lg">
+            <User className="h-4 w-4" />
             <span className="hidden sm:inline">{t.account}</span>
           </TabsTrigger>
           {user?.role === 'admin' && (
-            <TabsTrigger value="system" className="flex items-center gap-2 text-sm font-medium">
+            <TabsTrigger value="system" className="flex items-center gap-2 text-sm font-medium data-[state=active]:bg-orange-500 data-[state=active]:text-white text-orange-600 rounded-lg">
               <Wrench className="h-4 w-4" />
               <span className="hidden sm:inline">System</span>
             </TabsTrigger>
@@ -516,207 +538,67 @@ const AdminPage = () => {
           </TabsContent>
           )}
 
-          {/* Account Tab */}
-          <TabsContent value="account" className="h-full overflow-hidden m-0">
-            <div className="h-full flex flex-col max-w-4xl mx-auto">
-              {/* Sub-Tab Navigation */}
-              <div className="flex-none flex gap-2 mb-4">
-                <Button
-                  variant={accountSubTab === "management" ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setAccountSubTab("management")}
-                  className="flex items-center gap-2"
-                >
-                  <User className="h-4 w-4" />
-                  Konto
-                </Button>
-                <Button
-                  variant={accountSubTab === "subscription" ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setAccountSubTab("subscription")}
-                  className="flex items-center gap-2"
-                >
-                  <Crown className="h-4 w-4" />
-                  Abo & Plan
-                </Button>
-              </div>
-
-              {/* Sub-Tab Content */}
-              <div className="flex-1 overflow-y-auto pr-2">
-                {/* Account Management */}
-                {accountSubTab === "management" && (
-                  <Card className="border-2 border-primary/30">
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-lg">Konto-Verwaltung</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      {/* Admin Language */}
-                      <div className="flex items-center justify-between p-4 bg-muted/30 rounded-xl">
-                        <div className="flex items-center gap-3">
-                          <div className="h-10 w-10 rounded-full bg-primary/20 flex items-center justify-center">
-                            <Globe className="h-5 w-5 text-primary" />
-                          </div>
-                          <div>
-                            <p className="font-medium text-sm">
-                              {adminLang === 'de' ? 'Sprache' : adminLang === 'fr' ? 'Langue' : adminLang === 'es' ? 'Idioma' : adminLang === 'nl' ? 'Taal' : adminLang === 'it' ? 'Lingua' : 'Language'}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              {adminLang === 'de' ? 'Admin-Oberfläche' : adminLang === 'fr' ? 'Interface admin' : 'Admin interface'}
-                            </p>
-                          </div>
-                        </div>
-                        <Select
-                          value={adminLang}
-                          onValueChange={(v) => handleAdminLanguageChange(v as Language)}
-                          disabled={updatingLang}
-                        >
-                          <SelectTrigger className="w-[140px]">
-                            {updatingLang ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <SelectValue />
-                            )}
-                          </SelectTrigger>
-                          <SelectContent className="bg-card border border-border z-50">
-                            {languages.map((lang) => (
-                              <SelectItem key={lang.value} value={lang.value}>
-                                <div className="flex items-center gap-2">
-                                  <span>{lang.flag}</span>
-                                  <span>{lang.label}</span>
-                                </div>
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+          {/* Account Tab — localized, no Abo sub-tab for Beta */}
+          <TabsContent value="account" className="h-full overflow-y-auto m-0 pr-2">
+            <div className="max-w-3xl mx-auto">
+              <Card className="border border-orange-100 bg-white shadow-sm">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-lg text-[#2D1810]">{t.accountManagement}</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {/* Email */}
+                  <div className="flex items-center justify-between p-4 bg-orange-50/50 rounded-xl">
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 rounded-full bg-orange-100 flex items-center justify-center">
+                        <Mail className="h-5 w-5 text-orange-600" />
                       </div>
-
-                      <div className="flex items-center justify-between p-4 bg-muted/30 rounded-xl">
-                        <div className="flex items-center gap-3">
-                          <div className="h-10 w-10 rounded-full bg-primary/20 flex items-center justify-center">
-                            <Mail className="h-5 w-5 text-primary" />
-                          </div>
-                          <div>
-                            <p className="font-medium text-sm">E-Mail ändern</p>
-                            <p className="text-xs text-muted-foreground">Aktuelle E-Mail aktualisieren</p>
-                          </div>
-                        </div>
-                        <Button variant="outline" size="sm" disabled>
-                          Ändern
-                        </Button>
+                      <div>
+                        <p className="font-medium text-sm text-[#2D1810]">{t.changeEmail}</p>
+                        <p className="text-xs text-[#2D1810]/50">{t.changeEmailSub}</p>
                       </div>
+                    </div>
+                    <Button variant="outline" size="sm" disabled className="border-orange-200">
+                      {t.edit}
+                    </Button>
+                  </div>
 
-                      {/* Password */}
-                      <div className="flex items-center justify-between p-4 bg-muted/30 rounded-xl">
-                        <div className="flex items-center gap-3">
-                          <div className="h-10 w-10 rounded-full bg-primary/20 flex items-center justify-center">
-                            <Lock className="h-5 w-5 text-primary" />
-                          </div>
-                          <div>
-                            <p className="font-medium text-sm">Passwort ändern</p>
-                            <p className="text-xs text-muted-foreground">Neues Passwort setzen</p>
-                          </div>
-                        </div>
-                        <Button variant="outline" size="sm" disabled>
-                          Ändern
-                        </Button>
+                  {/* Password */}
+                  <div className="flex items-center justify-between p-4 bg-orange-50/50 rounded-xl">
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 rounded-full bg-orange-100 flex items-center justify-center">
+                        <Lock className="h-5 w-5 text-orange-600" />
                       </div>
-
-                      {/* Delete Account */}
-                      <div className="flex items-center justify-between p-4 bg-destructive/10 rounded-xl border border-destructive/30">
-                        <div className="flex items-center gap-3">
-                          <div className="h-10 w-10 rounded-full bg-destructive/20 flex items-center justify-center">
-                            <UserX className="h-5 w-5 text-destructive" />
-                          </div>
-                          <div>
-                            <p className="font-medium text-sm text-destructive">Account löschen</p>
-                            <p className="text-xs text-muted-foreground">DSGVO: Alle Daten werden gelöscht</p>
-                          </div>
-                        </div>
-                        <Button variant="destructive" size="sm" disabled>
-                          Löschen
-                        </Button>
+                      <div>
+                        <p className="font-medium text-sm text-[#2D1810]">{t.changePassword}</p>
+                        <p className="text-xs text-[#2D1810]/50">{t.changePasswordSub}</p>
                       </div>
+                    </div>
+                    <Button variant="outline" size="sm" disabled className="border-orange-200">
+                      {t.edit}
+                    </Button>
+                  </div>
 
-                      <p className="text-xs text-muted-foreground text-center pt-2">
-                        ⚠️ Diese Funktionen werden in einer zukünftigen Version aktiviert
-                      </p>
-                    </CardContent>
-                  </Card>
-                )}
-
-                {/* Subscription */}
-                {accountSubTab === "subscription" && (
-                  <Card className="border-2 border-primary/30">
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-lg">Abo & Plan</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      {/* Current Plan */}
-                      <div className="p-4 bg-gradient-to-r from-primary/10 to-primary/5 rounded-xl border border-primary/30">
-                        <div className="flex items-center gap-3 mb-2">
-                          <Crown className="h-6 w-6 text-primary" />
-                          <div>
-                            <p className="font-bold">Aktueller Plan</p>
-                            <p className="text-sm text-muted-foreground">Kostenlos / Free</p>
-                          </div>
-                        </div>
+                  {/* Delete Account */}
+                  <div className="flex items-center justify-between p-4 bg-red-50/50 rounded-xl border border-red-200/50">
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 rounded-full bg-red-100 flex items-center justify-center">
+                        <UserX className="h-5 w-5 text-red-600" />
                       </div>
-
-                      {/* Upgrade */}
-                      <div className="flex items-center justify-between p-4 bg-muted/30 rounded-xl">
-                        <div className="flex items-center gap-3">
-                          <div className="h-10 w-10 rounded-full bg-primary/20 flex items-center justify-center">
-                            <TrendingUp className="h-5 w-5 text-primary" />
-                          </div>
-                          <div>
-                            <p className="font-medium text-sm">Upgrade / Downgrade</p>
-                            <p className="text-xs text-muted-foreground">Plan wechseln</p>
-                          </div>
-                        </div>
-                        <Button variant="outline" size="sm" disabled>
-                          Pläne ansehen
-                        </Button>
+                      <div>
+                        <p className="font-medium text-sm text-red-700">{t.deleteAccount}</p>
+                        <p className="text-xs text-[#2D1810]/50">{t.deleteAccountSub}</p>
                       </div>
+                    </div>
+                    <Button variant="destructive" size="sm" disabled>
+                      {t.delete}
+                    </Button>
+                  </div>
 
-                      {/* Payment Method */}
-                      <div className="flex items-center justify-between p-4 bg-muted/30 rounded-xl">
-                        <div className="flex items-center gap-3">
-                          <div className="h-10 w-10 rounded-full bg-primary/20 flex items-center justify-center">
-                            <CreditCard className="h-5 w-5 text-primary" />
-                          </div>
-                          <div>
-                            <p className="font-medium text-sm">Zahlungsmethode</p>
-                            <p className="text-xs text-muted-foreground">Kreditkarte oder PayPal verwalten</p>
-                          </div>
-                        </div>
-                        <Button variant="outline" size="sm" disabled>
-                          Verwalten
-                        </Button>
-                      </div>
-
-                      {/* Invoices */}
-                      <div className="flex items-center justify-between p-4 bg-muted/30 rounded-xl">
-                        <div className="flex items-center gap-3">
-                          <div className="h-10 w-10 rounded-full bg-primary/20 flex items-center justify-center">
-                            <Receipt className="h-5 w-5 text-primary" />
-                          </div>
-                          <div>
-                            <p className="font-medium text-sm">Rechnungen</p>
-                            <p className="text-xs text-muted-foreground">Invoices einsehen & herunterladen</p>
-                          </div>
-                        </div>
-                        <Button variant="outline" size="sm" disabled>
-                          Anzeigen
-                        </Button>
-                      </div>
-
-                      <p className="text-xs text-muted-foreground text-center pt-2">
-                        ⚠️ Stripe-Integration wird in einer zukünftigen Version aktiviert
-                      </p>
-                    </CardContent>
-                  </Card>
-                )}
-              </div>
+                  <p className="text-xs text-[#2D1810]/40 text-center pt-2">
+                    ⚠️ {t.comingSoon}
+                  </p>
+                </CardContent>
+              </Card>
             </div>
           </TabsContent>
 

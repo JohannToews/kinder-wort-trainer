@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
 import { toast } from "sonner";
 import { User, Palette, Save, Loader2, Sparkles, Plus, Trash2, X } from "lucide-react";
 import { useTranslations, Language } from "@/lib/translations";
@@ -793,461 +794,430 @@ const KidProfileSection = ({ language, userId, onProfileUpdate }: KidProfileSect
     setIsSaving(false);
   };
 
+  const charInputRef = useRef<HTMLInputElement>(null);
+
+  const familyChars = characters.filter(c => c.role === 'family');
+  const friendCharsGrouped = characters.filter(c => c.role === 'friend');
+  const knownFigureChars = characters.filter(c => c.role === 'known_figure');
+
   if (isLoading) {
     return (
-      <Card className="border-2 border-primary/30">
-        <CardContent className="p-8 flex items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </CardContent>
-      </Card>
+      <div className="p-8 flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-orange-500" />
+      </div>
     );
   }
 
   const availableClasses = schoolSystems[currentProfile.school_system]?.classes || [];
 
   return (
-    <Card className="border-2 border-primary/30 mb-8">
-      <CardHeader className="pb-2">
-        <CardTitle className="flex items-center gap-2 text-xl">
-          <User className="h-5 w-5 text-primary" />
-          {t.kidProfile}
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        {/* Profile Tabs - prominent design */}
-        <div className="bg-muted/50 rounded-lg p-2">
-          <div className="flex flex-wrap items-center gap-2">
-            {profiles.map((profile, index) => (
-              <div key={index} className="flex items-center">
-                <button
-                  onClick={() => selectProfile(index)}
-                  className={`px-4 py-2 rounded-lg font-medium transition-all ${
-                    selectedProfileIndex === index 
-                      ? 'bg-primary text-primary-foreground shadow-md' 
-                      : 'bg-background hover:bg-muted text-muted-foreground hover:text-foreground'
-                  }`}
-                >
-                  {profile.name || `${t.kidProfile} ${index + 1}`}
-                </button>
-                {profiles.length > 1 && selectedProfileIndex === index && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 ml-1 text-destructive hover:bg-destructive/10"
-                    onClick={(e) => { e.stopPropagation(); deleteProfile(index); }}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                )}
-              </div>
-            ))}
-            <Button
-              onClick={addNewProfile}
-              className="flex items-center gap-2 bg-primary/10 hover:bg-primary/20 text-primary border-2 border-dashed border-primary/40"
-              variant="outline"
-            >
-              <Plus className="h-4 w-4" />
-              {t.addChild}
-            </Button>
-          </div>
-        </div>
-
-        <p className="text-sm text-muted-foreground">
-          {t.kidProfileDescription}
-        </p>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Left column: Inputs */}
-          <div className="space-y-4">
-            {/* Name, Gender, Age row */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2 col-span-2 sm:col-span-1">
-                <Label htmlFor="kidName">{t.kidName}</Label>
-                <Input
-                  id="kidName"
-                  value={currentProfile.name}
-                  onChange={(e) => updateCurrentProfile({ name: e.target.value })}
-                  placeholder={language === 'de' ? 'z.B. Emma' : language === 'es' ? 'ej. Emma' : language === 'nl' ? 'bijv. Emma' : language === 'en' ? 'e.g. Emma' : 'ex. Emma'}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>{t.gender}</Label>
-                <Select 
-                  value={currentProfile.gender || ''} 
-                  onValueChange={(value) => updateCurrentProfile({ gender: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="—" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="male">{t.genderMale}</SelectItem>
-                    <SelectItem value="female">{t.genderFemale}</SelectItem>
-                    <SelectItem value="diverse">{t.genderDiverse}</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            {/* Age and School row */}
-            <div className="grid grid-cols-3 gap-4">
-              <div className="space-y-2">
-                <Label>{t.age}</Label>
-                <Select 
-                  value={currentProfile.age?.toString() || ''} 
-                  onValueChange={(value) => updateCurrentProfile({ age: parseInt(value) || undefined })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="—" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {[4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16].map((age) => (
-                      <SelectItem key={age} value={age.toString()}>
-                        {age}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-               <div className="space-y-2">
-                 <Label>Schule</Label>
-                 <Select value={currentProfile.school_system} onValueChange={handleSchoolSystemChange}>
-                   <SelectTrigger className="w-full">
-                     <SelectValue />
-                   </SelectTrigger>
-                   <SelectContent>
-                     {Object.entries(schoolSystems).map(([key, system]) => (
-                       <SelectItem key={key} value={key}>
-                         {system.name}
-                       </SelectItem>
-                     ))}
-                   </SelectContent>
-                 </Select>
-               </div>
-               <div className="space-y-2">
-                 <Label>{t.schoolClass}</Label>
-                 <Select 
-                   value={currentProfile.school_class} 
-                   onValueChange={(value) => updateCurrentProfile({ school_class: value })}
-                 >
-                   <SelectTrigger className="w-full">
-                     <SelectValue />
-                   </SelectTrigger>
-                   <SelectContent>
-                     {availableClasses.map((cls) => (
-                       <SelectItem key={cls} value={cls}>
-                         {cls}
-                       </SelectItem>
-                     ))}
-                   </SelectContent>
-                 </Select>
-               </div>
-             </div>
-
-            {/* HIDDEN: Hobbies field – kept for future use
-            <div className="space-y-2">
-              <Label htmlFor="hobbies">{t.hobbies}</Label>
-              <Textarea
-                id="hobbies"
-                value={currentProfile.hobbies}
-                onChange={(e) => updateCurrentProfile({ hobbies: e.target.value })}
-                placeholder={t.hobbiesPlaceholder}
-                className="min-h-[80px]"
-              />
-            </div>
-            */}
-
-            {/* HIDDEN: Image style selector – kept for future use
-            <div className="space-y-2">
-              <Label>{t.imageStyle}</Label>
-              <Select 
-                value={currentProfile.image_style} 
-                onValueChange={(value) => updateCurrentProfile({ image_style: value })}
+    <div className="space-y-4 pb-24">
+      {/* Profile Tabs — orange pill buttons */}
+      <div className="bg-orange-50 rounded-xl p-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {profiles.map((profile, index) => (
+            <div key={index} className="flex items-center">
+              <button
+                onClick={() => selectProfile(index)}
+                className={`px-4 py-2 rounded-lg font-medium transition-all text-sm ${
+                  selectedProfileIndex === index
+                    ? 'bg-orange-500 text-white shadow-md'
+                    : 'bg-white hover:bg-orange-50 text-orange-600 border border-orange-200'
+                }`}
               >
-                <SelectTrigger>
-                  <SelectValue>{getImageStyleLabel(currentProfile.image_style)}</SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  {IMAGE_STYLES.map((style) => (
-                    <SelectItem key={style.id} value={style.value}>
-                      {style.id === 'cute' ? t.imageStyleCute :
-                       style.id === 'watercolor' ? t.imageStyleWatercolor :
-                       style.id === 'comic' ? t.imageStyleComic :
-                       style.id === 'realistic' ? t.imageStyleRealistic :
-                       t.imageStyleAnime}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            */}
-
-            {/* Story Languages Multi-Select */}
-            <div className="space-y-2">
-              <Label>{t.storyLanguagesLabel}</Label>
-              <p className="text-xs text-muted-foreground">{t.storyLanguagesHint}</p>
-              {/* Core languages */}
-              <div className="flex flex-wrap gap-2">
-                {STORY_LANGUAGES.filter(l => l.tier === 'core').map((sl) => {
-                  const isSelected = (currentProfile.story_languages || []).includes(sl.code);
-                  return (
-                    <button
-                      key={sl.code}
-                      onClick={() => {
-                        const current = currentProfile.story_languages || [];
-                        if (isSelected) {
-                          if (current.length <= 1) return;
-                          updateCurrentProfile({ story_languages: current.filter(l => l !== sl.code) });
-                        } else {
-                          updateCurrentProfile({ story_languages: [...current, sl.code] });
-                        }
-                      }}
-                      className={`px-3 py-1.5 rounded-lg border-2 transition-all text-sm font-medium ${
-                        isSelected
-                          ? 'border-primary bg-primary/10 text-primary ring-1 ring-primary/30'
-                          : 'border-muted bg-background text-muted-foreground hover:border-muted-foreground/50'
-                      }`}
-                    >
-                      {LANGUAGE_FLAGS[sl.code] || ''} {LANGUAGE_LABELS[sl.code]?.[language] || sl.nameNative}
-                    </button>
-                  );
-                })}
-              </div>
-              {/* Beta languages */}
-              <div className="flex flex-wrap gap-2 pt-1">
-                {STORY_LANGUAGES.filter(l => l.tier === 'beta').map((sl) => {
-                  const isSelected = (currentProfile.story_languages || []).includes(sl.code);
-                  return (
-                    <button
-                      key={sl.code}
-                      onClick={() => {
-                        const current = currentProfile.story_languages || [];
-                        if (isSelected) {
-                          if (current.length <= 1) return;
-                          updateCurrentProfile({ story_languages: current.filter(l => l !== sl.code) });
-                        } else {
-                          updateCurrentProfile({ story_languages: [...current, sl.code] });
-                        }
-                      }}
-                      className={`px-3 py-1.5 rounded-lg border-2 transition-all text-sm font-medium ${
-                        isSelected
-                          ? 'border-primary bg-primary/10 text-primary ring-1 ring-primary/30'
-                          : 'border-muted bg-background text-muted-foreground hover:border-muted-foreground/50'
-                      }`}
-                    >
-                      {LANGUAGE_FLAGS[sl.code] || ''} {LANGUAGE_LABELS[sl.code]?.[language] || sl.nameNative}
-                      <span className="ml-1 text-[10px] opacity-70 font-normal">Beta</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* HIDDEN: Color palette selector – kept for future use
-            <div className="space-y-2">
-              <Label className="flex items-center gap-2">
-                <Palette className="h-4 w-4" />
-                {t.colorPalette}
-              </Label>
-              <div className="flex flex-wrap gap-2">
-                {COLOR_PALETTES.map((palette) => (
-                  <button
-                    key={palette.id}
-                    onClick={() => updateCurrentProfile({ color_palette: palette.id })}
-                    className={`px-3 py-1.5 rounded-full border-2 transition-all bg-gradient-to-r ${palette.gradient} ${
-                      currentProfile.color_palette === palette.id 
-                        ? `${palette.border} ring-2 ring-offset-2 ring-primary` 
-                        : 'border-transparent hover:border-muted'
-                    }`}
-                  >
-                    <span className="text-xs font-medium text-white drop-shadow-md">
-                      {getPaletteLabel(palette.id)}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </div>
-            */}
-          </div>
-
-          {/* HIDDEN: Cover image preview + generation – kept for future use
-          <div className="space-y-4">
-            <Label>{t.coverImage}</Label>
-            <div className="relative aspect-video bg-muted rounded-xl overflow-hidden border-2 border-dashed border-muted-foreground/30">
-              {coverPreview ? (
-                <img
-                  src={coverPreview}
-                  alt="Profile cover"
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <div className="absolute inset-0 flex items-center justify-center text-muted-foreground">
-                  <Sparkles className="h-12 w-12" />
-                </div>
+                {profile.name || `${t.kidProfile} ${index + 1}`}
+                {profile.age ? ` (${profile.age})` : ''}
+              </button>
+              {profiles.length > 1 && selectedProfileIndex === index && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 ml-1 text-red-400 hover:text-red-600 hover:bg-red-50"
+                  onClick={(e) => { e.stopPropagation(); deleteProfile(index); }}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
               )}
             </div>
-            <Button
-              onClick={generateCoverImage}
-              disabled={isGeneratingCover || !currentProfile.name.trim()}
-              variant="outline"
-              className="w-full"
-            >
-              {isGeneratingCover ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  {t.generatingCover}
-                </>
-              ) : (
-                <>
-                  <Sparkles className="h-4 w-4 mr-2" />
-                  {t.generateCover}
-                </>
-              )}
-            </Button>
-          </div>
-          */}
+          ))}
+          <Button
+            onClick={addNewProfile}
+            className="flex items-center gap-2 bg-white hover:bg-orange-50 text-orange-600 border-2 border-dashed border-orange-300"
+            variant="outline"
+            size="sm"
+          >
+            <Plus className="h-4 w-4" />
+            {t.addChild}
+          </Button>
         </div>
+      </div>
 
-        {/* ── Important Characters Section ── */}
-        {currentProfile?.id && (
-          <div className="pt-4 border-t space-y-3">
-            <Label className="text-base font-semibold">{t.importantCharacters}</Label>
-            
-            {/* Character list */}
-            {characters.length > 0 ? (
-              <div className="space-y-1.5">
-                {characters.map((char) => (
-                  <div key={char.id} className="flex items-center justify-between bg-muted/50 rounded-lg px-3 py-2">
-                    <span className="text-sm">
-                      {getRoleEmoji(char.role)}{' '}
-                      <span className="font-medium">{char.name}</span>
-                      {char.relation && <span className="text-muted-foreground"> — {char.relation}</span>}
-                      {char.age && <span className="text-muted-foreground">, {char.age} J.</span>}
-                    </span>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                      onClick={() => deleteCharacter(char)}
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground italic">—</p>
-            )}
-
-            {/* Add character button */}
-            <Button
-              variant="outline"
-              size="sm"
-              className="border-dashed"
-              onClick={openAddCharDialog}
-            >
-              <Plus className="h-4 w-4 mr-1" />
-              {t.addCharacterBtn}
-            </Button>
-          </div>
-        )}
-
-        {/* Add Character Dialog */}
-        <Dialog open={isCharDialogOpen} onOpenChange={setIsCharDialogOpen}>
-          <DialogContent className="max-w-sm">
-            <DialogHeader>
-              <DialogTitle>{t.characterType}</DialogTitle>
-            </DialogHeader>
+      {/* Accordion Sections */}
+      <Accordion type="multiple" defaultValue={["basics"]} className="space-y-2">
+        {/* ── Accordion 1: Grunddaten ── */}
+        <AccordionItem value="basics" className="border border-orange-100 rounded-xl bg-white overflow-hidden">
+          <AccordionTrigger className="px-4 py-3 text-sm font-semibold text-[#2D1810] hover:no-underline hover:bg-orange-50/50">
+            {t.accordionBasics}
+          </AccordionTrigger>
+          <AccordionContent className="px-4">
             <div className="space-y-4">
-              {/* Step 1: Type selection */}
-              <div className="flex flex-col gap-2">
-                {(['family', 'friend', 'known_figure'] as const).map((type) => (
-                  <Button
-                    key={type}
-                    variant={charType === type ? 'default' : 'outline'}
-                    className="justify-start"
-                    disabled={type === 'friend' && friendCount >= 5}
-                    onClick={() => {
-                      setCharType(type);
-                      setCharRelation('');
-                      setCharName('');
-                      setCharAge('');
-                    }}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="kidName" className="text-xs text-[#2D1810]/60">{t.kidName}</Label>
+                  <Input
+                    id="kidName"
+                    value={currentProfile.name}
+                    onChange={(e) => updateCurrentProfile({ name: e.target.value })}
+                    placeholder={language === 'de' ? 'z.B. Emma' : language === 'es' ? 'ej. Emma' : language === 'nl' ? 'bijv. Emma' : language === 'en' ? 'e.g. Emma' : 'ex. Emma'}
+                    className="border-orange-200 focus:border-orange-400"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-[#2D1810]/60">{t.gender}</Label>
+                  <Select
+                    value={currentProfile.gender || ''}
+                    onValueChange={(value) => updateCurrentProfile({ gender: value })}
                   >
-                    {getRoleEmoji(type)} {getRoleLabel(type)}
-                    {type === 'friend' && friendCount >= 5 && (
-                      <span className="ml-2 text-xs text-muted-foreground">({t.maxFriendsReached})</span>
-                    )}
-                  </Button>
-                ))}
+                    <SelectTrigger className="border-orange-200">
+                      <SelectValue placeholder="—" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="male">{t.genderMale}</SelectItem>
+                      <SelectItem value="female">{t.genderFemale}</SelectItem>
+                      <SelectItem value="diverse">{t.genderDiverse}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
 
-              {/* Step 2: Fields based on type */}
-              {charType && (
-                <div className="space-y-3 pt-2 border-t animate-in fade-in slide-in-from-top-2 duration-200">
-                  {/* Family: relation dropdown */}
-                  {charType === 'family' && (
-                    <div className="space-y-1">
-                      <Label className="text-sm">{t.characterRelation} *</Label>
-                      <Select value={charRelation} onValueChange={setCharRelation}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="—" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {familyRelations.map((rel) => (
-                            <SelectItem key={rel.value} value={rel.value}>{rel.label}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  )}
+              <div className="grid grid-cols-3 gap-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-[#2D1810]/60">{t.age}</Label>
+                  <Select
+                    value={currentProfile.age?.toString() || ''}
+                    onValueChange={(value) => updateCurrentProfile({ age: parseInt(value) || undefined })}
+                  >
+                    <SelectTrigger className="border-orange-200">
+                      <SelectValue placeholder="—" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {[4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16].map((a) => (
+                        <SelectItem key={a} value={a.toString()}>{a}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-[#2D1810]/60">{t.schoolSystem}</Label>
+                  <Select value={currentProfile.school_system} onValueChange={handleSchoolSystemChange}>
+                    <SelectTrigger className="border-orange-200">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(schoolSystems).map(([key, system]) => (
+                        <SelectItem key={key} value={key}>{system.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-[#2D1810]/60">{t.schoolClass}</Label>
+                  <Select
+                    value={currentProfile.school_class}
+                    onValueChange={(value) => updateCurrentProfile({ school_class: value })}
+                  >
+                    <SelectTrigger className="border-orange-200">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableClasses.map((cls) => (
+                        <SelectItem key={cls} value={cls}>{cls}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </div>
+          </AccordionContent>
+        </AccordionItem>
 
-                  {/* Name (always) */}
+        {/* ── Accordion 2: Sprachen ── */}
+        <AccordionItem value="languages" className="border border-orange-100 rounded-xl bg-white overflow-hidden">
+          <AccordionTrigger className="px-4 py-3 text-sm font-semibold text-[#2D1810] hover:no-underline hover:bg-orange-50/50">
+            {t.accordionLanguages}
+          </AccordionTrigger>
+          <AccordionContent className="px-4">
+            <div className="space-y-3">
+              <div>
+                <Label className="text-xs text-[#2D1810]/60">{t.storyLanguagesLabel}</Label>
+                <p className="text-[11px] text-[#2D1810]/40 mb-2">{t.storyLanguagesHint}</p>
+                <div className="flex flex-wrap gap-2">
+                  {STORY_LANGUAGES.filter(l => l.tier === 'core').map((sl) => {
+                    const isSelected = (currentProfile.story_languages || []).includes(sl.code);
+                    return (
+                      <button
+                        key={sl.code}
+                        onClick={() => {
+                          const current = currentProfile.story_languages || [];
+                          if (isSelected) {
+                            if (current.length <= 1) return;
+                            updateCurrentProfile({ story_languages: current.filter(l => l !== sl.code) });
+                          } else {
+                            updateCurrentProfile({ story_languages: [...current, sl.code] });
+                          }
+                        }}
+                        className={`px-3 py-1.5 rounded-lg border-2 transition-all text-sm font-medium ${
+                          isSelected
+                            ? 'border-orange-400 bg-orange-50 text-orange-700 ring-1 ring-orange-200'
+                            : 'border-gray-200 bg-white text-[#2D1810]/50 hover:border-orange-200'
+                        }`}
+                      >
+                        {LANGUAGE_FLAGS[sl.code] || ''} {LANGUAGE_LABELS[sl.code]?.[language] || sl.nameNative}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+              <div>
+                <p className="text-[11px] text-[#2D1810]/40 mb-1.5">Beta</p>
+                <div className="flex flex-wrap gap-2">
+                  {STORY_LANGUAGES.filter(l => l.tier === 'beta').map((sl) => {
+                    const isSelected = (currentProfile.story_languages || []).includes(sl.code);
+                    return (
+                      <button
+                        key={sl.code}
+                        onClick={() => {
+                          const current = currentProfile.story_languages || [];
+                          if (isSelected) {
+                            if (current.length <= 1) return;
+                            updateCurrentProfile({ story_languages: current.filter(l => l !== sl.code) });
+                          } else {
+                            updateCurrentProfile({ story_languages: [...current, sl.code] });
+                          }
+                        }}
+                        className={`px-3 py-1.5 rounded-lg border-2 transition-all text-sm font-medium ${
+                          isSelected
+                            ? 'border-orange-400 bg-orange-50 text-orange-700 ring-1 ring-orange-200'
+                            : 'border-gray-200 bg-white text-[#2D1810]/50 hover:border-orange-200'
+                        }`}
+                      >
+                        {LANGUAGE_FLAGS[sl.code] || ''} {LANGUAGE_LABELS[sl.code]?.[language] || sl.nameNative}
+                        <span className="ml-1 text-[10px] opacity-60">Beta</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          </AccordionContent>
+        </AccordionItem>
+
+        {/* ── Accordion 3: Wichtige Personen ── */}
+        {currentProfile?.id && (
+          <AccordionItem value="people" className="border border-orange-100 rounded-xl bg-white overflow-hidden">
+            <AccordionTrigger className="px-4 py-3 text-sm font-semibold text-[#2D1810] hover:no-underline hover:bg-orange-50/50">
+              {t.accordionPeople}
+              {characters.length > 0 && (
+                <span className="ml-2 text-xs font-normal text-[#2D1810]/40">({characters.length})</span>
+              )}
+            </AccordionTrigger>
+            <AccordionContent className="px-4">
+              <div className="space-y-4">
+                {/* Family group */}
+                {familyChars.length > 0 && (
+                  <div>
+                    <p className="text-xs font-semibold text-[#2D1810]/50 mb-1.5">👨‍👩‍👧 {t.typeFamily}</p>
+                    <div className="space-y-1">
+                      {familyChars.map((char) => (
+                        <div key={char.id} className="flex items-center justify-between bg-orange-50/50 rounded-lg px-3 py-2">
+                          <span className="text-sm text-[#2D1810]">
+                            <span className="font-medium">{char.name}</span>
+                            {char.relation && <span className="text-[#2D1810]/50"> — {char.relation}</span>}
+                            {char.age && <span className="text-[#2D1810]/50">, {char.age} J.</span>}
+                          </span>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-[#2D1810]/30 hover:text-red-500 hover:bg-red-50"
+                            onClick={() => deleteCharacter(char)}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Friends group */}
+                {friendCharsGrouped.length > 0 && (
+                  <div>
+                    <p className="text-xs font-semibold text-[#2D1810]/50 mb-1.5">👫 {t.typeFriend}</p>
+                    <div className="space-y-1">
+                      {friendCharsGrouped.map((char) => (
+                        <div key={char.id} className="flex items-center justify-between bg-orange-50/50 rounded-lg px-3 py-2">
+                          <span className="text-sm text-[#2D1810]">
+                            <span className="font-medium">{char.name}</span>
+                            {char.age && <span className="text-[#2D1810]/50">, {char.age} J.</span>}
+                          </span>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-[#2D1810]/30 hover:text-red-500 hover:bg-red-50"
+                            onClick={() => deleteCharacter(char)}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Known figures group */}
+                {knownFigureChars.length > 0 && (
+                  <div>
+                    <p className="text-xs font-semibold text-[#2D1810]/50 mb-1.5">⭐ {t.typeKnownFigure}</p>
+                    <div className="space-y-1">
+                      {knownFigureChars.map((char) => (
+                        <div key={char.id} className="flex items-center justify-between bg-orange-50/50 rounded-lg px-3 py-2">
+                          <span className="text-sm text-[#2D1810] font-medium">{char.name}</span>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-[#2D1810]/30 hover:text-red-500 hover:bg-red-50"
+                            onClick={() => deleteCharacter(char)}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {characters.length === 0 && (
+                  <p className="text-sm text-[#2D1810]/40 italic">—</p>
+                )}
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="border-dashed border-orange-300 text-orange-600 hover:bg-orange-50"
+                  onClick={openAddCharDialog}
+                >
+                  <Plus className="h-4 w-4 mr-1" />
+                  {t.addCharacterBtn}
+                </Button>
+              </div>
+            </AccordionContent>
+          </AccordionItem>
+        )}
+      </Accordion>
+
+      {/* Add Character Dialog */}
+      <Dialog open={isCharDialogOpen} onOpenChange={setIsCharDialogOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>{t.characterType}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="flex flex-col gap-2">
+              {(['family', 'friend', 'known_figure'] as const).map((type) => (
+                <Button
+                  key={type}
+                  variant={charType === type ? 'default' : 'outline'}
+                  className={`justify-start ${charType === type ? 'bg-orange-500 hover:bg-orange-600' : ''}`}
+                  disabled={type === 'friend' && friendCount >= 5}
+                  onClick={() => {
+                    setCharType(type);
+                    setCharRelation('');
+                    setCharName('');
+                    setCharAge('');
+                  }}
+                >
+                  {getRoleEmoji(type)} {getRoleLabel(type)}
+                  {type === 'friend' && friendCount >= 5 && (
+                    <span className="ml-2 text-xs text-muted-foreground">({t.maxFriendsReached})</span>
+                  )}
+                </Button>
+              ))}
+            </div>
+
+            {charType && (
+              <div className="space-y-3 pt-2 border-t animate-in fade-in slide-in-from-top-2 duration-200">
+                {charType === 'family' && (
                   <div className="space-y-1">
-                    <Label className="text-sm">{t.characterName} *</Label>
+                    <Label className="text-sm">{t.characterRelation} *</Label>
+                    <Select value={charRelation} onValueChange={setCharRelation}>
+                      <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
+                      <SelectContent>
+                        {familyRelations.map((rel) => (
+                          <SelectItem key={rel.value} value={rel.value}>{rel.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
+                <div className="space-y-1">
+                  <Label className="text-sm">{t.characterName} *</Label>
+                  <Input
+                    ref={charInputRef}
+                    value={charName}
+                    onChange={(e) => setCharName(e.target.value)}
+                    onFocus={() => {
+                      setTimeout(() => {
+                        charInputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                      }, 300);
+                    }}
+                    maxLength={50}
+                    placeholder={charType === 'known_figure' ? 'Batman, Ladybug...' : ''}
+                    className="scroll-mt-[120px]"
+                  />
+                </div>
+
+                {charType !== 'known_figure' && (
+                  <div className="space-y-1">
+                    <Label className="text-sm">{t.characterAge}</Label>
                     <Input
-                      value={charName}
-                      onChange={(e) => setCharName(e.target.value)}
-                      maxLength={50}
-                      placeholder={charType === 'known_figure' ? 'Batman, Ladybug...' : ''}
+                      type="number"
+                      value={charAge}
+                      onChange={(e) => setCharAge(e.target.value)}
+                      onFocus={(e) => {
+                        setTimeout(() => {
+                          (e.target as HTMLInputElement).scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        }, 300);
+                      }}
+                      min={0}
+                      max={99}
+                      className="scroll-mt-[120px]"
                     />
                   </div>
+                )}
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button
+              onClick={saveCharacter}
+              disabled={!charType || !charName.trim() || (charType === 'family' && !charRelation)}
+              className="bg-orange-500 hover:bg-orange-600 text-white"
+            >
+              <Save className="h-4 w-4 mr-1" />
+              {t.save}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-                  {/* Age (family + friend only) */}
-                  {charType !== 'known_figure' && (
-                    <div className="space-y-1">
-                      <Label className="text-sm">{t.characterAge}</Label>
-                      <Input
-                        type="number"
-                        value={charAge}
-                        onChange={(e) => setCharAge(e.target.value)}
-                        min={0}
-                        max={99}
-                      />
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-            <DialogFooter>
-              <Button
-                onClick={saveCharacter}
-                disabled={
-                  !charType || !charName.trim() ||
-                  (charType === 'family' && !charRelation)
-                }
-              >
-                <Save className="h-4 w-4 mr-1" />
-                {t.save}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        <div className="pt-4 border-t">
+      {/* Save Button — sticky at bottom */}
+      <div className="fixed bottom-0 left-0 right-0 z-30 px-4 pb-4 pt-2 bg-gradient-to-t from-[#FFF8F0] via-[#FFF8F0] to-transparent">
+        <div className="max-w-3xl mx-auto">
           <Button
             onClick={saveProfile}
             disabled={isSaving}
-            className="w-full btn-primary-kid"
+            className="w-full h-12 rounded-xl text-base font-semibold bg-orange-500 hover:bg-orange-600 text-white shadow-lg"
           >
             {isSaving ? (
               <>
@@ -1262,8 +1232,8 @@ const KidProfileSection = ({ language, userId, onProfileUpdate }: KidProfileSect
             )}
           </Button>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 };
 

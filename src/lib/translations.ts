@@ -134,6 +134,27 @@ export interface Translations {
   characterRelation: string;
   maxFriendsReached: string;
   
+  // Accordion section titles (Kid Profile)
+  accordionBasics: string;
+  accordionLanguages: string;
+  accordionPeople: string;
+  accordionAppearance: string;
+  
+  // Account tab labels
+  accountManagement: string;
+  changeEmail: string;
+  changeEmailSub: string;
+  changePassword: string;
+  changePasswordSub: string;
+  deleteAccount: string;
+  deleteAccountSub: string;
+  comingSoon: string;
+  adminLanguageLabel: string;
+  adminLanguageSub: string;
+  
+  // Character duplicate warning
+  characterExists: string;
+
   // Image styles
   imageStyleCute: string;
   imageStyleWatercolor: string;
@@ -306,7 +327,7 @@ const translations: Record<Language, Translations> = {
     error: 'Fehler',
     success: 'Erfolg',
     
-    adminArea: 'Admin-Bereich',
+    adminArea: 'Einstellungen',
     newStory: 'Neue Leseübung erstellen',
     title: 'Titel',
     coverImage: 'Titelbild',
@@ -376,7 +397,7 @@ const translations: Record<Language, Translations> = {
     saveLevelConfig: 'Niveau-Konfiguration speichern',
     levelConfigSaved: 'Niveau-Konfiguration gespeichert! ⭐',
     
-    kidProfile: 'Kinderprofil',
+    kidProfile: 'Kinder',
     kidProfileDescription: 'Definiere das Profil des Kindes für personalisierte Inhalte.',
     kidName: 'Name des Kindes',
     kidAge: 'Alter',
@@ -420,6 +441,21 @@ const translations: Record<Language, Translations> = {
     characterRelation: 'Beziehung',
     maxFriendsReached: 'Maximum 5 Freunde erreicht',
     
+    accordionBasics: '📝 Grunddaten',
+    accordionLanguages: '🌍 Sprachen',
+    accordionPeople: '👨‍👩‍👧‍👦 Wichtige Personen',
+    accordionAppearance: '🎨 Darstellung',
+    accountManagement: 'Konto-Verwaltung',
+    changeEmail: 'E-Mail ändern',
+    changeEmailSub: 'Aktuelle E-Mail aktualisieren',
+    changePassword: 'Passwort ändern',
+    changePasswordSub: 'Neues Passwort setzen',
+    deleteAccount: 'Account löschen',
+    deleteAccountSub: 'DSGVO: Alle Daten werden gelöscht',
+    comingSoon: 'Wird in einer zukünftigen Version aktiviert',
+    adminLanguageLabel: 'Sprache',
+    adminLanguageSub: 'Eltern-Oberfläche',
+    characterExists: 'Diese Person existiert bereits',
     imageStyleCute: 'Niedlich & verspielt',
     imageStyleWatercolor: 'Aquarell',
     imageStyleComic: 'Comic-Stil',
@@ -489,7 +525,7 @@ const translations: Record<Language, Translations> = {
     vocabWordRemoved: 'Wort entfernt',
     vocabAllWords: 'Alle Wörter',
 
-    parentSettingsTab: 'Erziehung',
+    parentSettingsTab: 'Lernen',
     learningThemesTitle: 'Lernthemen',
     learningThemesDescription: 'Welche Werte sollen in den Geschichten vorkommen? Wähle bis zu 3 Themen.',
     learningThemesMax3: 'Maximal 3 Themen',
@@ -564,7 +600,7 @@ const translations: Record<Language, Translations> = {
     error: 'Error',
     success: 'Success',
     
-    adminArea: 'Admin Area',
+    adminArea: 'Settings',
     newStory: 'Create New Reading Exercise',
     title: 'Title',
     coverImage: 'Cover Image',
@@ -634,7 +670,7 @@ const translations: Record<Language, Translations> = {
     saveLevelConfig: 'Save Level Configuration',
     levelConfigSaved: 'Level configuration saved! ⭐',
     
-    kidProfile: 'Kid Profile',
+    kidProfile: 'Children',
     kidProfileDescription: 'Define the child\'s profile for personalized content.',
     kidName: 'Child\'s Name',
     kidAge: 'Age',
@@ -678,6 +714,21 @@ const translations: Record<Language, Translations> = {
     characterRelation: 'Relation',
     maxFriendsReached: 'Maximum 5 friends reached',
     
+    accordionBasics: '📝 Basics',
+    accordionLanguages: '🌍 Languages',
+    accordionPeople: '👨‍👩‍👧‍👦 Important People',
+    accordionAppearance: '🎨 Appearance',
+    accountManagement: 'Account Management',
+    changeEmail: 'Change Email',
+    changeEmailSub: 'Update your current email',
+    changePassword: 'Change Password',
+    changePasswordSub: 'Set a new password',
+    deleteAccount: 'Delete Account',
+    deleteAccountSub: 'GDPR: All data will be deleted',
+    comingSoon: 'Will be enabled in a future version',
+    adminLanguageLabel: 'Language',
+    adminLanguageSub: 'Parent interface',
+    characterExists: 'This person already exists',
     imageStyleCute: 'Cute & playful',
     imageStyleWatercolor: 'Watercolor',
     imageStyleComic: 'Comic style',
@@ -747,7 +798,7 @@ const translations: Record<Language, Translations> = {
     vocabWordRemoved: 'Word removed',
     vocabAllWords: 'All words',
 
-    parentSettingsTab: 'Education',
+    parentSettingsTab: 'Learning',
     learningThemesTitle: 'Learning Themes',
     learningThemesDescription: 'Which values should appear in stories? Choose up to 3 themes.',
     learningThemesMax3: 'Maximum 3 themes',
@@ -822,7 +873,7 @@ const translations: Record<Language, Translations> = {
     error: 'Erreur',
     success: 'Succès',
     
-    adminArea: 'Zone Admin',
+    adminArea: 'Paramètres',
     newStory: 'Créer un nouvel exercice de lecture',
     title: 'Titre',
     coverImage: 'Image de couverture',
@@ -892,7 +943,7 @@ const translations: Record<Language, Translations> = {
     saveLevelConfig: 'Sauvegarder la configuration des niveaux',
     levelConfigSaved: 'Configuration des niveaux sauvegardée ! ⭐',
     
-    kidProfile: 'Profil de l\'enfant',
+    kidProfile: 'Enfants',
     kidProfileDescription: 'Définissez le profil de l\'enfant pour un contenu personnalisé.',
     kidName: 'Prénom de l\'enfant',
     kidAge: 'Âge',
@@ -936,6 +987,21 @@ const translations: Record<Language, Translations> = {
     characterRelation: 'Relation',
     maxFriendsReached: 'Maximum 5 ami(e)s atteint',
     
+    accordionBasics: '📝 Informations',
+    accordionLanguages: '🌍 Langues',
+    accordionPeople: '👨‍👩‍👧‍👦 Personnes importantes',
+    accordionAppearance: '🎨 Apparence',
+    accountManagement: 'Gestion du compte',
+    changeEmail: 'Changer l\'e-mail',
+    changeEmailSub: 'Mettre à jour votre e-mail',
+    changePassword: 'Changer le mot de passe',
+    changePasswordSub: 'Définir un nouveau mot de passe',
+    deleteAccount: 'Supprimer le compte',
+    deleteAccountSub: 'RGPD : Toutes les données seront supprimées',
+    comingSoon: 'Sera activé dans une future version',
+    adminLanguageLabel: 'Langue',
+    adminLanguageSub: 'Interface parent',
+    characterExists: 'Cette personne existe déjà',
     imageStyleCute: 'Mignon & ludique',
     imageStyleWatercolor: 'Aquarelle',
     imageStyleComic: 'Style BD',
@@ -1005,7 +1071,7 @@ const translations: Record<Language, Translations> = {
     vocabWordRemoved: 'Mot supprimé',
     vocabAllWords: 'Tous les mots',
 
-    parentSettingsTab: 'Éducation',
+    parentSettingsTab: 'Apprentissage',
     learningThemesTitle: 'Thèmes d\'apprentissage',
     learningThemesDescription: 'Quelles valeurs doivent apparaître dans les histoires ? Choisissez jusqu\'à 3 thèmes.',
     learningThemesMax3: 'Maximum 3 thèmes',
@@ -1080,7 +1146,7 @@ const translations: Record<Language, Translations> = {
     error: 'Error',
     success: 'Éxito',
     
-    adminArea: 'Área de Administración',
+    adminArea: 'Configuración',
     newStory: 'Crear nuevo ejercicio de lectura',
     title: 'Título',
     coverImage: 'Imagen de portada',
@@ -1150,7 +1216,7 @@ const translations: Record<Language, Translations> = {
     saveLevelConfig: 'Guardar configuración de niveles',
     levelConfigSaved: '¡Configuración de niveles guardada! ⭐',
     
-    kidProfile: 'Perfil del niño',
+    kidProfile: 'Niños',
     kidProfileDescription: 'Define el perfil del niño para contenido personalizado.',
     kidName: 'Nombre del niño',
     kidAge: 'Edad',
@@ -1194,6 +1260,21 @@ const translations: Record<Language, Translations> = {
     characterRelation: 'Relación',
     maxFriendsReached: 'Máximo 5 amigos alcanzado',
     
+    accordionBasics: '📝 Datos básicos',
+    accordionLanguages: '🌍 Idiomas',
+    accordionPeople: '👨‍👩‍👧‍👦 Personas importantes',
+    accordionAppearance: '🎨 Apariencia',
+    accountManagement: 'Gestión de cuenta',
+    changeEmail: 'Cambiar correo',
+    changeEmailSub: 'Actualizar tu correo actual',
+    changePassword: 'Cambiar contraseña',
+    changePasswordSub: 'Establecer una nueva contraseña',
+    deleteAccount: 'Eliminar cuenta',
+    deleteAccountSub: 'RGPD: Todos los datos serán eliminados',
+    comingSoon: 'Se habilitará en una versión futura',
+    adminLanguageLabel: 'Idioma',
+    adminLanguageSub: 'Interfaz para padres',
+    characterExists: 'Esta persona ya existe',
     imageStyleCute: 'Lindo & juguetón',
     imageStyleWatercolor: 'Acuarela',
     imageStyleComic: 'Estilo cómic',
@@ -1263,7 +1344,7 @@ const translations: Record<Language, Translations> = {
     vocabWordRemoved: 'Palabra eliminada',
     vocabAllWords: 'Todas las palabras',
 
-    parentSettingsTab: 'Educación',
+    parentSettingsTab: 'Aprendizaje',
     learningThemesTitle: 'Temas de aprendizaje',
     learningThemesDescription: '¿Qué valores deben aparecer en las historias? Elige hasta 3 temas.',
     learningThemesMax3: 'Máximo 3 temas',
@@ -1338,7 +1419,7 @@ const translations: Record<Language, Translations> = {
     error: 'Fout',
     success: 'Succes',
     
-    adminArea: 'Admin Gebied',
+    adminArea: 'Instellingen',
     newStory: 'Nieuwe leesoefening maken',
     title: 'Titel',
     coverImage: 'Omslagafbeelding',
@@ -1408,7 +1489,7 @@ const translations: Record<Language, Translations> = {
     saveLevelConfig: 'Niveauconfiguratie opslaan',
     levelConfigSaved: 'Niveauconfiguratie opgeslagen! ⭐',
     
-    kidProfile: 'Kindprofiel',
+    kidProfile: 'Kinderen',
     kidProfileDescription: 'Definieer het profiel van het kind voor gepersonaliseerde inhoud.',
     kidName: 'Naam van het kind',
     kidAge: 'Leeftijd',
@@ -1452,6 +1533,21 @@ const translations: Record<Language, Translations> = {
     characterRelation: 'Relatie',
     maxFriendsReached: 'Maximaal 5 vrienden bereikt',
     
+    accordionBasics: '📝 Basisgegevens',
+    accordionLanguages: '🌍 Talen',
+    accordionPeople: '👨‍👩‍👧‍👦 Belangrijke personen',
+    accordionAppearance: '🎨 Weergave',
+    accountManagement: 'Accountbeheer',
+    changeEmail: 'E-mail wijzigen',
+    changeEmailSub: 'Huidige e-mail bijwerken',
+    changePassword: 'Wachtwoord wijzigen',
+    changePasswordSub: 'Nieuw wachtwoord instellen',
+    deleteAccount: 'Account verwijderen',
+    deleteAccountSub: 'AVG: Alle gegevens worden verwijderd',
+    comingSoon: 'Wordt geactiveerd in een toekomstige versie',
+    adminLanguageLabel: 'Taal',
+    adminLanguageSub: 'Ouder-interface',
+    characterExists: 'Deze persoon bestaat al',
     imageStyleCute: 'Schattig & speels',
     imageStyleWatercolor: 'Aquarel',
     imageStyleComic: 'Stripstijl',
@@ -1521,7 +1617,7 @@ const translations: Record<Language, Translations> = {
     vocabWordRemoved: 'Woord verwijderd',
     vocabAllWords: 'Alle woorden',
 
-    parentSettingsTab: 'Opvoeding',
+    parentSettingsTab: 'Leren',
     learningThemesTitle: 'Leeronderwerpen',
     learningThemesDescription: 'Welke waarden moeten in de verhalen voorkomen? Kies maximaal 3 thema\'s.',
     learningThemesMax3: 'Maximaal 3 thema\'s',
@@ -1596,7 +1692,7 @@ const translations: Record<Language, Translations> = {
     error: 'Errore',
     success: 'Successo',
     
-    adminArea: 'Area Admin',
+    adminArea: 'Impostazioni',
     newStory: 'Crea nuovo esercizio di lettura',
     title: 'Titolo',
     coverImage: 'Immagine di copertina',
@@ -1666,7 +1762,7 @@ const translations: Record<Language, Translations> = {
     saveLevelConfig: 'Salva configurazione livelli',
     levelConfigSaved: 'Configurazione livelli salvata! ⭐',
     
-    kidProfile: 'Profilo bambino',
+    kidProfile: 'Bambini',
     kidProfileDescription: 'Definisci il profilo del bambino per contenuti personalizzati.',
     kidName: 'Nome del bambino',
     kidAge: 'Età',
@@ -1710,6 +1806,21 @@ const translations: Record<Language, Translations> = {
     characterRelation: 'Relazione',
     maxFriendsReached: 'Massimo 5 amici raggiunto',
     
+    accordionBasics: '📝 Dati di base',
+    accordionLanguages: '🌍 Lingue',
+    accordionPeople: '👨‍👩‍👧‍👦 Persone importanti',
+    accordionAppearance: '🎨 Aspetto',
+    accountManagement: 'Gestione account',
+    changeEmail: 'Cambia email',
+    changeEmailSub: 'Aggiorna la tua email attuale',
+    changePassword: 'Cambia password',
+    changePasswordSub: 'Imposta una nuova password',
+    deleteAccount: 'Elimina account',
+    deleteAccountSub: 'GDPR: Tutti i dati saranno eliminati',
+    comingSoon: 'Sarà attivato in una versione futura',
+    adminLanguageLabel: 'Lingua',
+    adminLanguageSub: 'Interfaccia genitori',
+    characterExists: 'Questa persona esiste già',
     imageStyleCute: 'Carino & giocoso',
     imageStyleWatercolor: 'Acquerello',
     imageStyleComic: 'Stile fumetto',
@@ -1779,7 +1890,7 @@ const translations: Record<Language, Translations> = {
     vocabWordRemoved: 'Parola rimossa',
     vocabAllWords: 'Tutte le parole',
 
-    parentSettingsTab: 'Educazione',
+    parentSettingsTab: 'Apprendimento',
     learningThemesTitle: 'Temi di apprendimento',
     learningThemesDescription: 'Quali valori devono apparire nelle storie? Scegli fino a 3 temi.',
     learningThemesMax3: 'Massimo 3 temi',
@@ -1854,7 +1965,7 @@ const translations: Record<Language, Translations> = {
     error: 'Greška',
     success: 'Uspjeh',
     
-    adminArea: 'Admin područje',
+    adminArea: 'Postavke',
     newStory: 'Kreiraj novu vježbu čitanja',
     title: 'Naslov',
     coverImage: 'Naslovna slika',
@@ -1924,7 +2035,7 @@ const translations: Record<Language, Translations> = {
     saveLevelConfig: 'Sačuvaj konfiguraciju nivoa',
     levelConfigSaved: 'Konfiguracija nivoa sačuvana! ⭐',
     
-    kidProfile: 'Profil djeteta',
+    kidProfile: 'Djeca',
     kidProfileDescription: 'Definiši profil djeteta za personalizirani sadržaj.',
     kidName: 'Ime djeteta',
     kidAge: 'Starost',
@@ -1968,6 +2079,21 @@ const translations: Record<Language, Translations> = {
     characterRelation: 'Odnos',
     maxFriendsReached: 'Maksimalno 5 prijatelja dostignuto',
     
+    accordionBasics: '📝 Osnovni podaci',
+    accordionLanguages: '🌍 Jezici',
+    accordionPeople: '👨‍👩‍👧‍👦 Važne osobe',
+    accordionAppearance: '🎨 Izgled',
+    accountManagement: 'Upravljanje računom',
+    changeEmail: 'Promijeni email',
+    changeEmailSub: 'Ažuriraj trenutni email',
+    changePassword: 'Promijeni lozinku',
+    changePasswordSub: 'Postavi novu lozinku',
+    deleteAccount: 'Obriši račun',
+    deleteAccountSub: 'GDPR: Svi podaci će biti obrisani',
+    comingSoon: 'Bit će aktivirano u budućoj verziji',
+    adminLanguageLabel: 'Jezik',
+    adminLanguageSub: 'Roditeljsko sučelje',
+    characterExists: 'Ova osoba već postoji',
     imageStyleCute: 'Slatko & razigrano',
     imageStyleWatercolor: 'Akvarel',
     imageStyleComic: 'Strip stil',
