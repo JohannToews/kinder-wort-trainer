@@ -184,7 +184,7 @@ const QuizCompletionResult = ({
 
   return (
     <div
-      className="rounded-[20px] p-6 text-center"
+      className="rounded-[20px] p-4 sm:p-6 text-center w-full"
       style={{ background: config.bg, border: config.border }}
     >
       {/* Fablino + Speech */}
@@ -238,7 +238,7 @@ const QuizCompletionResult = ({
       {/* Continue button — ALWAYS orange */}
       <button
         onClick={onContinue}
-        className="w-full py-3 rounded-xl font-bold text-white text-[16px] active:scale-95 transition-transform"
+        className="w-full py-3 rounded-xl font-bold text-white text-sm sm:text-[16px] active:scale-95 transition-transform min-h-[48px]"
         style={{ background: 'linear-gradient(135deg, #FF8C42, #FF6B00)' }}
       >
         {labels.continueBtn}

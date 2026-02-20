@@ -25,7 +25,7 @@ export const FABLINO_COLORS = {
 
 export const FABLINO_SIZES = {
   mascot: { sm: 96, md: 150, lg: 195 },
-  speechBubble: { minWidth: 200, maxWidth: 300 },
+  speechBubble: { minWidth: 160, maxWidth: 260 },
   button: { height: 56, maxWidth: 448 },
   fontSize: {
     speechBubble: '1.125rem',    // 18px

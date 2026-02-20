@@ -335,15 +335,15 @@ const SpecialEffectsScreen = ({
         {true && (
           <div className="w-full bg-white/70 backdrop-blur-sm rounded-2xl border border-orange-100 shadow-sm px-3 py-2 space-y-1.5">
             {/* Length — horizontal chips */}
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-semibold text-[#92400E] w-20 shrink-0">{st.lengthLabel}</span>
-              <div className="flex-1 flex gap-1 bg-orange-50/60 rounded-lg p-0.5">
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <span className="text-[11px] sm:text-xs font-semibold text-[#92400E] w-16 sm:w-20 shrink-0">{st.lengthLabel}</span>
+              <div className="flex-1 flex flex-wrap gap-1 bg-orange-50/60 rounded-lg p-0.5">
                 {lengthItems.map((item) => (
                   <button
                     key={item.key}
                     onClick={() => setStoryLength(item.key)}
                     className={cn(
-                      "flex-1 py-1 text-xs rounded-md transition-all duration-150 font-medium text-center whitespace-nowrap",
+                      "flex-1 min-w-[60px] py-1 text-[11px] sm:text-xs rounded-md transition-all duration-150 font-medium text-center whitespace-nowrap",
                       storyLength === item.key
                         ? "bg-[#E8863A] text-white shadow-sm"
                         : "text-[#2D1810]/60 hover:text-[#2D1810] hover:bg-white/60"
@@ -356,15 +356,15 @@ const SpecialEffectsScreen = ({
             </div>
 
             {/* Difficulty — inline chips */}
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-semibold text-[#92400E] w-20 shrink-0">{st.difficultyLabel}</span>
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <span className="text-[11px] sm:text-xs font-semibold text-[#92400E] w-16 sm:w-20 shrink-0">{st.difficultyLabel}</span>
               <div className="flex-1 flex gap-1 bg-orange-50/60 rounded-lg p-0.5">
                 {(["easy", "medium", "hard"] as StoryDifficulty[]).map((diff) => (
                   <button
                     key={diff}
                     onClick={() => setStoryDifficulty(diff)}
                     className={cn(
-                      "flex-1 py-1 text-xs rounded-md transition-all duration-150 font-medium text-center",
+                      "flex-1 py-1 text-[11px] sm:text-xs rounded-md transition-all duration-150 font-medium text-center",
                       storyDifficulty === diff
                         ? "bg-[#E8863A] text-white shadow-sm"
                         : "text-[#2D1810]/60 hover:text-[#2D1810] hover:bg-white/60"
@@ -378,8 +378,8 @@ const SpecialEffectsScreen = ({
 
             {/* Language — dropdown */}
             {availableLanguages.length > 0 && (
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-semibold text-[#92400E] w-20 shrink-0">{st.languageLabel}</span>
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <span className="text-[11px] sm:text-xs font-semibold text-[#92400E] w-16 sm:w-20 shrink-0">{st.languageLabel}</span>
                 <div className="flex-1 relative">
                   <button
                     onClick={() => setLangDropdownOpen(!langDropdownOpen)}
@@ -412,8 +412,8 @@ const SpecialEffectsScreen = ({
 
             {/* Series toggle */}
             {showSettings && (
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-semibold text-[#92400E] w-20 shrink-0">{st.seriesLabel}</span>
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <span className="text-[11px] sm:text-xs font-semibold text-[#92400E] w-16 sm:w-20 shrink-0">{st.seriesLabel}</span>
                 <div className="flex-1 flex gap-1 bg-orange-50/60 rounded-lg p-0.5">
                   {[false, true].map((val) => (
                     <button
@@ -438,8 +438,8 @@ const SpecialEffectsScreen = ({
         {/* Admin series toggle (standalone, for Weg B where showSettings is false) */}
         {!showSettings && isAdmin && (
           <div className="w-full bg-white/70 backdrop-blur-sm rounded-2xl border border-orange-100 shadow-sm px-3 py-2">
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-semibold text-[#92400E] w-20 shrink-0">{st.seriesLabel}</span>
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <span className="text-[11px] sm:text-xs font-semibold text-[#92400E] w-16 sm:w-20 shrink-0">{st.seriesLabel}</span>
               <div className="flex-1 flex gap-1 bg-orange-50/60 rounded-lg p-0.5">
                 {[false, true].map((val) => (
                   <button
@@ -507,7 +507,7 @@ const SpecialEffectsScreen = ({
           </button>
 
           {effectsExpanded && (
-            <div className="grid grid-cols-3 gap-1.5 mt-1.5 animate-fade-in">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 mt-1.5 animate-fade-in">
               {attributeOptions.map((option) => {
                 const isSelected = selectedAttributes.includes(option.id);
                 return (
@@ -545,7 +545,7 @@ const SpecialEffectsScreen = ({
         <div className="flex-1 min-h-1" />
 
         {/* Create Story Button — sticky at bottom */}
-        <div className="sticky bottom-0 pb-3 pt-2 bg-gradient-to-t from-[#FFF8F0] via-[#FFF8F0] to-transparent">
+        <div className="sticky bottom-0 pb-safe pt-2 bg-gradient-to-t from-[#FFF8F0] via-[#FFF8F0] to-transparent">
           <button
             onClick={handleContinue}
             className="w-full h-12 rounded-2xl text-base font-semibold bg-[#E8863A] hover:bg-[#D4752E] text-white transition-colors shadow-lg"

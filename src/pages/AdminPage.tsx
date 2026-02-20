@@ -253,32 +253,32 @@ const AdminPage = () => {
 
       {/* Tab Navigation - Orange Theme */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
-        <TabsList className={`flex-none grid mx-4 mt-3 h-12 bg-orange-50 rounded-xl ${user?.role === 'admin' ? 'grid-cols-6' : 'grid-cols-4'}`}>
-          <TabsTrigger value="profile" className="flex items-center gap-2 text-sm font-medium data-[state=active]:bg-orange-500 data-[state=active]:text-white text-orange-600 rounded-lg">
-            <User className="h-4 w-4" />
+        <TabsList className="flex-none flex mx-4 mt-3 h-12 bg-orange-50 rounded-xl overflow-x-auto scrollbar-hide gap-0.5 p-1">
+          <TabsTrigger value="profile" className="flex items-center gap-1.5 text-xs sm:text-sm font-medium data-[state=active]:bg-orange-500 data-[state=active]:text-white text-orange-600 rounded-lg whitespace-nowrap px-2.5 sm:px-3 min-h-[36px]">
+            <User className="h-4 w-4 flex-shrink-0" />
             <span className="hidden sm:inline">{t.kidProfile}</span>
           </TabsTrigger>
-          <TabsTrigger value="parenting" className="flex items-center gap-2 text-sm font-medium data-[state=active]:bg-orange-500 data-[state=active]:text-white text-orange-600 rounded-lg">
-            <BookHeart className="h-4 w-4" />
+          <TabsTrigger value="parenting" className="flex items-center gap-1.5 text-xs sm:text-sm font-medium data-[state=active]:bg-orange-500 data-[state=active]:text-white text-orange-600 rounded-lg whitespace-nowrap px-2.5 sm:px-3 min-h-[36px]">
+            <BookHeart className="h-4 w-4 flex-shrink-0" />
             <span className="hidden sm:inline">{t.parentSettingsTab}</span>
           </TabsTrigger>
-          <TabsTrigger value="stories" className="flex items-center gap-2 text-sm font-medium data-[state=active]:bg-orange-500 data-[state=active]:text-white text-orange-600 rounded-lg">
-            <Library className="h-4 w-4" />
+          <TabsTrigger value="stories" className="flex items-center gap-1.5 text-xs sm:text-sm font-medium data-[state=active]:bg-orange-500 data-[state=active]:text-white text-orange-600 rounded-lg whitespace-nowrap px-2.5 sm:px-3 min-h-[36px]">
+            <Library className="h-4 w-4 flex-shrink-0" />
             <span className="hidden sm:inline">{t.library}</span>
           </TabsTrigger>
           {user?.role === 'admin' && (
-            <TabsTrigger value="settings" className="flex items-center gap-2 text-sm font-medium data-[state=active]:bg-orange-500 data-[state=active]:text-white text-orange-600 rounded-lg">
-              <Settings className="h-4 w-4" />
+            <TabsTrigger value="settings" className="flex items-center gap-1.5 text-xs sm:text-sm font-medium data-[state=active]:bg-orange-500 data-[state=active]:text-white text-orange-600 rounded-lg whitespace-nowrap px-2.5 sm:px-3 min-h-[36px]">
+              <Settings className="h-4 w-4 flex-shrink-0" />
               <span className="hidden sm:inline">{t.settings}</span>
             </TabsTrigger>
           )}
-          <TabsTrigger value="account" className="flex items-center gap-2 text-sm font-medium data-[state=active]:bg-orange-500 data-[state=active]:text-white text-orange-600 rounded-lg">
-            <User className="h-4 w-4" />
+          <TabsTrigger value="account" className="flex items-center gap-1.5 text-xs sm:text-sm font-medium data-[state=active]:bg-orange-500 data-[state=active]:text-white text-orange-600 rounded-lg whitespace-nowrap px-2.5 sm:px-3 min-h-[36px]">
+            <User className="h-4 w-4 flex-shrink-0" />
             <span className="hidden sm:inline">{t.account}</span>
           </TabsTrigger>
           {user?.role === 'admin' && (
-            <TabsTrigger value="system" className="flex items-center gap-2 text-sm font-medium data-[state=active]:bg-orange-500 data-[state=active]:text-white text-orange-600 rounded-lg">
-              <Wrench className="h-4 w-4" />
+            <TabsTrigger value="system" className="flex items-center gap-1.5 text-xs sm:text-sm font-medium data-[state=active]:bg-orange-500 data-[state=active]:text-white text-orange-600 rounded-lg whitespace-nowrap px-2.5 sm:px-3 min-h-[36px]">
+              <Wrench className="h-4 w-4 flex-shrink-0" />
               <span className="hidden sm:inline">System</span>
             </TabsTrigger>
           )}
@@ -547,7 +547,7 @@ const AdminPage = () => {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   {/* Email */}
-                  <div className="flex items-center justify-between p-4 bg-orange-50/50 rounded-xl">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-4 bg-orange-50/50 rounded-xl">
                     <div className="flex items-center gap-3">
                       <div className="h-10 w-10 rounded-full bg-orange-100 flex items-center justify-center">
                         <Mail className="h-5 w-5 text-orange-600" />
@@ -563,7 +563,7 @@ const AdminPage = () => {
                   </div>
 
                   {/* Password */}
-                  <div className="flex items-center justify-between p-4 bg-orange-50/50 rounded-xl">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-4 bg-orange-50/50 rounded-xl">
                     <div className="flex items-center gap-3">
                       <div className="h-10 w-10 rounded-full bg-orange-100 flex items-center justify-center">
                         <Lock className="h-5 w-5 text-orange-600" />
@@ -579,7 +579,7 @@ const AdminPage = () => {
                   </div>
 
                   {/* Delete Account */}
-                  <div className="flex items-center justify-between p-4 bg-red-50/50 rounded-xl border border-red-200/50">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-4 bg-red-50/50 rounded-xl border border-red-200/50">
                     <div className="flex items-center gap-3">
                       <div className="h-10 w-10 rounded-full bg-red-100 flex items-center justify-center">
                         <UserX className="h-5 w-5 text-red-600" />

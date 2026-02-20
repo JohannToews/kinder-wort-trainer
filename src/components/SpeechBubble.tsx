@@ -18,10 +18,10 @@ const SpeechBubble = ({ children, variant = "hero" }: SpeechBubbleProps) => {
 
   return (
     <div
-      className="relative"
+      className="relative w-full"
       style={{
-        minWidth: FABLINO_SIZES.speechBubble.minWidth,
-        maxWidth: FABLINO_SIZES.speechBubble.maxWidth,
+        minWidth: 0,
+        maxWidth: '100%',
       }}
     >
       <div

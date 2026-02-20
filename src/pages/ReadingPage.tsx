@@ -1671,7 +1671,7 @@ const ReadingPage = () => {
         }
       />
 
-      <div className="container max-w-7xl p-4 md:p-8" onClick={handleBackgroundClick}>
+      <div className="w-full max-w-7xl mx-auto px-4 py-4 md:p-8" onClick={handleBackgroundClick}>
         <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
           {/* Reading Area - wider for tablets */}
           <div className="xl:col-span-3">
@@ -1715,7 +1715,7 @@ const ReadingPage = () => {
             </div>
 
             {/* Reading Card */}
-            <div className={`bg-card rounded-2xl p-6 md:p-10 shadow-card relative`}>
+            <div className={`bg-card rounded-2xl p-4 sm:p-6 md:p-10 shadow-card relative`}>
               <div className="flex items-center gap-2 text-sm text-muted-foreground mb-6">
                 <Sparkles className="h-4 w-4" />
                 <span>{readingLabels[textLang]?.touchWord || readingLabels.fr.touchWord}</span>

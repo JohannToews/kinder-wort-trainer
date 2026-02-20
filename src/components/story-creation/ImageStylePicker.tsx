@@ -1,7 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { Star, Loader2 } from "lucide-react";
 import BackButton from "@/components/BackButton";
-import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import FablinoPageHeader from "@/components/FablinoPageHeader";
 import { cn } from "@/lib/utils";
@@ -41,17 +40,15 @@ const STYLE_EMOJIS: Record<string, string> = {
 const translations: Record<string, {
   header: string;
   recommended: string;
-  select: string;
-  back: string;
   loading: string;
 }> = {
-  de: { header: "Welchen Bildstil magst du?", recommended: "Empfohlen", select: "Weiter", back: "Zurück", loading: "Stile laden..." },
-  fr: { header: "Quel style d'images préfères-tu ?", recommended: "Recommandé", select: "Continuer", back: "Retour", loading: "Chargement..." },
-  en: { header: "Which picture style do you like?", recommended: "Recommended", select: "Continue", back: "Back", loading: "Loading styles..." },
-  es: { header: "¿Qué estilo de imágenes te gusta?", recommended: "Recomendado", select: "Continuar", back: "Volver", loading: "Cargando estilos..." },
-  nl: { header: "Welke afbeeldingsstijl vind je leuk?", recommended: "Aanbevolen", select: "Verder", back: "Terug", loading: "Stijlen laden..." },
-  it: { header: "Quale stile di immagini preferisci?", recommended: "Consigliato", select: "Continua", back: "Indietro", loading: "Caricamento stili..." },
-  bs: { header: "Koji stil slika ti se sviđa?", recommended: "Preporučeno", select: "Nastavi", back: "Nazad", loading: "Učitavanje stilova..." },
+  de: { header: "Welchen Bildstil magst du? 🎨", recommended: "★ Empfohlen", loading: "Stile laden..." },
+  fr: { header: "Quel style d'images préfères-tu ? 🎨", recommended: "★ Recommandé", loading: "Chargement..." },
+  en: { header: "Which picture style do you like? 🎨", recommended: "★ Recommended", loading: "Loading styles..." },
+  es: { header: "¿Qué estilo de imágenes te gusta? 🎨", recommended: "★ Recomendado", loading: "Cargando estilos..." },
+  nl: { header: "Welke afbeeldingsstijl vind je leuk? 🎨", recommended: "★ Aanbevolen", loading: "Stijlen laden..." },
+  it: { header: "Quale stile di immagini preferisci? 🎨", recommended: "★ Consigliato", loading: "Caricamento stili..." },
+  bs: { header: "Koji stil slika ti se sviđa? 🎨", recommended: "★ Preporučeno", loading: "Učitavanje stilova..." },
 };
 
 function getAgeGroup(age: number): string {
@@ -124,6 +121,11 @@ const ImageStylePicker: React.FC<ImageStylePickerProps> = ({
     return match?.style_key || null;
   }, [styles, ageGroup]);
 
+  const handleTileClick = (styleKey: string) => {
+    setSelectedKey(styleKey);
+    onSelect(styleKey);
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -137,90 +139,93 @@ const ImageStylePicker: React.FC<ImageStylePickerProps> = ({
 
   return (
     <div className="min-h-screen flex flex-col">
-      <div className="py-3 px-4 max-w-lg mx-auto w-full">
-        <BackButton onClick={onBack} />
-      </div>
+      <div className="flex-1 flex flex-col items-stretch px-4 max-w-[480px] mx-auto w-full gap-3 pb-4">
+        {/* Back button */}
+        <div className="pt-2">
+          <BackButton onClick={onBack} />
+        </div>
 
-      <div className="px-4 max-w-lg mx-auto w-full">
+        {/* Fablino Header */}
         <FablinoPageHeader
           mascotImage="/mascot/5_Story_erstellen.png"
           message={t.header}
-          mascotSize="sm"
+          mascotSize="md"
         />
-      </div>
 
-      <div className="flex-1 px-4 py-4 max-w-lg mx-auto w-full">
-        <div className="grid grid-cols-2 gap-3">
+        {/* Style Grid — consistent with theme/character tiles */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 w-full">
           {styles.map((style) => {
             const isSelected = selectedKey === style.style_key;
             const isDefault = style.style_key === defaultStyleKey;
             const label = style.labels?.[uiLanguage] || style.labels?.de || style.style_key;
-            const desc = style.description?.[uiLanguage] || style.description?.de || "";
             const emoji = STYLE_EMOJIS[style.style_key] || "🖼️";
 
             return (
               <button
                 key={style.style_key}
-                onClick={() => setSelectedKey(style.style_key)}
+                onClick={() => handleTileClick(style.style_key)}
                 className={cn(
-                  "relative rounded-2xl p-4 text-left transition-all duration-200",
-                  "hover:scale-[1.02] active:scale-[0.98] focus:outline-none",
+                  "group relative flex flex-col items-center gap-2 p-2.5 rounded-2xl",
+                  "bg-white border transition-all duration-200 cursor-pointer",
+                  "shadow-[0_2px_12px_-4px_rgba(45,24,16,0.1)]",
+                  "hover:shadow-[0_4px_20px_-4px_rgba(45,24,16,0.15)] active:scale-[0.97]",
+                  "focus:outline-none focus:ring-2 focus:ring-orange-400 focus:ring-offset-2",
                   isSelected
-                    ? "bg-white ring-2 ring-primary shadow-md"
-                    : "bg-white/70 hover:bg-white shadow-sm"
+                    ? "ring-2 ring-[#E8863A] border-[#E8863A] bg-orange-50 shadow-[0_4px_20px_-4px_rgba(232,134,58,0.25)]"
+                    : "border-[#E8863A]/10 hover:border-[#E8863A]/30"
                 )}
               >
-                {isDefault && (
-                  <div className="absolute -top-2 -right-2 flex items-center gap-0.5 bg-amber-100 text-amber-700 text-[10px] font-bold px-2 py-0.5 rounded-full">
-                    <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
-                    {t.recommended}
-                  </div>
-                )}
-
-                <div className="flex items-center justify-center h-16 mb-2">
+                {/* Image / Emoji container — square, same as CharacterTile */}
+                <div className="relative w-full overflow-hidden rounded-xl aspect-square">
                   {style.preview_image_url ? (
                     <img
                       src={style.preview_image_url}
                       alt={label}
-                      className="h-16 w-16 object-cover rounded-xl"
+                      className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105"
+                      onError={(e) => {
+                        e.currentTarget.style.display = 'none';
+                        const fallback = e.currentTarget.nextElementSibling as HTMLElement;
+                        if (fallback) fallback.style.display = 'flex';
+                      }}
                     />
-                  ) : (
+                  ) : null}
+                  {/* Emoji fallback — shown when no preview_image_url or on load error */}
+                  <div
+                    className={cn(
+                      "absolute inset-0 items-center justify-center bg-gradient-to-br from-orange-50 to-amber-50",
+                      style.preview_image_url ? "hidden" : "flex"
+                    )}
+                  >
                     <span className="text-4xl">{emoji}</span>
+                  </div>
+
+                  {/* Selection checkmark */}
+                  {isSelected && (
+                    <div className="absolute inset-0 bg-orange-400/20 flex items-center justify-center">
+                      <div className="w-7 h-7 rounded-full bg-orange-500 flex items-center justify-center">
+                        <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                        </svg>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Recommended badge */}
+                  {isDefault && (
+                    <div className="absolute top-1 right-1 flex items-center gap-0.5 bg-amber-100 text-amber-700 text-[9px] font-bold px-1.5 py-0.5 rounded-full shadow-sm">
+                      <Star className="h-2.5 w-2.5 fill-amber-400 text-amber-400" />
+                    </div>
                   )}
                 </div>
 
-                <h3
-                  className="font-baloo font-bold text-sm leading-tight"
-                  style={{ color: "#2D1810" }}
-                >
+                {/* Label — single line */}
+                <span className="font-baloo font-semibold text-center text-[#2D1810] leading-tight text-sm line-clamp-1">
                   {label}
-                </h3>
-
-                <p className="text-[11px] mt-1 leading-snug line-clamp-2" style={{ color: "#6B7280" }}>
-                  {desc}
-                </p>
-
-                {isSelected && (
-                  <div className="absolute top-2 left-2 h-5 w-5 rounded-full bg-primary flex items-center justify-center">
-                    <svg className="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                    </svg>
-                  </div>
-                )}
+                </span>
               </button>
             );
           })}
         </div>
-      </div>
-
-      <div className="px-4 pb-6 max-w-lg mx-auto w-full">
-        <Button
-          onClick={() => selectedKey && onSelect(selectedKey)}
-          disabled={!selectedKey}
-          className="w-full btn-primary-kid text-base py-5"
-        >
-          {t.select}
-        </Button>
       </div>
     </div>
   );

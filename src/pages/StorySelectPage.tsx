@@ -342,14 +342,14 @@ const StorySelectPage = () => {
                    appLang === 'es' ? '¿Qué historia quieres leer? 📚' :
                    appLang === 'nl' ? 'Welk verhaal wil je lezen? 📚' :
                    'Which story do you want to read? 📚'}
-          mascotSize="md"
+          mascotSize="sm"
         />
       </div>
 
       {/* Kid Profile Selector removed – selection happens only on homepage */}
 
       {/* Tabs for Fiction / Non-Fiction */}
-      <div className="container max-w-5xl px-4 pb-12">
+      <div className="w-full max-w-5xl mx-auto px-4 pb-12">
         {isLoading ? (
           <div className="flex justify-center py-20">
             <div className="animate-bounce-soft">
@@ -372,39 +372,39 @@ const StorySelectPage = () => {
           </div>
         ) : (
           <Tabs defaultValue={seriesStories.length > 0 ? "series" : "fiction"} className="w-full">
-            <TabsList className="grid w-full grid-cols-3 mb-6 h-14 bg-card/80 backdrop-blur-sm rounded-2xl p-1">
+            <TabsList className="flex w-full mb-6 h-12 sm:h-14 bg-card/80 backdrop-blur-sm rounded-2xl p-1 overflow-x-auto scrollbar-hide gap-1">
               <TabsTrigger 
                 value="series" 
-                className="flex items-center gap-2 text-base font-baloo rounded-xl data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+                className="flex-1 min-w-0 flex items-center justify-center gap-1 sm:gap-2 text-sm sm:text-base font-baloo rounded-xl data-[state=active]:bg-primary data-[state=active]:text-primary-foreground whitespace-nowrap px-2 sm:px-3"
               >
-                <Layers className="h-5 w-5" />
-                {t.tabSeries}
+                <Layers className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
+                <span className="truncate">{t.tabSeries}</span>
                 {seriesStories.length > 0 && (
-                  <span className="ml-1 bg-background/30 text-xs px-2 py-0.5 rounded-full">
+                  <span className="ml-0.5 bg-background/30 text-[10px] sm:text-xs px-1.5 py-0.5 rounded-full flex-shrink-0">
                     {new Set(seriesStories.map(s => s.series_id)).size}
                   </span>
                 )}
               </TabsTrigger>
               <TabsTrigger 
                 value="fiction" 
-                className="flex items-center gap-2 text-base font-baloo rounded-xl data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+                className="flex-1 min-w-0 flex items-center justify-center gap-1 sm:gap-2 text-sm sm:text-base font-baloo rounded-xl data-[state=active]:bg-primary data-[state=active]:text-primary-foreground whitespace-nowrap px-2 sm:px-3"
               >
-                <BookText className="h-5 w-5" />
-                {t.tabFiction}
+                <BookText className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
+                <span className="truncate">{t.tabFiction}</span>
                 {fictionStories.length > 0 && (
-                  <span className="ml-1 bg-background/30 text-xs px-2 py-0.5 rounded-full">
+                  <span className="ml-0.5 bg-background/30 text-[10px] sm:text-xs px-1.5 py-0.5 rounded-full flex-shrink-0">
                     {fictionStories.length}
                   </span>
                 )}
               </TabsTrigger>
               <TabsTrigger 
                 value="non-fiction" 
-                className="flex items-center gap-2 text-base font-baloo rounded-xl data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+                className="flex-1 min-w-0 flex items-center justify-center gap-1 sm:gap-2 text-sm sm:text-base font-baloo rounded-xl data-[state=active]:bg-primary data-[state=active]:text-primary-foreground whitespace-nowrap px-2 sm:px-3"
               >
-                <GraduationCap className="h-5 w-5" />
-                {t.tabNonFiction}
+                <GraduationCap className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
+                <span className="truncate">{t.tabNonFiction}</span>
                 {nonFictionStories.length > 0 && (
-                  <span className="ml-1 bg-background/30 text-xs px-2 py-0.5 rounded-full">
+                  <span className="ml-0.5 bg-background/30 text-[10px] sm:text-xs px-1.5 py-0.5 rounded-full flex-shrink-0">
                     {nonFictionStories.length}
                   </span>
                 )}
@@ -456,7 +456,7 @@ const StoryCard = ({
       onClick={() => navigate(`/read/${story.id}`)}
       className="card-story group"
     >
-      <div className="aspect-[4/3] mb-4 rounded-xl overflow-hidden bg-muted relative">
+      <div className="aspect-[3/2] sm:aspect-[4/3] mb-3 sm:mb-4 rounded-xl overflow-hidden bg-muted relative">
         {story.cover_image_url ? (
           <img
             src={getThumbnailUrl(story.cover_image_url, 400, 60)}
@@ -496,7 +496,7 @@ const StoryCard = ({
           </Badge>
         )}
       </div>
-      <h3 className="font-baloo text-xl font-bold text-center group-hover:text-primary transition-colors">
+      <h3 className="font-baloo text-base sm:text-xl font-bold text-center group-hover:text-primary transition-colors line-clamp-2">
         {story.title}
       </h3>
     </div>
@@ -565,7 +565,7 @@ const StoryGrid = ({
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
             {unreadStories.map((story) => (
               <StoryCard 
                 key={story.id} 
@@ -588,7 +588,7 @@ const StoryGrid = ({
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
             {completedStories.map((story) => (
               <StoryCard 
                 key={story.id} 

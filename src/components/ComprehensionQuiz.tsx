@@ -216,13 +216,13 @@ const ComprehensionQuiz = ({ storyId, storyDifficulty = "medium", storyLanguage 
       </div>
 
       {/* Answer options */}
-      <div className="grid grid-cols-1 gap-3 max-w-lg mx-auto">
+      <div className="grid grid-cols-1 gap-3 w-full max-w-lg mx-auto">
         {options.map((option, idx) => {
           const isSelected = selectedAnswer === option;
           const isCorrectOption = option === currentQuestion.expected_answer;
           
           let buttonVariant: "outline" | "default" | "destructive" = "outline";
-          let extraClasses = "text-left justify-start h-auto py-4 px-4 text-base";
+          let extraClasses = "text-left justify-start h-auto min-h-[48px] py-3 sm:py-4 px-4 text-sm sm:text-base w-full";
           
           if (showFeedback) {
             if (isSelected && isCorrectOption) {

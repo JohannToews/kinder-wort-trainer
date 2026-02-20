@@ -171,7 +171,7 @@ const HomeFablino = () => {
     <div 
       className="min-h-screen flex flex-col items-center font-nunito overflow-hidden"
     >
-      <div className="w-full max-w-[480px] px-5 py-6 flex flex-col relative" style={{ minHeight: "100dvh" }}>
+      <div className="w-full max-w-[480px] px-4 py-4 sm:px-5 sm:py-6 flex flex-col relative" style={{ minHeight: "100dvh" }}>
 
         {/* ═══ TOP BAR: Profile Switcher (left) + Admin Controls (right) ═══ */}
         <div className="flex items-center justify-between z-10 mb-1">
@@ -251,7 +251,7 @@ const HomeFablino = () => {
         <FablinoPageHeader
           mascotImage="/mascot/6_Onboarding.png"
           message={greeting}
-          mascotSize="md"
+          mascotSize="sm"
         />
 
         {/* ═══ 2. MAIN ACTIONS ═══ */}
@@ -275,7 +275,7 @@ const HomeFablino = () => {
 
         {/* ═══ 3. WEEKLY TRACKER CARD (Redesigned) ═══ */}
         <div 
-          className="rounded-[20px] p-5 mb-4"
+          className="rounded-[20px] p-4 sm:p-5 mb-4"
           style={{
             background: "white",
             border: "1px solid #F0E8E0",
@@ -306,8 +306,8 @@ const HomeFablino = () => {
                   <div
                     className="flex items-center justify-center rounded-full transition-all"
                     style={{
-                      width: 36,
-                      height: 36,
+                      width: 32,
+                      height: 32,
                       background: filled ? '#E8863A' : 'transparent',
                       border: isToday && !filled
                         ? '2.5px solid #E8863A'
@@ -336,12 +336,12 @@ const HomeFablino = () => {
           <div className="grid grid-cols-2 gap-3">
             {/* Stars mini-card */}
             <div
-              className="flex items-center gap-3 rounded-xl px-4 py-3"
+              className="flex items-center gap-2 sm:gap-3 rounded-xl px-3 py-2.5 sm:px-4 sm:py-3"
               style={{ background: '#FFF7ED', border: '1px solid #FDBA74' }}
             >
-              <span style={{ fontSize: 28, lineHeight: 1 }}>⭐</span>
+              <span className="text-[22px] sm:text-[28px]" style={{ lineHeight: 1 }}>⭐</span>
               <div>
-                <p className="font-extrabold text-[22px] leading-tight" style={{ color: '#2D1810' }}>
+                <p className="font-extrabold text-[18px] sm:text-[22px] leading-tight" style={{ color: '#2D1810' }}>
                   {gamificationState?.stars ?? 0}
                 </p>
                 <p className="text-[11px] font-semibold" style={{ color: '#92400E' }}>
@@ -352,7 +352,7 @@ const HomeFablino = () => {
 
             {/* Streak diamond mini-card */}
             <div
-              className="flex items-center gap-3 rounded-xl px-4 py-3"
+              className="flex items-center gap-2 sm:gap-3 rounded-xl px-3 py-2.5 sm:px-4 sm:py-3"
               style={{ background: '#F0F9FF', border: '1px solid #93C5FD' }}
             >
               <span
@@ -368,7 +368,7 @@ const HomeFablino = () => {
                 💎
               </span>
               <div>
-                <p className="font-extrabold text-[22px] leading-tight" style={{ color: '#2D1810' }}>
+                <p className="font-extrabold text-[18px] sm:text-[22px] leading-tight" style={{ color: '#2D1810' }}>
                   {currentStreak}
                 </p>
                 <p className="text-[11px] font-semibold" style={{ color: '#1E40AF' }}>

@@ -226,9 +226,9 @@ const StoryTypeSelectionScreen = ({
           mascotSize="sm"
         />
 
-        {/* Main Category Grid – 3 columns, compact gaps for 640px */}
+        {/* Main Category Grid – 2 cols mobile, 3 cols tablet */}
         {viewState === "main" && (
-          <div className="grid grid-cols-3 gap-2.5 w-full">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 w-full">
             {mainCategoryTiles.map((tile) => (
               <CharacterTile
                 key={tile.type}
@@ -245,7 +245,7 @@ const StoryTypeSelectionScreen = ({
 
         {viewState === "educational" && (
           <div className="w-full space-y-2">
-            <div className="grid grid-cols-3 gap-2.5">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
               {educationalTopicTiles.map((tile) => (
                 <CharacterTile
                   key={tile.type}
