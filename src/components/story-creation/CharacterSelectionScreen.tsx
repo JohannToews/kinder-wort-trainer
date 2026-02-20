@@ -326,13 +326,13 @@ const CharacterSelectionScreen = ({
   };
 
   const defaultCharacterMessages: Record<string, string> = {
-    de: "Wer soll in der Geschichte vorkommen? 👥",
-    fr: "Qui doit apparaître dans l'histoire ? 👥",
-    en: "Who should be in the story? 👥",
-    es: "¿Quién debe aparecer en la historia? 👥",
-    nl: "Wie moet er in het verhaal voorkomen? 👥",
-    it: "Chi deve comparire nella storia? 👥",
-    bs: "Ko treba da se pojavi u priči? 👥",
+    de: "Wer soll die Hauptperson sein? 🌟",
+    fr: "Qui sera le héros de ton histoire ? 🌟",
+    en: "Who will be the main character? 🌟",
+    es: "¿Quién será el protagonista? 🌟",
+    nl: "Wie wordt de hoofdpersoon? 🌟",
+    it: "Chi sarà il protagonista? 🌟",
+    bs: "Ko će biti glavni lik? 🌟",
   };
 
   // Modal title based on category
@@ -349,12 +349,12 @@ const CharacterSelectionScreen = ({
           <BackButton onClick={viewState === "main" ? onBack : () => setViewState("main")} />
         </div>
 
-        {/* Fablino Header — compact for tablet */}
+        {/* Fablino Header */}
         {viewState === "main" && (
           <FablinoPageHeader
             mascotImage="/mascot/4_come_back.png"
             message={fablinoMessage || defaultCharacterMessages[kidAppLanguage] || defaultCharacterMessages['de']}
-            mascotSize="sm"
+            mascotSize="md"
           />
         )}
 
