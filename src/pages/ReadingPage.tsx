@@ -1640,7 +1640,7 @@ const ReadingPage = () => {
         title={story?.title || ""}
         backTo="/stories"
         rightContent={
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2">
             {/* Mode toggle: switch to immersive (admin only) */}
             {isAdmin && (
               <Button
@@ -1653,26 +1653,20 @@ const ReadingPage = () => {
                 <BookOpenText className="h-4 w-4" />
               </Button>
             )}
-            {/* Star counter */}
+            {/* Star counter — compact */}
             {gamificationState && (
-              <div className="flex items-center gap-1 text-primary font-bold text-sm bg-primary/10 px-2.5 py-1 rounded-full">
+              <div className="flex items-center gap-1 text-primary font-bold text-xs sm:text-sm bg-primary/10 px-2 py-1 rounded-full">
                 <span>⭐</span>
                 <span>{gamificationState.stars}</span>
               </div>
             )}
+            {/* Share — icon-only on mobile */}
             {story && (
               <ShareStoryButton 
                 storyId={story.id} 
                 language={kidAppLanguage as any}
               />
             )}
-            <Button
-              onClick={() => navigate("/quiz")}
-              className="btn-accent-kid flex items-center gap-2"
-            >
-              <BookOpen className="h-5 w-5" />
-              <span className="hidden sm:inline">Quiz</span>
-            </Button>
           </div>
         }
       />
@@ -1681,13 +1675,13 @@ const ReadingPage = () => {
         <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
           {/* Reading Area - wider for tablets */}
           <div className="xl:col-span-3">
-            {/* Cover image above the text */}
+            {/* Cover image — full width, responsive height */}
             {story?.cover_image_url && (
-              <div className="mb-6 rounded-2xl overflow-hidden shadow-card bg-muted/30">
+              <div className="mb-6 rounded-xl overflow-hidden shadow-card bg-[#FAFAF8]">
                 <img 
                   src={story.cover_image_url} 
                   alt={story.title}
-                  className="w-full h-40 md:h-52 object-contain"
+                  className="w-full max-h-[250px] md:max-h-[400px] object-cover"
                   onError={(e) => { e.currentTarget.src = '/fallback-illustration.svg'; }}
                 />
               </div>
