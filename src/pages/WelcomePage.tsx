@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -18,6 +19,7 @@ const WelcomePage = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [showEmailConfirm, setShowEmailConfirm] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
   const { isAuthenticated, isLoading: authLoading } = useAuth();
@@ -168,7 +170,7 @@ const WelcomePage = () => {
   // Email confirmation screen
   if (showEmailConfirm) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4" style={{ background: "linear-gradient(180deg, #FFF8F0 0%, #FFECD2 100%)" }}>
+      <div className="min-h-screen flex items-center justify-center p-4">
         <div className="w-full max-w-sm bg-white rounded-3xl shadow-lg px-8 py-12 text-center">
           <div className="flex justify-center mb-6">
             <div className="p-5 rounded-full shadow-md" style={{ background: "linear-gradient(135deg, #4ade80, #16a34a)" }}>
@@ -192,14 +194,14 @@ const WelcomePage = () => {
 
   if (authLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: "linear-gradient(180deg, #FFF8F0 0%, #FFECD2 100%)" }}>
+      <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin" style={{ color: "#E8863A" }} />
       </div>
     );
   }
 
   return (
-    <div className="h-screen flex items-center justify-center p-4 overflow-hidden" style={{ background: "linear-gradient(180deg, #FFF8F0 0%, #FFECD2 100%)" }}>
+    <div className="h-screen flex items-center justify-center p-4 overflow-hidden">
       <div className="w-full max-w-sm">
         {/* Mascot + Logo */}
         <div className="flex flex-col items-center mb-3">
@@ -282,7 +284,15 @@ const WelcomePage = () => {
             </div>
 
             {mode === "login" && (
-              <div className="text-right">
+              <div className="flex items-center justify-between">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <Checkbox
+                    checked={rememberMe}
+                    onCheckedChange={(v) => setRememberMe(v === true)}
+                    className="border-[rgba(232,134,58,0.4)] data-[state=checked]:bg-[#E8863A] data-[state=checked]:border-[#E8863A]"
+                  />
+                  <span className="text-xs" style={{ color: "rgba(45,24,16,0.6)" }}>Angemeldet bleiben</span>
+                </label>
                 <a
                   href="/reset-password"
                   className="text-xs underline"
