@@ -194,13 +194,13 @@ const ComprehensionQuiz = ({ storyId, storyDifficulty = "medium", storyLanguage 
             <div key={idx} className="relative">
               {result ? (
                 result.correct ? (
-                  <CheckCircle2 className="h-5 w-5 text-accent-foreground" />
+                  <CheckCircle2 className="h-5 w-5 text-green-600" />
                 ) : (
-                  <XCircle className="h-5 w-5 text-destructive" />
+                  <XCircle className="h-5 w-5 text-red-400" />
                 )
               ) : (
                 <CircleDot 
-                  className={`h-5 w-5 ${idx === currentIndex ? 'text-primary' : 'text-muted-foreground/30'}`} 
+                  className={`h-5 w-5 ${idx === currentIndex ? 'text-orange-400' : 'text-gray-300'}`} 
                 />
               )}
             </div>
@@ -225,15 +225,17 @@ const ComprehensionQuiz = ({ storyId, storyDifficulty = "medium", storyLanguage 
           let extraClasses = "text-left justify-start h-auto py-4 px-4 text-base";
           
           if (showFeedback) {
-            if (isCorrectOption) {
-              extraClasses += " bg-accent/50 border-accent text-accent-foreground hover:bg-accent/50";
+            if (isSelected && isCorrectOption) {
+              extraClasses += " bg-green-100 border-green-500 text-green-800 hover:bg-green-100";
+            } else if (isCorrectOption) {
+              extraClasses += " bg-blue-50 border-blue-400 text-blue-700 hover:bg-blue-50";
             } else if (isSelected && !isCorrectOption) {
-              extraClasses += " bg-destructive/20 border-destructive text-destructive hover:bg-destructive/20";
+              extraClasses += " bg-red-50 border-red-400 text-red-700 hover:bg-red-50";
             } else {
-              extraClasses += " opacity-50";
+              extraClasses += " opacity-40";
             }
           } else {
-            extraClasses += " hover:bg-primary/10 hover:border-primary";
+            extraClasses += " hover:bg-orange-50 hover:border-orange-300";
           }
           
           return (
@@ -248,11 +250,14 @@ const ComprehensionQuiz = ({ storyId, storyDifficulty = "medium", storyLanguage 
                 {String.fromCharCode(65 + idx)}.
               </span>
               {option}
-              {showFeedback && isCorrectOption && (
-                <CheckCircle2 className="h-5 w-5 ml-auto text-accent-foreground" />
+              {showFeedback && isSelected && isCorrectOption && (
+                <CheckCircle2 className="h-5 w-5 ml-auto text-green-600" />
+              )}
+              {showFeedback && !isSelected && isCorrectOption && (
+                <CheckCircle2 className="h-5 w-5 ml-auto text-blue-500" />
               )}
               {showFeedback && isSelected && !isCorrectOption && (
-                <XCircle className="h-5 w-5 ml-auto text-destructive" />
+                <XCircle className="h-5 w-5 ml-auto text-red-500" />
               )}
             </Button>
           );
@@ -262,11 +267,17 @@ const ComprehensionQuiz = ({ storyId, storyDifficulty = "medium", storyLanguage 
       {/* Feedback and Next button */}
       {showFeedback && (
         <div className="text-center space-y-4">
-          <p className={`text-lg font-semibold ${isCorrect ? 'text-accent-foreground' : 'text-destructive'}`}>
-            {isCorrect ? t.bravo : t.notQuite}
-          </p>
+          <div className={`rounded-xl py-3 px-4 ${isCorrect ? 'bg-green-50' : 'bg-orange-50'}`}>
+            <p className={`text-lg font-bold ${isCorrect ? 'text-green-700' : 'text-orange-600'}`}>
+              {isCorrect ? t.bravo : t.notQuite}
+            </p>
+          </div>
           
-          <Button onClick={goToNextQuestion} size="lg" className="gap-2">
+          <Button
+            onClick={goToNextQuestion}
+            size="lg"
+            className="gap-2 bg-[#E8863A] hover:bg-[#D4752E] text-white"
+          >
             {currentIndex < questions.length - 1 ? t.nextQuestion : t.finish}
             <ChevronRight className="h-5 w-5" />
           </Button>
