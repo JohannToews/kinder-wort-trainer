@@ -4,15 +4,22 @@
  * Uses the shared FablinoMascot + SpeechBubble components for consistent sizing.
  *
  * On mobile (<640px) the mascot automatically shrinks to `sm` to prevent overflow.
+ *
+ * showBackButton: When true, renders BackButton inline-left in the same row,
+ * saving ~50px of vertical space.
  */
 import { useEffect, useState } from "react";
 import FablinoMascot, { FablinoSize } from "./FablinoMascot";
 import SpeechBubble from "./SpeechBubble";
+import BackButton from "./BackButton";
 
 interface FablinoPageHeaderProps {
   mascotImage: string;
   message: string;
   mascotSize?: FablinoSize;
+  showBackButton?: boolean;
+  onBack?: () => void;
+  backTo?: string;
 }
 
 function useIsMobile(breakpoint = 480) {
@@ -33,12 +40,18 @@ const FablinoPageHeader = ({
   mascotImage,
   message,
   mascotSize = "md",
+  showBackButton = false,
+  onBack,
+  backTo,
 }: FablinoPageHeaderProps) => {
   const isMobile = useIsMobile();
   const effectiveSize: FablinoSize = isMobile && mascotSize !== "sm" ? "sm" : mascotSize;
 
   return (
     <div className="flex flex-row items-center gap-2 px-0 py-2 sm:py-3 justify-start w-full self-start">
+      {showBackButton && (
+        <BackButton onClick={onBack} to={backTo} className="flex-shrink-0" />
+      )}
       <FablinoMascot src={mascotImage} size={effectiveSize} />
       <div className="flex-1 min-w-0">
         <SpeechBubble>{message}</SpeechBubble>

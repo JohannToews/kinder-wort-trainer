@@ -344,18 +344,19 @@ const CharacterSelectionScreen = ({
   return (
     <div className="min-h-screen flex flex-col">
       <div className="flex-1 flex flex-col items-stretch px-4 max-w-[480px] mx-auto w-full gap-3 pb-20">
-        {/* Back button */}
-        <div className="pt-2">
-          <BackButton onClick={viewState === "main" ? onBack : () => setViewState("main")} />
-        </div>
-
-        {/* Fablino Header */}
-        {viewState === "main" && (
+        {/* Fablino Header with inline back button (main view) */}
+        {viewState === "main" ? (
           <FablinoPageHeader
             mascotImage="/mascot/4_come_back.png"
             message={fablinoMessage || defaultCharacterMessages[kidAppLanguage] || defaultCharacterMessages['de']}
             mascotSize="md"
+            showBackButton
+            onBack={onBack}
           />
+        ) : (
+          <div className="pt-2">
+            <BackButton onClick={() => setViewState("main")} />
+          </div>
         )}
 
         {/* Main Content */}

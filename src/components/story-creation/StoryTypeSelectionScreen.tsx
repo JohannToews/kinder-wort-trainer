@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { Sparkles } from "lucide-react";
-import BackButton from "@/components/BackButton";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -214,16 +213,13 @@ const StoryTypeSelectionScreen = ({
   return (
     <div className="min-h-screen flex flex-col">
       <div className="flex-1 flex flex-col items-stretch px-4 max-w-[480px] mx-auto w-full gap-3 pb-4">
-        {/* Back button */}
-        <div className="pt-2">
-          <BackButton onClick={handleBack} />
-        </div>
-
-        {/* Fablino Header — compact for tablet */}
+        {/* Fablino Header with inline back button */}
         <FablinoPageHeader
           mascotImage="/mascot/6_Onboarding.png"
           message={resolvedFablinoMessage}
           mascotSize="sm"
+          showBackButton
+          onBack={handleBack}
         />
 
         {/* Main Category Grid – 2 cols mobile, 3 cols tablet */}

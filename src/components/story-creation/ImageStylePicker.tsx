@@ -1,6 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
 import { Star, Loader2 } from "lucide-react";
-import BackButton from "@/components/BackButton";
 import { supabase } from "@/integrations/supabase/client";
 import FablinoPageHeader from "@/components/FablinoPageHeader";
 import { cn } from "@/lib/utils";
@@ -140,16 +139,13 @@ const ImageStylePicker: React.FC<ImageStylePickerProps> = ({
   return (
     <div className="min-h-screen flex flex-col">
       <div className="flex-1 flex flex-col items-stretch px-4 max-w-[480px] mx-auto w-full gap-3 pb-4">
-        {/* Back button */}
-        <div className="pt-2">
-          <BackButton onClick={onBack} />
-        </div>
-
-        {/* Fablino Header */}
+        {/* Fablino Header with inline back button */}
         <FablinoPageHeader
           mascotImage="/mascot/5_Story_erstellen.png"
           message={t.header}
           mascotSize="md"
+          showBackButton
+          onBack={onBack}
         />
 
         {/* Style Grid — consistent with theme/character tiles */}

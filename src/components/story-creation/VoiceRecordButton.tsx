@@ -119,22 +119,16 @@ const VoiceRecordButton = ({ language, onTranscript, className = '' }: VoiceReco
   // ── IDLE ─────────────────────────────────────────────────────────
   if (state === 'idle') {
     return (
-      <div className={`flex flex-col items-center gap-2 ${className}`}>
+      <div className={`flex flex-col items-center ${className}`}>
         <button
           type="button"
           onClick={startRecording}
-          className="w-12 h-12 rounded-full flex items-center justify-center transition-all duration-150 hover:scale-105 active:scale-95 shadow-md"
+          className="w-11 h-11 rounded-full flex items-center justify-center transition-all duration-150 hover:scale-105 active:scale-95 shadow-md"
           style={{ backgroundColor: FABLINO_COLORS.primary }}
           aria-label={labels.speak}
         >
-          <Mic className="h-6 w-6 text-white" />
+          <Mic className="h-5 w-5 text-white" />
         </button>
-        <span
-          className="text-xs font-medium"
-          style={{ color: FABLINO_COLORS.textMuted }}
-        >
-          {labels.speak}
-        </span>
       </div>
     );
   }

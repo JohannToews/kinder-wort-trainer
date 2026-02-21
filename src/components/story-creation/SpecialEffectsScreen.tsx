@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { ChevronDown } from "lucide-react";
-import BackButton from "@/components/BackButton";
 import { Textarea } from "@/components/ui/textarea";
 import { SpecialAttribute, StoryLength, StoryDifficulty, LANGUAGE_FLAGS, LANGUAGE_LABELS } from "./types";
 import { cn } from "@/lib/utils";
@@ -299,154 +298,151 @@ const SpecialEffectsScreen = ({
       }));
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <div className="flex-1 flex flex-col items-stretch px-4 max-w-[600px] mx-auto w-full gap-2 pb-2">
-        {/* Back button */}
-        <div className="pt-2">
-          <BackButton onClick={onBack} />
-        </div>
-
-        {/* Fablino Header — compact */}
+    <div className="min-h-[100dvh] flex flex-col bg-[#FFF8F0]">
+      <div className="flex-1 flex flex-col items-stretch px-4 max-w-[600px] mx-auto w-full gap-2 pb-24">
+        {/* Fablino Header with inline back button — saves ~50px */}
         <FablinoPageHeader
           mascotImage="/mascot/5_new_story.png"
           message={fablinoMessage || t.descriptionHeader}
           mascotSize="sm"
+          showBackButton
+          onBack={onBack}
         />
 
-        {/* Text input + voice */}
-        <div className="w-full">
+        {/* Text input with inline microphone (WhatsApp-style) */}
+        <div className="w-full relative">
           <Textarea
             value={additionalDescription}
             onChange={(e) => setAdditionalDescription(e.target.value)}
             placeholder={t.descriptionPlaceholder}
-            className="min-h-[56px] text-sm resize-none rounded-xl border border-gray-200 focus:border-[#E8863A]"
+            className="min-h-[48px] max-h-[120px] text-base resize-none rounded-xl border-2 border-orange-200 focus:border-orange-400 focus:ring-2 focus:ring-orange-200/50 pr-14 bg-white"
+            style={{ fontSize: '16px' }}
           />
-          <div className="flex justify-center pt-1">
+          <div className="absolute right-2 top-1/2 -translate-y-1/2">
             <VoiceRecordButton
               language={storyLanguage || kidReadingLanguage || 'de'}
               onTranscript={(text) => {
                 setAdditionalDescription((prev) => prev ? `${prev} ${text}` : text);
               }}
+              className="!gap-1"
             />
           </div>
         </div>
 
-        {/* Compact settings panel */}
-        {true && (
-          <div className="w-full bg-white/70 backdrop-blur-sm rounded-2xl border border-orange-100 shadow-sm px-3 py-2 space-y-1.5">
-            {/* Length — horizontal chips */}
-            <div className="flex items-center gap-1.5 sm:gap-2">
-              <span className="text-[11px] sm:text-xs font-semibold text-[#92400E] w-16 sm:w-20 shrink-0">{st.lengthLabel}</span>
-              <div className="flex-1 flex flex-wrap gap-1 bg-orange-50/60 rounded-lg p-0.5">
-                {lengthItems.map((item) => (
-                  <button
-                    key={item.key}
-                    onClick={() => setStoryLength(item.key)}
-                    className={cn(
-                      "flex-1 min-w-[60px] py-1 text-[11px] sm:text-xs rounded-md transition-all duration-150 font-medium text-center whitespace-nowrap",
-                      storyLength === item.key
-                        ? "bg-[#E8863A] text-white shadow-sm"
-                        : "text-[#2D1810]/60 hover:text-[#2D1810] hover:bg-white/60"
-                    )}
-                  >
-                    {LENGTH_EMOJIS[item.key] ? `${LENGTH_EMOJIS[item.key]} ` : ''}{item.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Difficulty — inline chips */}
-            <div className="flex items-center gap-1.5 sm:gap-2">
-              <span className="text-[11px] sm:text-xs font-semibold text-[#92400E] w-16 sm:w-20 shrink-0">{st.difficultyLabel}</span>
-              <div className="flex-1 flex gap-1 bg-orange-50/60 rounded-lg p-0.5">
-                {(["easy", "medium", "hard"] as StoryDifficulty[]).map((diff) => (
-                  <button
-                    key={diff}
-                    onClick={() => setStoryDifficulty(diff)}
-                    className={cn(
-                      "flex-1 py-1 text-[11px] sm:text-xs rounded-md transition-all duration-150 font-medium text-center",
-                      storyDifficulty === diff
-                        ? "bg-[#E8863A] text-white shadow-sm"
-                        : "text-[#2D1810]/60 hover:text-[#2D1810] hover:bg-white/60"
-                    )}
-                  >
-                    {diff === "easy" ? st.easy : diff === "medium" ? st.medium : st.hard}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Language — dropdown */}
-            {availableLanguages.length > 0 && (
-              <div className="flex items-center gap-1.5 sm:gap-2">
-                <span className="text-[11px] sm:text-xs font-semibold text-[#92400E] w-16 sm:w-20 shrink-0">{st.languageLabel}</span>
-                <div className="flex-1 relative">
-                  <button
-                    onClick={() => setLangDropdownOpen(!langDropdownOpen)}
-                    className="w-full flex items-center justify-between py-1.5 px-3 text-xs font-medium rounded-lg bg-orange-50/60 hover:bg-white/60 transition-colors"
-                  >
-                    <span>
-                      {LANGUAGE_FLAGS[storyLanguage] || ''} {LANGUAGE_LABELS[storyLanguage]?.[kidAppLanguage] || storyLanguage.toUpperCase()}
-                    </span>
-                    <ChevronDown className={cn("h-3.5 w-3.5 text-[#92400E] transition-transform", langDropdownOpen && "rotate-180")} />
-                  </button>
-                  {langDropdownOpen && (
-                    <div className="absolute z-20 top-full mt-1 left-0 right-0 bg-white rounded-xl shadow-lg border border-orange-100 py-1 max-h-48 overflow-y-auto">
-                      {availableLanguages.map((lang) => (
-                        <button
-                          key={lang}
-                          onClick={() => { setStoryLanguage(lang); setLangDropdownOpen(false); }}
-                          className={cn(
-                            "w-full text-left px-3 py-1.5 text-xs font-medium hover:bg-orange-50 transition-colors",
-                            storyLanguage === lang ? "bg-orange-50 text-[#E8863A]" : "text-[#2D1810]"
-                          )}
-                        >
-                          {LANGUAGE_FLAGS[lang] || ''} {LANGUAGE_LABELS[lang]?.[kidAppLanguage] || lang.toUpperCase()}
-                        </button>
-                      ))}
-                    </div>
+        {/* Settings panel — larger touch targets, tighter vertical spacing */}
+        <div className="w-full bg-white/70 backdrop-blur-sm rounded-2xl border border-orange-100 shadow-sm px-3 py-2.5 space-y-2">
+          {/* Length — chips with min 44px height */}
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-semibold text-[#92400E] w-18 sm:w-20 shrink-0">{st.lengthLabel}</span>
+            <div className="flex-1 grid grid-cols-2 sm:flex sm:flex-wrap gap-1 bg-orange-50/60 rounded-xl p-1">
+              {lengthItems.map((item) => (
+                <button
+                  key={item.key}
+                  onClick={() => setStoryLength(item.key)}
+                  className={cn(
+                    "min-h-[44px] sm:flex-1 sm:min-w-[60px] px-2 py-2 text-[15px] sm:text-sm rounded-lg transition-all duration-150 font-medium text-center whitespace-nowrap",
+                    storyLength === item.key
+                      ? "bg-[#E8863A] text-white shadow-sm"
+                      : "text-[#2D1810]/60 hover:text-[#2D1810] hover:bg-white/60"
                   )}
-                </div>
-              </div>
-            )}
-
-            {/* Series toggle */}
-            {showSettings && (
-              <div className="flex items-center gap-1.5 sm:gap-2">
-                <span className="text-[11px] sm:text-xs font-semibold text-[#92400E] w-16 sm:w-20 shrink-0">{st.seriesLabel}</span>
-                <div className="flex-1 flex gap-1 bg-orange-50/60 rounded-lg p-0.5">
-                  {[false, true].map((val) => (
-                    <button
-                      key={String(val)}
-                      onClick={() => setIsSeries(val)}
-                      className={cn(
-                        "flex-1 py-1 text-xs rounded-md transition-all duration-150 font-medium text-center",
-                        isSeries === val
-                          ? "bg-[#E8863A] text-white shadow-sm"
-                          : "text-[#2D1810]/60 hover:text-[#2D1810] hover:bg-white/60"
-                      )}
-                    >
-                      {val ? st.seriesYes : st.seriesNo}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
+                >
+                  {LENGTH_EMOJIS[item.key] ? `${LENGTH_EMOJIS[item.key]} ` : ''}{item.label}
+                </button>
+              ))}
+            </div>
           </div>
-        )}
 
-        {/* Admin series toggle (standalone, for Weg B where showSettings is false) */}
-        {!showSettings && isAdmin && (
-          <div className="w-full bg-white/70 backdrop-blur-sm rounded-2xl border border-orange-100 shadow-sm px-3 py-2">
-            <div className="flex items-center gap-1.5 sm:gap-2">
-              <span className="text-[11px] sm:text-xs font-semibold text-[#92400E] w-16 sm:w-20 shrink-0">{st.seriesLabel}</span>
-              <div className="flex-1 flex gap-1 bg-orange-50/60 rounded-lg p-0.5">
+          {/* Difficulty — 44px chips */}
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-semibold text-[#92400E] w-18 sm:w-20 shrink-0">{st.difficultyLabel}</span>
+            <div className="flex-1 flex gap-1 bg-orange-50/60 rounded-xl p-1">
+              {(["easy", "medium", "hard"] as StoryDifficulty[]).map((diff) => (
+                <button
+                  key={diff}
+                  onClick={() => setStoryDifficulty(diff)}
+                  className={cn(
+                    "flex-1 min-h-[44px] py-2 text-[15px] sm:text-sm rounded-lg transition-all duration-150 font-medium text-center",
+                    storyDifficulty === diff
+                      ? "bg-[#E8863A] text-white shadow-sm"
+                      : "text-[#2D1810]/60 hover:text-[#2D1810] hover:bg-white/60"
+                  )}
+                >
+                  {diff === "easy" ? st.easy : diff === "medium" ? st.medium : st.hard}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Language — 48px dropdown */}
+          {availableLanguages.length > 0 && (
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-semibold text-[#92400E] w-18 sm:w-20 shrink-0">{st.languageLabel}</span>
+              <div className="flex-1 relative">
+                <button
+                  onClick={() => setLangDropdownOpen(!langDropdownOpen)}
+                  className="w-full flex items-center justify-between min-h-[48px] py-2 px-3 text-base font-medium rounded-xl bg-orange-50/60 hover:bg-white/60 transition-colors"
+                >
+                  <span>
+                    {LANGUAGE_FLAGS[storyLanguage] || ''} {LANGUAGE_LABELS[storyLanguage]?.[kidAppLanguage] || storyLanguage.toUpperCase()}
+                  </span>
+                  <ChevronDown className={cn("h-4 w-4 text-[#92400E] transition-transform", langDropdownOpen && "rotate-180")} />
+                </button>
+                {langDropdownOpen && (
+                  <div className="absolute z-20 top-full mt-1 left-0 right-0 bg-white rounded-xl shadow-lg border border-orange-100 py-1 max-h-48 overflow-y-auto">
+                    {availableLanguages.map((lang) => (
+                      <button
+                        key={lang}
+                        onClick={() => { setStoryLanguage(lang); setLangDropdownOpen(false); }}
+                        className={cn(
+                          "w-full text-left px-3 py-2.5 text-sm font-medium hover:bg-orange-50 transition-colors min-h-[44px]",
+                          storyLanguage === lang ? "bg-orange-50 text-[#E8863A]" : "text-[#2D1810]"
+                        )}
+                      >
+                        {LANGUAGE_FLAGS[lang] || ''} {LANGUAGE_LABELS[lang]?.[kidAppLanguage] || lang.toUpperCase()}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Series toggle — 44px chips */}
+          {showSettings && (
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-semibold text-[#92400E] w-18 sm:w-20 shrink-0">{st.seriesLabel}</span>
+              <div className="flex-1 flex gap-1 bg-orange-50/60 rounded-xl p-1">
                 {[false, true].map((val) => (
                   <button
                     key={String(val)}
                     onClick={() => setIsSeries(val)}
                     className={cn(
-                      "flex-1 py-1 text-xs rounded-md transition-all duration-150 font-medium text-center",
+                      "flex-1 min-h-[44px] py-2 text-[15px] rounded-lg transition-all duration-150 font-medium text-center",
+                      isSeries === val
+                        ? "bg-[#E8863A] text-white shadow-sm"
+                        : "text-[#2D1810]/60 hover:text-[#2D1810] hover:bg-white/60"
+                    )}
+                  >
+                    {val ? st.seriesYes : st.seriesNo}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Admin series toggle (standalone, for Weg B where showSettings is false) */}
+        {!showSettings && isAdmin && (
+          <div className="w-full bg-white/70 backdrop-blur-sm rounded-2xl border border-orange-100 shadow-sm px-3 py-2.5">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-semibold text-[#92400E] w-18 sm:w-20 shrink-0">{st.seriesLabel}</span>
+              <div className="flex-1 flex gap-1 bg-orange-50/60 rounded-xl p-1">
+                {[false, true].map((val) => (
+                  <button
+                    key={String(val)}
+                    onClick={() => setIsSeries(val)}
+                    className={cn(
+                      "flex-1 min-h-[44px] py-2 text-[15px] rounded-lg transition-all duration-150 font-medium text-center",
                       isSeries === val
                         ? "bg-[#E8863A] text-white shadow-sm"
                         : "text-[#2D1810]/60 hover:text-[#2D1810] hover:bg-white/60"
@@ -466,48 +462,48 @@ const SpecialEffectsScreen = ({
             <button
               onClick={() => setSeriesMode('normal')}
               className={cn(
-                "flex-1 text-left p-2.5 rounded-xl border-2 transition-all duration-200",
+                "flex-1 text-left p-3 rounded-xl border-2 transition-all duration-200 min-h-[56px]",
                 seriesMode === 'normal'
                   ? "border-[#E8863A] bg-white shadow-md"
                   : "border-orange-100 bg-white/70 hover:border-orange-200"
               )}
             >
-              <p className="text-xs font-semibold text-[#2D1810]">📖 {st.seriesModeNormal}</p>
-              <p className="text-[10px] text-[#2D1810]/50 mt-0.5">{st.seriesModeNormalDesc}</p>
+              <p className="text-sm font-semibold text-[#2D1810]">📖 {st.seriesModeNormal}</p>
+              <p className="text-xs text-[#2D1810]/50 mt-0.5">{st.seriesModeNormalDesc}</p>
             </button>
             <button
               onClick={() => setSeriesMode('interactive')}
               className={cn(
-                "flex-1 text-left p-2.5 rounded-xl border-2 transition-all duration-200",
+                "flex-1 text-left p-3 rounded-xl border-2 transition-all duration-200 min-h-[56px]",
                 seriesMode === 'interactive'
                   ? "border-[#E8863A] bg-white shadow-md"
                   : "border-orange-100 bg-white/70 hover:border-orange-200"
               )}
             >
-              <p className="text-xs font-semibold text-[#2D1810]">
+              <p className="text-sm font-semibold text-[#2D1810]">
                 ✨ {st.seriesModeInteractive}
                 <span className="ml-1 text-[9px] font-bold px-1 py-0.5 rounded-full bg-gradient-to-r from-amber-400 to-orange-400 text-white">Premium</span>
               </p>
-              <p className="text-[10px] text-[#2D1810]/50 mt-0.5">{st.seriesModeInteractiveDesc}</p>
+              <p className="text-xs text-[#2D1810]/50 mt-0.5">{st.seriesModeInteractiveDesc}</p>
             </button>
           </div>
         )}
 
-        {/* Special Effects — collapsible */}
+        {/* Special Effects — collapsible, bigger tiles */}
         <div className="w-full">
           <button
             onClick={() => setEffectsExpanded(!effectsExpanded)}
-            className="w-full flex items-center justify-between py-2 px-3 rounded-xl bg-white/70 border border-orange-100 shadow-sm hover:bg-white/90 transition-colors"
+            className="w-full flex items-center justify-between min-h-[44px] py-2.5 px-3 rounded-xl bg-white/70 border border-orange-100 shadow-sm hover:bg-white/90 transition-colors"
           >
             <div className="flex items-center gap-2 min-w-0">
-              <span className="text-xs font-semibold text-[#92400E]">{t.specialEffectsToggle}</span>
-              <span className="text-[10px] text-[#2D1810]/50 truncate">{effectsSummary}</span>
+              <span className="text-sm font-semibold text-[#92400E]">{t.specialEffectsToggle}</span>
+              <span className="text-xs text-[#2D1810]/50 truncate">{effectsSummary}</span>
             </div>
-            <ChevronDown className={cn("h-4 w-4 text-[#92400E] shrink-0 transition-transform", effectsExpanded && "rotate-180")} />
+            <ChevronDown className={cn("h-5 w-5 text-[#92400E] shrink-0 transition-transform", effectsExpanded && "rotate-180")} />
           </button>
 
           {effectsExpanded && (
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 mt-1.5 animate-fade-in">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-2 animate-fade-in">
               {attributeOptions.map((option) => {
                 const isSelected = selectedAttributes.includes(option.id);
                 return (
@@ -515,7 +511,7 @@ const SpecialEffectsScreen = ({
                     key={option.id}
                     onClick={() => toggleAttribute(option.id)}
                     className={cn(
-                      "flex flex-col items-center justify-center gap-0.5 w-full py-2 rounded-xl",
+                      "flex flex-col items-center justify-center gap-1 w-full min-h-[56px] py-3 rounded-xl",
                       "transition-all duration-150 cursor-pointer",
                       "active:scale-95",
                       isSelected
@@ -523,8 +519,8 @@ const SpecialEffectsScreen = ({
                         : "border border-gray-200 bg-white hover:border-gray-300"
                     )}
                   >
-                    <span className="text-lg leading-none">{option.emoji}</span>
-                    <span className="text-[10px] font-medium text-center leading-tight text-[#2D1810]">
+                    <span className="text-xl leading-none">{option.emoji}</span>
+                    <span className="text-sm font-medium text-center leading-tight text-[#2D1810]">
                       {t[option.labelKey]}
                     </span>
                   </button>
@@ -536,19 +532,18 @@ const SpecialEffectsScreen = ({
 
         {/* Series hint */}
         {isSeries && (
-          <p className="text-[10px] text-center text-[#92400E]/70 bg-orange-50/80 rounded-lg px-2 py-1 border border-orange-100/60">
+          <p className="text-xs text-center text-[#92400E]/70 bg-orange-50/80 rounded-lg px-2 py-1.5 border border-orange-100/60">
             {t.seriesHint}
           </p>
         )}
+      </div>
 
-        {/* Spacer to push button down */}
-        <div className="flex-1 min-h-1" />
-
-        {/* Create Story Button — sticky at bottom */}
-        <div className="sticky bottom-0 pb-safe pt-2 bg-gradient-to-t from-[#FFF8F0] via-[#FFF8F0] to-transparent">
+      {/* Create Story Button — fixed at bottom, always visible */}
+      <div className="fixed bottom-0 left-0 right-0 z-10 pb-safe">
+        <div className="max-w-[600px] mx-auto px-4 pt-3 pb-3 bg-gradient-to-t from-[#FFF8F0] via-[#FFF8F0]/95 to-transparent">
           <button
             onClick={handleContinue}
-            className="w-full h-12 rounded-2xl text-base font-semibold bg-[#E8863A] hover:bg-[#D4752E] text-white transition-colors shadow-lg"
+            className="w-full min-h-[56px] rounded-2xl text-lg font-semibold bg-[#E8863A] hover:bg-[#D4752E] text-white transition-colors shadow-lg active:scale-[0.98]"
           >
             {isSeries ? t.continueEpisode1 : t.continue} ✨
           </button>
