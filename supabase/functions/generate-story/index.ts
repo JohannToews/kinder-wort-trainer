@@ -1878,6 +1878,14 @@ Deno.serve(async (req) => {
         }
       }
 
+      // Creative seed for element diversity — random per generation
+      const nameOrigins = ['Japanese', 'Brazilian', 'Nigerian', 'Finnish', 'Indian', 'Moroccan', 'Korean', 'Chilean', 'Irish', 'Thai', 'Turkish', 'Kenyan', 'Polish', 'Vietnamese', 'Peruvian'];
+      const objectQualities = ['rusty', 'humming', 'color-changing', 'tiny', 'enormous', 'ancient', 'futuristic', 'soft', 'invisible-until-touched', 'only-works-at-night', 'warm-to-the-touch', 'singing', 'ever-growing', 'mirror-like', 'feather-light'];
+      const settingModifiers = ['floating', 'underground', 'miniature', 'upside-down', 'forgotten', 'newly-discovered', 'traveling', 'seasonal', 'musical', 'growing', 'crystalline', 'cloud-wrapped', 'submerged', 'overgrown', 'clockwork'];
+      const pick = (arr: string[]) => arr[Math.floor(Math.random() * arr.length)];
+      const creativeSeed = `\n\n## CREATIVE SEED (use as subtle inspiration, not literally):\n- Character name inspiration: ${pick(nameOrigins)} cultural background\n- Object quality: ${pick(objectQualities)}\n- Setting mood: ${pick(settingModifiers)}`;
+      userMessageFinal += creativeSeed;
+
       fullSystemPromptFinal = coreSlimData;
       usedNewPromptPath = true;
       console.log('[generate-story] Using NEW prompt path (CORE Slim + dynamic context)');

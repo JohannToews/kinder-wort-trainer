@@ -468,6 +468,23 @@ function buildVarietyBlock(recentStories: any[], headers: Record<string, string>
     lines.push(`Recent themes: ${recentThemes.join(', ')}. Choose a different concrete theme.`);
   }
 
+  // Recent titles — avoid similar titles
+  const recentTitles = recentStories.map(s => s.title).filter(Boolean).slice(0, 5);
+  if (recentTitles.length > 0) {
+    lines.push(`Recent story titles (DO NOT reuse similar titles): ${recentTitles.join(', ')}`);
+  }
+
+  // Anti-repetition rules for concrete elements
+  lines.push(
+    'CRITICAL FRESHNESS RULES:',
+    '- DO NOT use these overused default names: Leo, Mia, Finn, Max, Luna, Felix, Lina, Emma, Luca, Sophie',
+    '- DO NOT use these overused objects: glowing crystals, magic wands, enchanted maps, ancient scrolls, magical amulets',
+    '- DO NOT use these overused settings: enchanted forest, magic castle, mysterious cave, dark dungeon',
+    '- Character names MUST reflect cultural diversity (European, Asian, African, Latin American)',
+    '- Objects must be SPECIFIC and UNUSUAL (e.g., "a compass that hums near secrets" not "a magic crystal")',
+    '- Settings must be CONCRETE and ATMOSPHERIC (e.g., "a floating library above a sleeping volcano" not "a magical forest")',
+  );
+
   return lines.length > 0 ? `## ${headers.variety}\n${lines.join('\n')}` : '';
 }
 
@@ -1239,13 +1256,13 @@ export async function buildStoryPrompt(
   // and pass the result. We check for it in the request or skip.
   // For now, we'll just leave a placeholder – the caller injects it.
 
-  // ── 6. Load last 5 stories for variety ──
+  // ── 6. Load last 10 stories for variety + element tracking ──
   const { data: recentStories } = await supabaseClient
     .from('stories')
-    .select('structure_beginning, structure_middle, structure_ending, emotional_coloring, emotional_secondary, humor_level, concrete_theme')
+    .select('title, structure_beginning, structure_middle, structure_ending, emotional_coloring, emotional_secondary, humor_level, concrete_theme')
     .eq('kid_profile_id', request.kid_profile.id)
     .order('created_at', { ascending: false })
-    .limit(5);
+    .limit(10);
 
   // ── Compute word counts ──
   // If generation_config override is provided (from DB), use it directly.
