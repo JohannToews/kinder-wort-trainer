@@ -321,6 +321,38 @@ export interface Translations {
   wordsTitle: string;
   wordsEmpty: string;
   wordKnown: string;
+
+  // Custom Learning Themes
+  customThemeTitle: string;
+  customThemePlaceholder: string;
+  customThemePrepare: string;
+  customThemePreparing: string;
+  customThemeAccept: string;
+  customThemeEdit: string;
+  customThemeDelete: string;
+  customThemeActive: string;
+
+  // Subscription & Plan
+  subscriptionTitle: string;
+  currentPlan: string;
+  freePlan: string;
+  storiesPerMonth: string;
+  childProfiles: string;
+  imagesPerStory: string;
+  allLanguages: string;
+  quizzes: string;
+  learningThemesFeature: string;
+  chapterStories: string;
+  coCreate: string;
+  upgradeButton: string;
+  availablePlans: string;
+  selectPlan: string;
+  activePlan: string;
+  mostPopular: string;
+  perMonth: string;
+  invoices: string;
+  noInvoices: string;
+  betaUpgradeToast: string;
 }
 
 const translations: Record<Language, Translations> = {
@@ -599,6 +631,36 @@ const translations: Record<Language, Translations> = {
     wordsTitle: 'Deine Wörter aus dieser Geschichte',
     wordsEmpty: 'Tippe auf ein Wort in der Geschichte um es zu speichern! 📖',
     wordKnown: 'Kenne ich',
+
+    customThemeTitle: '✨ Eigenes Lernthema',
+    customThemePlaceholder: 'Beschreibe was dein Kind lernen soll, z.B. "Mein Kind soll lernen mit Eifersucht umzugehen wenn das Geschwisterchen mehr Aufmerksamkeit bekommt"',
+    customThemePrepare: '🪄 Lernthema aufbereiten',
+    customThemePreparing: 'Fablino bereitet dein Thema vor...',
+    customThemeAccept: '✅ Übernehmen',
+    customThemeEdit: '✏️ Anpassen',
+    customThemeDelete: 'Löschen',
+    customThemeActive: 'Aktiv',
+
+    subscriptionTitle: '⭐ Abo & Plan',
+    currentPlan: 'Aktueller Plan',
+    freePlan: 'Kostenlos',
+    storiesPerMonth: 'Geschichten / Monat',
+    childProfiles: 'Kinderprofile',
+    imagesPerStory: 'Bilder / Geschichte',
+    allLanguages: 'Alle Sprachen',
+    quizzes: 'Verständnisfragen',
+    learningThemesFeature: 'Lernthemen',
+    chapterStories: 'Kapitelgeschichten',
+    coCreate: 'Mitgestalten',
+    upgradeButton: '⬆️ Upgrade auf Standard',
+    availablePlans: 'Verfügbare Pläne',
+    selectPlan: 'Wählen →',
+    activePlan: 'Aktiv ✓',
+    mostPopular: 'Beliebt',
+    perMonth: '/Mo',
+    invoices: '📄 Rechnungen',
+    noInvoices: 'Noch keine Rechnungen vorhanden',
+    betaUpgradeToast: 'Kommt bald! In der Beta ist alles kostenlos 🦊',
   },
   
   en: {
@@ -876,6 +938,36 @@ const translations: Record<Language, Translations> = {
     wordsTitle: 'Your words from this story',
     wordsEmpty: 'Tap on a word in the story to save it! 📖',
     wordKnown: 'I know it',
+
+    customThemeTitle: '✨ Custom Learning Theme',
+    customThemePlaceholder: 'Describe what your child should learn, e.g. "My child should learn to deal with jealousy when a sibling gets more attention"',
+    customThemePrepare: '🪄 Prepare Theme',
+    customThemePreparing: 'Fablino is preparing your theme...',
+    customThemeAccept: '✅ Accept',
+    customThemeEdit: '✏️ Edit',
+    customThemeDelete: 'Delete',
+    customThemeActive: 'Active',
+
+    subscriptionTitle: '⭐ Subscription & Plan',
+    currentPlan: 'Current Plan',
+    freePlan: 'Free',
+    storiesPerMonth: 'Stories / Month',
+    childProfiles: 'Child Profiles',
+    imagesPerStory: 'Images / Story',
+    allLanguages: 'All Languages',
+    quizzes: 'Comprehension Questions',
+    learningThemesFeature: 'Learning Themes',
+    chapterStories: 'Chapter Stories',
+    coCreate: 'Co-Create',
+    upgradeButton: '⬆️ Upgrade to Standard',
+    availablePlans: 'Available Plans',
+    selectPlan: 'Select →',
+    activePlan: 'Active ✓',
+    mostPopular: 'Popular',
+    perMonth: '/mo',
+    invoices: '📄 Invoices',
+    noInvoices: 'No invoices yet',
+    betaUpgradeToast: 'Coming soon! Everything is free during Beta 🦊',
   },
   
   fr: {
@@ -1153,6 +1245,36 @@ const translations: Record<Language, Translations> = {
     wordsTitle: 'Tes mots de cette histoire',
     wordsEmpty: 'Touche un mot dans l\'histoire pour le sauvegarder ! 📖',
     wordKnown: 'Je connais',
+
+    customThemeTitle: '✨ Thème personnalisé',
+    customThemePlaceholder: 'Décrivez ce que votre enfant devrait apprendre, par ex. "Mon enfant devrait apprendre à gérer la jalousie quand le petit frère/la petite sœur reçoit plus d\'attention"',
+    customThemePrepare: '🪄 Préparer le thème',
+    customThemePreparing: 'Fablino prépare votre thème...',
+    customThemeAccept: '✅ Accepter',
+    customThemeEdit: '✏️ Modifier',
+    customThemeDelete: 'Supprimer',
+    customThemeActive: 'Actif',
+
+    subscriptionTitle: '⭐ Abonnement & Plan',
+    currentPlan: 'Plan actuel',
+    freePlan: 'Gratuit',
+    storiesPerMonth: 'Histoires / Mois',
+    childProfiles: 'Profils enfants',
+    imagesPerStory: 'Images / Histoire',
+    allLanguages: 'Toutes les langues',
+    quizzes: 'Questions de compréhension',
+    learningThemesFeature: 'Thèmes d\'apprentissage',
+    chapterStories: 'Histoires à chapitres',
+    coCreate: 'Co-créer',
+    upgradeButton: '⬆️ Passer au Standard',
+    availablePlans: 'Plans disponibles',
+    selectPlan: 'Choisir →',
+    activePlan: 'Actif ✓',
+    mostPopular: 'Populaire',
+    perMonth: '/mois',
+    invoices: '📄 Factures',
+    noInvoices: 'Aucune facture pour le moment',
+    betaUpgradeToast: 'Bientôt disponible ! Tout est gratuit pendant la Bêta 🦊',
   },
   
   es: {
@@ -1430,6 +1552,36 @@ const translations: Record<Language, Translations> = {
     wordsTitle: 'Tus palabras de esta historia',
     wordsEmpty: '¡Toca una palabra en la historia para guardarla! 📖',
     wordKnown: 'La sé',
+
+    customThemeTitle: '✨ Tema personalizado',
+    customThemePlaceholder: 'Describe qué debería aprender tu hijo, por ej. "Mi hijo debería aprender a manejar los celos cuando el hermanito recibe más atención"',
+    customThemePrepare: '🪄 Preparar tema',
+    customThemePreparing: 'Fablino está preparando tu tema...',
+    customThemeAccept: '✅ Aceptar',
+    customThemeEdit: '✏️ Editar',
+    customThemeDelete: 'Eliminar',
+    customThemeActive: 'Activo',
+
+    subscriptionTitle: '⭐ Suscripción & Plan',
+    currentPlan: 'Plan actual',
+    freePlan: 'Gratis',
+    storiesPerMonth: 'Historias / Mes',
+    childProfiles: 'Perfiles de niños',
+    imagesPerStory: 'Imágenes / Historia',
+    allLanguages: 'Todos los idiomas',
+    quizzes: 'Preguntas de comprensión',
+    learningThemesFeature: 'Temas de aprendizaje',
+    chapterStories: 'Historias por capítulos',
+    coCreate: 'Co-crear',
+    upgradeButton: '⬆️ Mejorar a Standard',
+    availablePlans: 'Planes disponibles',
+    selectPlan: 'Elegir →',
+    activePlan: 'Activo ✓',
+    mostPopular: 'Popular',
+    perMonth: '/mes',
+    invoices: '📄 Facturas',
+    noInvoices: 'Sin facturas aún',
+    betaUpgradeToast: '¡Próximamente! Todo es gratis durante la Beta 🦊',
   },
   
   nl: {
@@ -1707,6 +1859,36 @@ const translations: Record<Language, Translations> = {
     wordsTitle: 'Jouw woorden uit dit verhaal',
     wordsEmpty: 'Tik op een woord in het verhaal om het op te slaan! 📖',
     wordKnown: 'Ken ik',
+
+    customThemeTitle: '✨ Eigen leerthema',
+    customThemePlaceholder: 'Beschrijf wat je kind moet leren, bijv. "Mijn kind moet leren omgaan met jaloezie als het broertje/zusje meer aandacht krijgt"',
+    customThemePrepare: '🪄 Thema voorbereiden',
+    customThemePreparing: 'Fablino bereidt je thema voor...',
+    customThemeAccept: '✅ Overnemen',
+    customThemeEdit: '✏️ Aanpassen',
+    customThemeDelete: 'Verwijderen',
+    customThemeActive: 'Actief',
+
+    subscriptionTitle: '⭐ Abonnement & Plan',
+    currentPlan: 'Huidig plan',
+    freePlan: 'Gratis',
+    storiesPerMonth: 'Verhalen / Maand',
+    childProfiles: 'Kinderprofielen',
+    imagesPerStory: 'Afbeeldingen / Verhaal',
+    allLanguages: 'Alle talen',
+    quizzes: 'Begripsvragen',
+    learningThemesFeature: 'Leerthema\'s',
+    chapterStories: 'Hoofdstukverhalen',
+    coCreate: 'Mee-creëren',
+    upgradeButton: '⬆️ Upgrade naar Standard',
+    availablePlans: 'Beschikbare plannen',
+    selectPlan: 'Kiezen →',
+    activePlan: 'Actief ✓',
+    mostPopular: 'Populair',
+    perMonth: '/mnd',
+    invoices: '📄 Facturen',
+    noInvoices: 'Nog geen facturen',
+    betaUpgradeToast: 'Binnenkort! Alles is gratis tijdens de Bèta 🦊',
   },
   
   it: {
@@ -1984,6 +2166,36 @@ const translations: Record<Language, Translations> = {
     wordsTitle: 'Le tue parole da questa storia',
     wordsEmpty: 'Tocca una parola nella storia per salvarla! 📖',
     wordKnown: 'La conosco',
+
+    customThemeTitle: '✨ Tema personalizzato',
+    customThemePlaceholder: 'Descrivi cosa dovrebbe imparare tuo figlio, ad es. "Mio figlio dovrebbe imparare a gestire la gelosia quando il fratellino riceve più attenzione"',
+    customThemePrepare: '🪄 Preparare tema',
+    customThemePreparing: 'Fablino sta preparando il tuo tema...',
+    customThemeAccept: '✅ Accettare',
+    customThemeEdit: '✏️ Modificare',
+    customThemeDelete: 'Eliminare',
+    customThemeActive: 'Attivo',
+
+    subscriptionTitle: '⭐ Abbonamento & Piano',
+    currentPlan: 'Piano attuale',
+    freePlan: 'Gratuito',
+    storiesPerMonth: 'Storie / Mese',
+    childProfiles: 'Profili bambini',
+    imagesPerStory: 'Immagini / Storia',
+    allLanguages: 'Tutte le lingue',
+    quizzes: 'Domande di comprensione',
+    learningThemesFeature: 'Temi di apprendimento',
+    chapterStories: 'Storie a capitoli',
+    coCreate: 'Co-creare',
+    upgradeButton: '⬆️ Aggiorna a Standard',
+    availablePlans: 'Piani disponibili',
+    selectPlan: 'Scegliere →',
+    activePlan: 'Attivo ✓',
+    mostPopular: 'Popolare',
+    perMonth: '/mese',
+    invoices: '📄 Fatture',
+    noInvoices: 'Nessuna fattura ancora',
+    betaUpgradeToast: 'In arrivo! Tutto è gratuito durante la Beta 🦊',
   },
   
   bs: {
@@ -2257,6 +2469,40 @@ const translations: Record<Language, Translations> = {
     wordQuiz: 'Kviz riječi',
     createStory: 'Napravi priču',
     readStory: 'Čitaj priču',
+    wordsButton: 'Riječi',
+    wordsTitle: 'Tvoje riječi iz ove priče',
+    wordsEmpty: 'Dodirni riječ u priči da je sačuvaš! 📖',
+    wordKnown: 'Znam',
+
+    customThemeTitle: '✨ Prilagođena tema učenja',
+    customThemePlaceholder: 'Opiši šta tvoje dijete treba naučiti, npr. "Moje dijete treba naučiti nositi se s ljubomorom kad brat/sestra dobije više pažnje"',
+    customThemePrepare: '🪄 Pripremiti temu',
+    customThemePreparing: 'Fablino priprema tvoju temu...',
+    customThemeAccept: '✅ Prihvati',
+    customThemeEdit: '✏️ Uredi',
+    customThemeDelete: 'Obriši',
+    customThemeActive: 'Aktivno',
+
+    subscriptionTitle: '⭐ Pretplata & Plan',
+    currentPlan: 'Trenutni plan',
+    freePlan: 'Besplatno',
+    storiesPerMonth: 'Priča / Mjesec',
+    childProfiles: 'Dječiji profili',
+    imagesPerStory: 'Slike / Priča',
+    allLanguages: 'Svi jezici',
+    quizzes: 'Pitanja za razumijevanje',
+    learningThemesFeature: 'Teme učenja',
+    chapterStories: 'Priče s poglavljima',
+    coCreate: 'Sustvaranje',
+    upgradeButton: '⬆️ Nadogradi na Standard',
+    availablePlans: 'Dostupni planovi',
+    selectPlan: 'Izaberi →',
+    activePlan: 'Aktivno ✓',
+    mostPopular: 'Popularno',
+    perMonth: '/mj',
+    invoices: '📄 Fakture',
+    noInvoices: 'Još nema faktura',
+    betaUpgradeToast: 'Uskoro! Sve je besplatno tokom Bete 🦊',
   },
 };
 

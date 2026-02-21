@@ -1720,10 +1720,14 @@ export async function buildStoryPrompt(
 export function injectLearningTheme(
   prompt: string,
   themeLabel: string,
-  storyLanguage: string
+  storyLanguage: string,
+  storyGuidance?: string
 ): string {
   const headers = SECTION_HEADERS[storyLanguage] || SECTION_HEADERS['en'];
-  const learningSection = `## ${headers.learningTheme}\nSubtly weave the theme "${themeLabel}" into the story. It should feel natural, not forced. If learning_theme_response field applies, fill it with {"applied": true, "parent_prompt_text": "3 discussion questions for parents"}.`;
+  const guidanceBlock = storyGuidance
+    ? `\nSpecific guidance: ${storyGuidance}`
+    : '';
+  const learningSection = `## ${headers.learningTheme}\nSubtly weave the theme "${themeLabel}" into the story. It should feel natural, not forced.${guidanceBlock}\nIf learning_theme_response field applies, fill it with {"applied": true, "parent_prompt_text": "3 discussion questions for parents"}.`;
 
   // Insert before the respondJson line
   const respondLine = headers.respondJson;

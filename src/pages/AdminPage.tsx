@@ -7,7 +7,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { Image, Trash2, LogOut, User, Settings, Library, Star, TrendingUp, Wrench, Users, BookHeart, Mail, Lock, UserX, Loader2, Search, Filter } from "lucide-react";
+import { Image, Trash2, LogOut, User, Settings, Library, Star, TrendingUp, Wrench, Users, BookHeart, Mail, Lock, UserX, Loader2, Search, Filter, Check, Crown } from "lucide-react";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { PLANS, type PlanKey } from "@/config/plans";
 import BackButton from "@/components/BackButton";
 import { getThumbnailUrl } from "@/lib/imageUtils";
 import { invokeEdgeFunction } from "@/lib/edgeFunctionHelper";
@@ -315,7 +317,7 @@ const AdminPage = () => {
                     {adminLang === 'de' ? 'Geschichte für:' : adminLang === 'fr' ? 'Histoire pour:' : 'Story for:'}
                   </span>
                   {kidProfiles.length === 1 ? (
-                    <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-primary text-primary-foreground">
+                    <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-orange-500 text-white">
                       <div className="w-7 h-7 rounded-full overflow-hidden border border-border">
                         {kidProfiles[0].cover_image_url ? (
                           <img src={kidProfiles[0].cover_image_url} alt={kidProfiles[0].name} className="w-full h-full object-cover" />
@@ -538,67 +540,199 @@ const AdminPage = () => {
           </TabsContent>
           )}
 
-          {/* Account Tab — localized, no Abo sub-tab for Beta */}
+          {/* Account Tab — Accordions: Konto-Verwaltung + Abo & Plan */}
           <TabsContent value="account" className="h-full overflow-y-auto m-0 pr-2">
             <div className="max-w-3xl mx-auto">
-              <Card className="border border-orange-100 bg-white shadow-sm">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-lg text-[#2D1810]">{t.accountManagement}</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {/* Email */}
-                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-4 bg-orange-50/50 rounded-xl">
-                    <div className="flex items-center gap-3">
-                      <div className="h-10 w-10 rounded-full bg-orange-100 flex items-center justify-center">
-                        <Mail className="h-5 w-5 text-orange-600" />
+              <Accordion type="multiple" defaultValue={["account-management", "subscription"]} className="space-y-3">
+
+                {/* Akkordeon 1: Konto-Verwaltung */}
+                <AccordionItem value="account-management" className="border border-orange-200 rounded-2xl overflow-hidden bg-white shadow-sm">
+                  <AccordionTrigger className="px-4 py-3 hover:no-underline hover:bg-orange-50/50">
+                    <div className="flex items-center gap-2 text-left">
+                      <span className="text-lg">👤</span>
+                      <p className="font-semibold text-[#2D1810]">{t.accountManagement}</p>
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent className="px-4">
+                    <div className="space-y-3">
+                      {/* Email */}
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-4 bg-orange-50/50 rounded-xl">
+                        <div className="flex items-center gap-3">
+                          <div className="h-10 w-10 rounded-full bg-orange-100 flex items-center justify-center">
+                            <Mail className="h-5 w-5 text-orange-600" />
+                          </div>
+                          <div>
+                            <p className="font-medium text-sm text-[#2D1810]">{t.changeEmail}</p>
+                            <p className="text-xs text-[#2D1810]/50">{t.changeEmailSub}</p>
+                          </div>
+                        </div>
+                        <Button variant="outline" size="sm" disabled className="border-orange-200">
+                          {t.edit}
+                        </Button>
                       </div>
+
+                      {/* Password */}
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-4 bg-orange-50/50 rounded-xl">
+                        <div className="flex items-center gap-3">
+                          <div className="h-10 w-10 rounded-full bg-orange-100 flex items-center justify-center">
+                            <Lock className="h-5 w-5 text-orange-600" />
+                          </div>
+                          <div>
+                            <p className="font-medium text-sm text-[#2D1810]">{t.changePassword}</p>
+                            <p className="text-xs text-[#2D1810]/50">{t.changePasswordSub}</p>
+                          </div>
+                        </div>
+                        <Button variant="outline" size="sm" disabled className="border-orange-200">
+                          {t.edit}
+                        </Button>
+                      </div>
+
+                      {/* Delete Account */}
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-4 bg-red-50/50 rounded-xl border border-red-200/50">
+                        <div className="flex items-center gap-3">
+                          <div className="h-10 w-10 rounded-full bg-red-100 flex items-center justify-center">
+                            <UserX className="h-5 w-5 text-red-600" />
+                          </div>
+                          <div>
+                            <p className="font-medium text-sm text-red-700">{t.deleteAccount}</p>
+                            <p className="text-xs text-[#2D1810]/50">{t.deleteAccountSub}</p>
+                          </div>
+                        </div>
+                        <Button variant="destructive" size="sm" disabled>
+                          {t.delete}
+                        </Button>
+                      </div>
+
+                      <p className="text-xs text-[#2D1810]/40 text-center pt-2">
+                        ⚠️ {t.comingSoon}
+                      </p>
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+
+                {/* Akkordeon 2: Abo & Plan */}
+                <AccordionItem value="subscription" className="border border-orange-200 rounded-2xl overflow-hidden bg-white shadow-sm">
+                  <AccordionTrigger className="px-4 py-3 hover:no-underline hover:bg-orange-50/50">
+                    <div className="flex items-center gap-2 text-left">
+                      <span className="text-lg">⭐</span>
+                      <p className="font-semibold text-[#2D1810]">{t.subscriptionTitle}</p>
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent className="px-4">
+                    <div className="space-y-4">
+                      {/* Current plan highlight */}
+                      <div className="p-4 bg-orange-50 rounded-xl border border-orange-200">
+                        <p className="text-xs text-[#2D1810]/50 mb-1">{t.currentPlan}</p>
+                        <p className="font-bold text-[#2D1810] text-lg flex items-center gap-2">
+                          🦊 STARTER <span className="text-sm font-normal text-[#2D1810]/50">({t.freePlan})</span>
+                        </p>
+                        <div className="mt-2 space-y-1 text-xs text-[#2D1810]/60">
+                          <p>• {PLANS.starter.stories_per_month} {t.storiesPerMonth}</p>
+                          <p>• {PLANS.starter.child_profiles} {t.childProfiles}</p>
+                          <p>• {PLANS.starter.images_per_story} {t.imagesPerStory}</p>
+                        </div>
+                      </div>
+
+                      {/* Upgrade CTA */}
+                      <Button
+                        onClick={() => toast.info(t.betaUpgradeToast)}
+                        className="w-full bg-orange-500 hover:bg-orange-600 text-white font-semibold rounded-xl h-11"
+                      >
+                        {t.upgradeButton} — {PLANS.standard.price_monthly}€{t.perMonth}
+                      </Button>
+
+                      {/* Plan comparison */}
                       <div>
-                        <p className="font-medium text-sm text-[#2D1810]">{t.changeEmail}</p>
-                        <p className="text-xs text-[#2D1810]/50">{t.changeEmailSub}</p>
+                        <p className="text-sm font-semibold text-[#2D1810] mb-3">{t.availablePlans}</p>
+                        <div className="grid grid-cols-3 gap-2">
+                          {(Object.keys(PLANS) as PlanKey[]).map((planKey) => {
+                            const plan = PLANS[planKey];
+                            const isStarter = planKey === 'starter';
+                            const isMostPopular = 'most_popular' in plan && (plan as any).most_popular;
+
+                            return (
+                              <div
+                                key={planKey}
+                                className={`relative p-3 rounded-xl border-2 text-center ${
+                                  isStarter
+                                    ? 'border-orange-400 bg-orange-50'
+                                    : isMostPopular
+                                    ? 'border-orange-300 bg-white'
+                                    : 'border-orange-100 bg-white'
+                                }`}
+                              >
+                                {isMostPopular && (
+                                  <div className="absolute -top-2.5 left-1/2 -translate-x-1/2">
+                                    <Badge className="bg-orange-500 text-white text-[10px] border-0 px-2 py-0.5">
+                                      {t.mostPopular}
+                                    </Badge>
+                                  </div>
+                                )}
+                                <p className="font-bold text-sm text-[#2D1810] mt-1">{plan.name[adminLang] || plan.name.de}</p>
+                                <p className="text-lg font-bold text-orange-600 mt-1">
+                                  {plan.price_monthly}€
+                                  <span className="text-[10px] font-normal text-[#2D1810]/40">{t.perMonth}</span>
+                                </p>
+                                <div className="mt-2 space-y-1 text-[11px] text-[#2D1810]/60 text-left">
+                                  <p className="flex items-center gap-1">
+                                    <Check className="h-3 w-3 text-green-500 flex-shrink-0" />
+                                    {plan.stories_per_month} {t.storiesPerMonth}
+                                  </p>
+                                  <p className="flex items-center gap-1">
+                                    <Check className="h-3 w-3 text-green-500 flex-shrink-0" />
+                                    {plan.child_profiles} {t.childProfiles}
+                                  </p>
+                                  <p className="flex items-center gap-1">
+                                    <Check className="h-3 w-3 text-green-500 flex-shrink-0" />
+                                    {plan.images_per_story} {t.imagesPerStory}
+                                  </p>
+                                  {plan.learning_themes && (
+                                    <p className="flex items-center gap-1">
+                                      <Check className="h-3 w-3 text-green-500 flex-shrink-0" />
+                                      {t.learningThemesFeature}
+                                    </p>
+                                  )}
+                                  {plan.chapter_stories && (
+                                    <p className="flex items-center gap-1">
+                                      <Check className="h-3 w-3 text-green-500 flex-shrink-0" />
+                                      {t.chapterStories}
+                                    </p>
+                                  )}
+                                  {plan.co_create && (
+                                    <p className="flex items-center gap-1">
+                                      <Check className="h-3 w-3 text-green-500 flex-shrink-0" />
+                                      {t.coCreate}
+                                    </p>
+                                  )}
+                                </div>
+                                <Button
+                                  onClick={() => !isStarter && toast.info(t.betaUpgradeToast)}
+                                  variant={isStarter ? "outline" : "default"}
+                                  size="sm"
+                                  disabled={isStarter}
+                                  className={`w-full mt-3 text-xs ${
+                                    isStarter
+                                      ? 'border-orange-200 text-orange-600'
+                                      : 'bg-orange-500 hover:bg-orange-600 text-white'
+                                  }`}
+                                >
+                                  {isStarter ? t.activePlan : t.selectPlan}
+                                </Button>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Invoices */}
+                      <div className="p-3 bg-gray-50 rounded-xl border border-gray-100">
+                        <p className="text-sm font-medium text-[#2D1810]/60">{t.invoices}</p>
+                        <p className="text-xs text-[#2D1810]/40 mt-1">{t.noInvoices}</p>
                       </div>
                     </div>
-                    <Button variant="outline" size="sm" disabled className="border-orange-200">
-                      {t.edit}
-                    </Button>
-                  </div>
-
-                  {/* Password */}
-                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-4 bg-orange-50/50 rounded-xl">
-                    <div className="flex items-center gap-3">
-                      <div className="h-10 w-10 rounded-full bg-orange-100 flex items-center justify-center">
-                        <Lock className="h-5 w-5 text-orange-600" />
-                      </div>
-                      <div>
-                        <p className="font-medium text-sm text-[#2D1810]">{t.changePassword}</p>
-                        <p className="text-xs text-[#2D1810]/50">{t.changePasswordSub}</p>
-                      </div>
-                    </div>
-                    <Button variant="outline" size="sm" disabled className="border-orange-200">
-                      {t.edit}
-                    </Button>
-                  </div>
-
-                  {/* Delete Account */}
-                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-4 bg-red-50/50 rounded-xl border border-red-200/50">
-                    <div className="flex items-center gap-3">
-                      <div className="h-10 w-10 rounded-full bg-red-100 flex items-center justify-center">
-                        <UserX className="h-5 w-5 text-red-600" />
-                      </div>
-                      <div>
-                        <p className="font-medium text-sm text-red-700">{t.deleteAccount}</p>
-                        <p className="text-xs text-[#2D1810]/50">{t.deleteAccountSub}</p>
-                      </div>
-                    </div>
-                    <Button variant="destructive" size="sm" disabled>
-                      {t.delete}
-                    </Button>
-                  </div>
-
-                  <p className="text-xs text-[#2D1810]/40 text-center pt-2">
-                    ⚠️ {t.comingSoon}
-                  </p>
-                </CardContent>
-              </Card>
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
             </div>
           </TabsContent>
 
@@ -609,7 +743,7 @@ const AdminPage = () => {
                 {/* Image Generation Config Link */}
                 <Card className="cursor-pointer hover:bg-muted/30 transition-colors" onClick={() => navigate('/admin/config')}>
                   <CardHeader className="flex flex-row items-center gap-3 pb-2">
-                    <Image className="h-5 w-5 text-primary" />
+                    <Image className="h-5 w-5 text-orange-500" />
                     <div>
                       <CardTitle className="text-base">Bildgenerierung – Konfiguration</CardTitle>
                       <p className="text-xs text-muted-foreground mt-0.5">Imagen Modelle, Kosten & Limits verwalten</p>

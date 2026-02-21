@@ -7,6 +7,7 @@
 export interface LearningThemeResult {
   themeKey: string;
   themeLabel: string;
+  storyGuidance?: string;
 }
 
 /**
@@ -97,21 +98,40 @@ export async function shouldApplyLearningTheme(
       selectedTheme = activeThemes[0];
     }
 
-    // 5. Load label for the selected theme
-    const { data: themeData } = await supabaseClient
-      .from('learning_themes')
-      .select('labels')
-      .eq('theme_key', selectedTheme)
-      .maybeSingle();
+    // 5. Load label for the selected theme (supports custom: prefix)
+    let themeLabel: string;
 
-    const themeLabel = themeData?.labels?.[storyLanguage]
-      || themeData?.labels?.['en']
-      || themeData?.labels?.['fr']
-      || selectedTheme;
+    let storyGuidance: string | undefined;
 
-    console.log(`[learningTheme] Applying theme: ${selectedTheme} (${themeLabel})`);
+    if (selectedTheme.startsWith('custom:')) {
+      const customId = selectedTheme.replace('custom:', '');
+      const { data: customData } = await supabaseClient
+        .from('custom_learning_themes')
+        .select('name, story_guidance')
+        .eq('id', customId)
+        .maybeSingle();
 
-    return { themeKey: selectedTheme, themeLabel };
+      themeLabel = customData?.name?.[storyLanguage]
+        || customData?.name?.['en']
+        || customData?.name?.['de']
+        || selectedTheme;
+      storyGuidance = customData?.story_guidance || undefined;
+    } else {
+      const { data: themeData } = await supabaseClient
+        .from('learning_themes')
+        .select('labels')
+        .eq('theme_key', selectedTheme)
+        .maybeSingle();
+
+      themeLabel = themeData?.labels?.[storyLanguage]
+        || themeData?.labels?.['en']
+        || themeData?.labels?.['fr']
+        || selectedTheme;
+    }
+
+    console.log(`[learningTheme] Applying theme: ${selectedTheme} (${themeLabel})${storyGuidance ? ' [custom]' : ''}`);
+
+    return { themeKey: selectedTheme, themeLabel, storyGuidance };
 
   } catch (error) {
     console.error('[learningTheme] Error:', error);

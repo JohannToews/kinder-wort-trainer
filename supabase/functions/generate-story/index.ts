@@ -1838,7 +1838,8 @@ Deno.serve(async (req) => {
           userMessageFinal = injectLearningTheme(
             userMessageFinal,
             themeResult.themeLabel,
-            effectiveStoryLanguage
+            effectiveStoryLanguage,
+            themeResult.storyGuidance
           );
         }
       }
