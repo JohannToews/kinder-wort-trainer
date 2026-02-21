@@ -37,7 +37,7 @@ const CharacterTile = ({
       )}
     >
       {/* Image Container */}
-      <div className="relative w-full overflow-hidden rounded-xl aspect-square">
+      <div className={cn("relative w-full overflow-hidden rounded-xl", size === "small" ? "aspect-[4/3]" : "aspect-square")}>
         <img
           src={image}
           alt={label}

@@ -347,9 +347,9 @@ const CharacterSelectionScreen = ({
         {/* Fablino Header with inline back button (main view) */}
         {viewState === "main" ? (
           <FablinoPageHeader
-            mascotImage="/mascot/4_come_back.png"
+            mascotImage="/mascot/5_new_story.png"
             message={fablinoMessage || defaultCharacterMessages[kidAppLanguage] || defaultCharacterMessages['de']}
-            mascotSize="md"
+            mascotSize="sm"
             showBackButton
             onBack={onBack}
           />
@@ -362,7 +362,7 @@ const CharacterSelectionScreen = ({
         {/* Main Content */}
         {viewState === "main" && (
           <div className="w-full space-y-2">
-            <div className="grid grid-cols-2 gap-2.5">
+            <div className="grid grid-cols-2 gap-2">
               {mainTiles.map((tile) => {
                 const isExpandable = tile.type === "family" || tile.type === "friends";
                 const hasSelections = isExpandable && hasSavedSelections(tile.type as "family" | "friends");
