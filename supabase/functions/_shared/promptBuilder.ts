@@ -29,6 +29,7 @@ export interface StoryRequest {
     }>;
   };
   special_abilities: string[];
+  sub_elements?: string[];
   user_prompt?: string;
   source: 'parent' | 'kid';
   question_count?: number;
@@ -1035,14 +1036,20 @@ function buildSeriesContextBlock(request: StoryRequest): string {
 
 // ─── Main: buildStoryPrompt ─────────────────────────────────────
 
+export interface PromptBuildResult {
+  prompt: string;
+  warnings: string[];
+}
+
 export async function buildStoryPrompt(
   request: StoryRequest,
   supabaseClient: any
-): Promise<string> {
+): Promise<PromptBuildResult> {
   const lang = request.story_language;
   const headers = SECTION_HEADERS[lang] || SECTION_HEADERS['en'];
   const langName = LANGUAGE_NAMES[lang] || lang;
   const questionCount = request.question_count || 5;
+  const warnings: string[] = [];
 
   // ── 1. Load age_rules (with fallback to 'de') ──
   // Clamp to min 6 for DB lookup — age_rules starts at min_age=6.
@@ -1087,7 +1094,9 @@ export async function buildStoryPrompt(
       ageRules = deFallback;
     }
     if (!ageRules) {
-      console.error(`[promptBuilder] No age_rules found at all for age=${request.kid_profile.age}. Using hardcoded defaults.`);
+      const msg = `No age_rules found for age=${request.kid_profile.age} in any language. Using hardcoded defaults.`;
+      console.warn(`[promptBuilder] ${msg}`);
+      warnings.push(`age_rules: ${msg}`);
       ageRules = {
         style_prompt: 'Write in a child-friendly, engaging style.',
         vocabulary_level: 'age-appropriate',
@@ -1134,7 +1143,9 @@ export async function buildStoryPrompt(
       diffRules = deFallback;
     }
     if (!diffRules) {
-      console.error(`[promptBuilder] No difficulty_rules found at all for level=${request.kid_profile.difficulty_level}. Using hardcoded defaults.`);
+      const msg = `No difficulty_rules found for level=${request.kid_profile.difficulty_level} in any language. Using hardcoded defaults.`;
+      console.warn(`[promptBuilder] ${msg}`);
+      warnings.push(`difficulty_rules: ${msg}`);
       diffRules = {
         word_count_min: 200,
         word_count_max: 500,
@@ -1201,8 +1212,10 @@ export async function buildStoryPrompt(
 
     // Fallback 3: Hardcoded minimal – NO CRASH
     if (!themeRules) {
-      console.error(`[promptBuilder] No theme_rules found at all. Using hardcoded minimal rules.`);
-      themeRules = null; // Will be handled like surprise theme (no theme constraints)
+      const msg = `No theme_rules found for key=${request.theme_key} in any language. Treating as surprise theme.`;
+      console.warn(`[promptBuilder] ${msg}`);
+      warnings.push(`theme_rules: ${msg}`);
+      themeRules = null;
     }
   }
 
@@ -1658,6 +1671,11 @@ export async function buildStoryPrompt(
     }
   }
 
+  // SUB-ELEMENTS (thematic add-ons from wizard selection)
+  if (request.sub_elements && request.sub_elements.length > 0) {
+    sections.push(`## SUB-ELEMENTS\nIncorporate these specific elements into the story: ${request.sub_elements.join(', ')}`);
+  }
+
   // GUARDRAILS
   const guardrailSection = [
     `## ${headers.guardrails} (Safety Level ${request.kid_profile.content_safety_level}/4)`,
@@ -1710,7 +1728,7 @@ export async function buildStoryPrompt(
   // Hard word-count constraint (last thing the model reads)
   sections.push(`CRITICAL CONSTRAINT: The story MUST contain between ${minWords} and ${maxWords} words. This is a hard limit. Count your words carefully. A story that exceeds ${maxWords} words is a failure and will be rejected.`);
 
-  return sections.join('\n\n');
+  return { prompt: sections.join('\n\n'), warnings };
 }
 
 /**

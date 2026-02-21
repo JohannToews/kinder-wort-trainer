@@ -1,5 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
-import { buildStoryPrompt, injectLearningTheme, StoryRequest, EPISODE_CONFIG, getEpisodeConfig, getDefaultEpisodeCount } from '../_shared/promptBuilder.ts';
+import { buildStoryPrompt, injectLearningTheme, StoryRequest, EPISODE_CONFIG, getEpisodeConfig, getDefaultEpisodeCount, type PromptBuildResult } from '../_shared/promptBuilder.ts';
 import { shouldApplyLearningTheme } from '../_shared/learningThemeRotation.ts';
 import { buildImagePrompts, buildFallbackImagePrompt, loadImageRules, getStyleForAge, ImagePromptResult, SeriesImageContext } from '../_shared/imagePromptBuilder.ts';
 import { mergeSeriesContinuityState } from '../_shared/seriesContinuityMerge.ts';
@@ -1385,6 +1385,8 @@ Deno.serve(async (req) => {
       specialAbilities,                   // string[]
       userPrompt: userPromptParam,        // free text from user
       seriesContext,                       // summary of previous episodes
+      // Sub-elements from wizard (e.g. thematic add-ons)
+      subElements,
       // Block 2.3e: surprise_characters flag
       surprise_characters: surpriseCharactersParam,
       // Modus B: Interactive series
@@ -1684,6 +1686,32 @@ Deno.serve(async (req) => {
       }
 
       // 2. Build StoryRequest from available parameters
+
+      // BUG 4 FIX: When storyType is null (free-text path "Weg A"), infer theme from description
+      let inferredStoryType = storyType;
+      if (!inferredStoryType && !themeKey && description) {
+        const themeInference: Record<string, string[]> = {
+          adventure: ['abenteuer', 'adventure', 'reise', 'expedition', 'schatz', 'treasure', 'quest', 'aventure', 'trésor', 'piraten', 'pirate'],
+          fantasy: ['magie', 'magic', 'zauber', 'dragon', 'drache', 'hexe', 'witch', 'wizard', 'fee', 'fée', 'licorne', 'unicorn', 'zauberer', 'sorcier'],
+          educational: ['weltraum', 'space', 'roboter', 'robot', 'planet', 'rakete', 'experiment', 'science', 'wissenschaft', 'espace'],
+          animals: ['tier', 'animal', 'wald', 'forest', 'meer', 'ocean', 'berg', 'mountain', 'hund', 'katze', 'pferd', 'chien', 'chat', 'animaux', 'forêt'],
+          everyday: ['schule', 'school', 'freund', 'friend', 'familie', 'family', 'école', 'ami', 'famille', 'alltag', 'quotidien'],
+          humor: ['lustig', 'funny', 'witzig', 'chaos', 'verrückt', 'silly', 'drôle', 'rigolo', 'komisch'],
+        };
+        const descLower = description.toLowerCase();
+        for (const [theme, keywords] of Object.entries(themeInference)) {
+          if (keywords.some(kw => descLower.includes(kw))) {
+            inferredStoryType = theme;
+            console.log(`[generate-story] Inferred storyType '${theme}' from description keywords`);
+            break;
+          }
+        }
+        if (!inferredStoryType) {
+          inferredStoryType = 'adventure';
+          console.log('[generate-story] No keyword match in description, defaulting to adventure');
+        }
+      }
+
       // Map theme_key: Wizard may send storyType like 'adventure' → map to 'action'
       const themeKeyMapping: Record<string, string> = {
         adventure: 'action',
@@ -1695,7 +1723,7 @@ Deno.serve(async (req) => {
         daily_life: 'everyday',
       };
       const resolvedThemeKey = themeKey
-        || themeKeyMapping[storyType] || storyType
+        || themeKeyMapping[inferredStoryType] || inferredStoryType
         || (textType === 'non-fiction' ? 'educational' : 'fantasy');
 
       // Map length: old code uses 'very_short'|'short'|'medium'|'long'|'very_long'
@@ -1784,6 +1812,7 @@ Deno.serve(async (req) => {
           })),
         },
         special_abilities: specialAbilities || [],
+        sub_elements: subElements || [],
         user_prompt: userPromptParam || (source === 'kid' ? description : undefined),
         source: source === 'kid' ? 'kid' : 'parent',
         question_count: 5,
@@ -1819,7 +1848,12 @@ Deno.serve(async (req) => {
       };
 
       // 3. Build dynamic user message
-      userMessageFinal = await buildStoryPrompt(storyRequest, supabase);
+      const promptResult = await buildStoryPrompt(storyRequest, supabase);
+      userMessageFinal = promptResult.prompt;
+      const promptWarnings = promptResult.warnings;
+      if (promptWarnings.length > 0) {
+        console.warn(`[generate-story] Prompt builder warnings: ${promptWarnings.join('; ')}`);
+      }
 
       // Block 2.3d: Log the CHARACTERS section from the built prompt
       const charSectionMatch = userMessageFinal.match(/## (PERSONNAGES|FIGUREN|CHARACTERS|PERSONAJES|PERSONAGGI|LIKOVI|PERSONAGES)[\s\S]*?(?=\n## |$)/);
@@ -2974,6 +3008,8 @@ Antworte NUR mit dem erweiterten Text (ohne Titel, ohne JSON-Format).`;
       image_style_key: imageStyleData?.styleKey || null,
       // Chapter story model — variable episode count
       series_episode_count: seriesEpisodeCount || null,
+      // Prompt builder warnings (for debugging — stored in stories table)
+      prompt_warnings: promptWarnings.length > 0 ? promptWarnings : null,
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
