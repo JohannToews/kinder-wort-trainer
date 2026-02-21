@@ -26,13 +26,14 @@ const SUBTYPE_THEMES: Record<string, Record<string, string>> = {
 
 // Fallback theme per story type and age (only if no subtype)
 const getThemeForStoryType = (storyType: string, age: number, subtype?: string, detail?: string): string => {
-  // If user provided custom detail, use it as primary theme
-  if (detail) return detail;
+  const subtypeTheme = subtype && SUBTYPE_THEMES[storyType]?.[subtype] ? SUBTYPE_THEMES[storyType][subtype] : "";
   
-  // If subtype exists, use subtype-specific theme
-  if (subtype && SUBTYPE_THEMES[storyType]?.[subtype]) {
-    return SUBTYPE_THEMES[storyType][subtype];
+  // Combine subtype theme with user detail for maximum context
+  if (detail && subtypeTheme) {
+    return `${subtypeTheme}. Zusätzliche Details: ${detail}`;
   }
+  if (detail) return detail;
+  if (subtypeTheme) return subtypeTheme;
 
   if (storyType === "adventure") {
     if (age <= 7) return "Ein mutiger kleiner Held rettet ein magisches Dorf";
