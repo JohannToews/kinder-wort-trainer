@@ -10,21 +10,17 @@ import SpeechBubble from "@/components/SpeechBubble";
 import confetti from "canvas-confetti";
 
 // Subtype-specific themes for onboarding
+// Keys MUST match the subtype keys in OnboardingKindPage's STORY_CATEGORIES
 const SUBTYPE_THEMES: Record<string, Record<string, string>> = {
   adventure: {
     heroes: "Superhelden, geheime Kräfte, einen Bösewicht besiegen",
     detective: "Geheimnisse lösen, versteckte Hinweise, ein mysteriöser Fall",
     space: "Weltraumreise, fremde Planeten, unbekannte Welten entdecken",
   },
-  animals: {
-    forest: "Waldtiere erleben ein Abenteuer",
-    pets: "Haustiere auf einem besonderen Ausflug",
-    safari: "Wildtiere in der Savanne",
-  },
   fantasy: {
-    magic: "Magische Kräfte und Zauberwelten",
-    dragons: "Freundliche Drachen und Abenteuer",
-    fairy: "Feen, Elfen und verzauberte Wälder",
+    wizards: "Zauberer, Hexen, Magie, Zaubertränke und Sprüche",
+    dragons: "Freundliche Drachen, Einhörner und magische Fabelwesen",
+    enchanted: "Geheime Portale, verzauberte Wälder und verborgene Königreiche",
   },
 };
 
