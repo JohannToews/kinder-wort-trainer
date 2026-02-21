@@ -9,47 +9,7 @@ import FablinoMascot from "@/components/FablinoMascot";
 import SpeechBubble from "@/components/SpeechBubble";
 import confetti from "canvas-confetti";
 
-// Subtype-specific themes for onboarding
-// Keys MUST match the subtype keys in OnboardingKindPage's STORY_CATEGORIES
-const SUBTYPE_THEMES: Record<string, Record<string, string>> = {
-  adventure: {
-    heroes: "Superhelden, geheime Kräfte, einen Bösewicht besiegen",
-    detective: "Geheimnisse lösen, versteckte Hinweise, ein mysteriöser Fall",
-    space: "Weltraumreise, fremde Planeten, unbekannte Welten entdecken",
-  },
-  fantasy: {
-    wizards: "Zauberer, Hexen, Magie, Zaubertränke und Sprüche",
-    dragons: "Freundliche Drachen, Einhörner und magische Fabelwesen",
-    enchanted: "Geheime Portale, verzauberte Wälder und verborgene Königreiche",
-  },
-};
-
-// Fallback theme per story type and age (only if no subtype)
-const getThemeForStoryType = (storyType: string, age: number, subtype?: string, detail?: string): string => {
-  const subtypeTheme = subtype && SUBTYPE_THEMES[storyType]?.[subtype] ? SUBTYPE_THEMES[storyType][subtype] : "";
-  
-  // Combine subtype theme with user detail for maximum context
-  if (detail && subtypeTheme) {
-    return `${subtypeTheme}. Zusätzliche Details: ${detail}`;
-  }
-  if (detail) return detail;
-  if (subtypeTheme) return subtypeTheme;
-
-  if (storyType === "adventure") {
-    if (age <= 7) return "Ein mutiger kleiner Held rettet ein magisches Dorf";
-    if (age <= 9) return "Ein Abenteuer mit einer geheimnisvollen Schatzkarte";
-    return "Ein episches Abenteuer in einem fernen Königreich";
-  }
-  if (storyType === "animals") {
-    if (age <= 7) return "Ein niedlicher Fuchs und seine Waldfreunde";
-    if (age <= 9) return "Ein sprechendes Tier löst ein großes Rätsel im Wald";
-    return "Eine Tierexpedition durch den Dschungel";
-  }
-  // fantasy (default)
-  if (age <= 7) return "Ein magisches Tier im Wald";
-  if (age <= 9) return "Ein Abenteuer mit einem freundlichen Drachen";
-  return "Eine geheimnisvolle Begegnung mit einer Fee";
-};
+// No local subtype logic — server-side selectStorySubtype() handles variation via round-robin
 
 // Default image style per age
 const getDefaultImageStyle = (age: number): string => {
@@ -100,7 +60,6 @@ const OnboardingStoryPage = () => {
   const [searchParams] = useSearchParams();
   const kidId = searchParams.get("kid");
   const storyTypeParam = searchParams.get("storyType");
-  const subtypeParam = searchParams.get("subtype");
   const storyLangParam = searchParams.get("lang");
   const detailParam = searchParams.get("detail");
   const navigate = useNavigate();
@@ -226,7 +185,6 @@ const OnboardingStoryPage = () => {
 
     const age = kid.age || 8;
     const resolvedStoryType = storyTypeParam || "fantasy";
-    const theme = getThemeForStoryType(resolvedStoryType, age, subtypeParam || undefined, detailParam || undefined);
     const imageStyle = getDefaultImageStyle(age);
     const readingLang = storyLangParam || kid.reading_language || kid.school_system || "fr";
     const difficulty = getDifficultyForAge(age);
@@ -236,12 +194,12 @@ const OnboardingStoryPage = () => {
         body: {
           length: "short",
           difficulty,
-          description: theme,
+          description: detailParam || "",
           textType: "fiction",
           textLanguage: readingLang.toUpperCase(),
           globalLanguage: readingLang,
           userId: user.id,
-          source: "onboarding",
+          source: "kid",
           isSeries: false,
           storyType: resolvedStoryType,
           kidName: kid.name,
@@ -252,7 +210,7 @@ const OnboardingStoryPage = () => {
           difficultyLevel: kid.difficulty_level || 2,
           contentSafetyLevel: kid.content_safety_level || 2,
           image_style_key: imageStyle,
-          story_length: "short",
+          storyLength: "short",
         },
       });
 
@@ -317,16 +275,26 @@ const OnboardingStoryPage = () => {
           difficulty,
           text_type: "fiction",
           text_language: readingLang,
-          prompt: theme,
+          prompt: detailParam || resolvedStoryType,
           user_id: user.id,
           kid_profile_id: kidId,
           generation_status: "verified",
           ending_type: "A",
           story_length: "short",
           image_style_key: imageStyle,
+          structure_beginning: data.structure_beginning ?? null,
+          structure_middle: data.structure_middle ?? null,
+          structure_ending: data.structure_ending ?? null,
           emotional_coloring: data.emotional_coloring ?? null,
+          emotional_secondary: data.emotional_secondary ?? null,
+          humor_level: data.humor_level ?? null,
+          emotional_depth: data.emotional_depth ?? null,
+          moral_topic: data.moral_topic ?? null,
+          concrete_theme: data.concrete_theme ?? null,
           learning_theme_applied: data.learning_theme_applied ?? null,
           generation_time_ms: data.performance?.total_ms ?? null,
+          story_generation_ms: data.performance?.story_generation_ms ?? null,
+          image_generation_ms: data.performance?.image_generation_ms ?? null,
         })
         .select()
         .single();
@@ -348,6 +316,19 @@ const OnboardingStoryPage = () => {
           question_language: readingLang,
         }));
         await supabase.from("comprehension_questions").insert(qs);
+      }
+
+      // Save vocabulary words
+      if (data.vocabulary?.length > 0) {
+        const words = data.vocabulary.map((v: { word: string; explanation: string }) => ({
+          story_id: saved.id,
+          word: v.word,
+          explanation: v.explanation,
+          difficulty: "medium",
+          word_language: readingLang,
+          explanation_language: readingLang,
+        }));
+        await supabase.from("marked_words").insert(words);
       }
 
       setStoryId(saved.id);
